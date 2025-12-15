@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,64 +29,90 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, Edit, Trash2, Plus, MapPin } from 'lucide-react';
+import { Search, Edit, Trash2, Plus, MapPin, Settings, Server, Wifi, Activity, Loader2 } from 'lucide-react';
 
-// Types
-interface AP {
-  id: number;
-  name: string;
-  location: string;
-  building: string;
-  uptime: string;
-  ipModel: string;
-  controller: string;
-  clients: number;
-  usage: number;
-}
+// Import types and mock data from centralized file
+import {
+  AP,
+  Controller,
+  AreaLocation,
+  initialControllers,
+  initialAPs,
+  buildingFilters as buildings,
+  campusFilters as campuses,
+  areaFilters as areas,
+  fetchAreaLocations,
+  getOverloadedAPs,
+} from "@/data/mockData";
 
-// Mock data - Danh sách AP
-const initialAPs: AP[] = [
-  { id: 1, name: 'GD1-01', location: 'Giảng đường 1', building: '227 NVC', uptime: '15h00 1days', ipModel: '172.29.99.1 - AC Mesh Pro', controller: 'UniFi 1', clients: 112, usage: 90 },
-  { id: 2, name: 'I1-01', location: 'Sảnh nhà I', building: '227NVC', uptime: '03h15 98days', ipModel: '172.29.99.2 - AC Pro 7', controller: 'UniFi 1', clients: 69, usage: 88 },
-  { id: 3, name: 'I11-01', location: 'Nhà I lầu 11', building: '227NVC', uptime: '05h00 1days', ipModel: '172.29.99.9 - AC Mesh Pro', controller: 'UniFi 1', clients: 225, usage: 92 },
-  { id: 4, name: 'F103-02', location: 'Nhà F', building: '227NVC', uptime: '01h00 1days', ipModel: '10.29.29.5 - U7 Pro', controller: 'UniFi 2', clients: 88, usage: 70 },
-  { id: 5, name: 'GD2-01', location: 'Giảng đường 2', building: '227NVC', uptime: '03h00 0days', ipModel: '10.29.29.6 - U7 Pro', controller: 'UniFi 2', clients: 45, usage: 55 },
-  { id: 6, name: 'A1-01', location: 'Nhà A Tầng 1', building: '227NVC', uptime: '12h30 5days', ipModel: '172.29.99.10 - AC Lite', controller: 'UniFi 1', clients: 32, usage: 45 },
-  { id: 7, name: 'B2-03', location: 'Nhà B Tầng 2', building: 'Dĩ An', uptime: '08h45 3days', ipModel: '172.29.99.15 - AC Pro', controller: 'UniFi 3', clients: 78, usage: 82 },
-  { id: 8, name: 'C3-02', location: 'Nhà C Tầng 3', building: 'Dĩ An', uptime: '20h00 7days', ipModel: '172.29.99.20 - U6 Pro', controller: 'UniFi 3', clients: 95, usage: 78 },
-];
-
-// AP quá tải (>80%)
-const overloadedAPs = initialAPs.filter(ap => ap.usage >= 70).sort((a, b) => b.usage - a.usage).slice(0, 4);
-
-// Buildings list
-const buildings = ['All', '227NVC', 'Dĩ An', 'Thủ Đức'];
-const campuses = ['Dĩ An', 'Thủ Đức', '227 NVC'];
-const areas = ['Nhà A', 'Nhà B', 'Nhà C', 'Nhà I', 'Giảng đường'];
+// Calculate overloaded APs
+const overloadedAPs = getOverloadedAPs(initialAPs);
 
 export default function AccessPoints() {
+  const [, setLocation] = useLocation();
   const [aps, setAps] = useState<AP[]>(initialAPs);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBuilding, setSelectedBuilding] = useState('227NVC');
   const [selectedCampus, setSelectedCampus] = useState('Dĩ An');
   const [selectedArea, setSelectedArea] = useState('Nhà A');
 
-  // Dialog states
+  // Dialog states - AP
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedAP, setSelectedAP] = useState<AP | null>(null);
 
-  // Form state
+  // Form state - AP
   const [formData, setFormData] = useState<Partial<AP>>({});
+
+  // Controller states
+  const [controllers, setControllers] = useState<Controller[]>(initialControllers);
+  const [addControllerDialogOpen, setAddControllerDialogOpen] = useState(false);
+  const [editControllerDialogOpen, setEditControllerDialogOpen] = useState(false);
+  const [deleteControllerDialogOpen, setDeleteControllerDialogOpen] = useState(false);
+  const [selectedController, setSelectedController] = useState<Controller | null>(null);
+  const [controllerFormData, setControllerFormData] = useState<Partial<Controller>>({});
+  const [showControllerSection, setShowControllerSection] = useState(false);
+  const [selectedControllerFilter, setSelectedControllerFilter] = useState<string | null>(null);
+
+  // Area locations from API
+  const [areaLocations, setAreaLocations] = useState<AreaLocation[]>([]);
+  const [loadingAreas, setLoadingAreas] = useState(true);
+
+  // Fetch area locations on mount (simulating API call)
+  useEffect(() => {
+    const loadAreaLocations = async () => {
+      setLoadingAreas(true);
+      try {
+        const locations = await fetchAreaLocations();
+        setAreaLocations(locations);
+      } catch (error) {
+        console.error('Failed to fetch area locations:', error);
+      } finally {
+        setLoadingAreas(false);
+      }
+    };
+    loadAreaLocations();
+  }, []);
 
   // Filtered APs
   const filteredAPs = aps.filter(ap => {
     const matchesSearch = ap.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ap.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesBuilding = selectedBuilding === 'All' || ap.building === selectedBuilding;
-    return matchesSearch && matchesBuilding;
+    const matchesController = !selectedControllerFilter || ap.controller === selectedControllerFilter;
+    return matchesSearch && matchesBuilding && matchesController;
   });
+
+  // Get AP count by controller
+  const getAPCountByController = (controllerName: string) => {
+    return aps.filter(ap => ap.controller === controllerName).length;
+  };
+
+  // Get total clients by controller
+  const getTotalClientsByController = (controllerName: string) => {
+    return aps.filter(ap => ap.controller === controllerName).reduce((sum, ap) => sum + ap.clients, 0);
+  };
 
   // Handlers
   const handleAdd = () => {
@@ -136,6 +163,66 @@ export default function AccessPoints() {
     setSelectedAP(null);
   };
 
+  // Controller Handlers
+  const handleAddController = () => {
+    setControllerFormData({ status: 'Online' });
+    setAddControllerDialogOpen(true);
+  };
+
+  const handleEditController = (controller: Controller) => {
+    setSelectedController(controller);
+    setControllerFormData({ ...controller });
+    setEditControllerDialogOpen(true);
+  };
+
+  const handleDeleteController = (controller: Controller) => {
+    setSelectedController(controller);
+    setDeleteControllerDialogOpen(true);
+  };
+
+  const saveNewController = () => {
+    const newController: Controller = {
+      id: Math.max(...controllers.map(c => c.id), 0) + 1,
+      name: controllerFormData.name || '',
+      ipAddress: controllerFormData.ipAddress || '',
+      version: controllerFormData.version || '7.4.156',
+      status: controllerFormData.status || 'Online',
+      apCount: 0,
+      totalClients: 0,
+      location: controllerFormData.location || '',
+    };
+    setControllers([...controllers, newController]);
+    setAddControllerDialogOpen(false);
+    setControllerFormData({});
+  };
+
+  const saveEditController = () => {
+    if (selectedController) {
+      setControllers(controllers.map(c => c.id === selectedController.id ? { ...c, ...controllerFormData } as Controller : c));
+    }
+    setEditControllerDialogOpen(false);
+    setSelectedController(null);
+    setControllerFormData({});
+  };
+
+  const confirmDeleteController = () => {
+    if (selectedController) {
+      setControllers(controllers.filter(c => c.id !== selectedController.id));
+    }
+    setDeleteControllerDialogOpen(false);
+    setSelectedController(null);
+  };
+
+  const getControllerNames = () => controllers.map(c => c.name);
+
+  const getStatusColor = (status: Controller['status']) => {
+    switch (status) {
+      case 'Online': return 'bg-green-100 text-green-800';
+      case 'Offline': return 'bg-red-100 text-red-800';
+      case 'Warning': return 'bg-amber-100 text-amber-800';
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Section - Map and Overload */}
@@ -171,6 +258,26 @@ export default function AccessPoints() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="flex items-center gap-2 ml-auto">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                  onClick={() => setLocation('/settings?tab=areas')}
+                >
+                  <Settings size={16} className="mr-1" />
+                  QL Khu Vực
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                  onClick={() => setShowControllerSection(!showControllerSection)}
+                >
+                  <Server size={16} className="mr-1" />
+                  {showControllerSection ? 'Ẩn Controller' : 'QL Controller'}
+                </Button>
               </div>
             </div>
 
@@ -235,11 +342,148 @@ export default function AccessPoints() {
         </div>
       </div>
 
+      {/* Controller Management Section */}
+      {showControllerSection && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Server size={20} className="text-[#1e3a5f]" />
+              <h3 className="text-sm font-semibold text-[#1e3a5f]">Danh sách Controller</h3>
+              {selectedControllerFilter && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                  Đang lọc: {selectedControllerFilter}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {selectedControllerFilter && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 text-gray-600"
+                  onClick={() => setSelectedControllerFilter(null)}
+                >
+                  Xóa bộ lọc
+                </Button>
+              )}
+              <Button size="sm" onClick={handleAddController} className="h-8 bg-[#1e3a5f] hover:bg-[#2d4a6f]">
+                <Plus size={16} className="mr-1" />
+                Thêm Controller
+              </Button>
+            </div>
+          </div>
+          
+          {/* Controller List */}
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Tên Controller</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Địa chỉ IP</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Version</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Vị trí</th>
+                  <th className="text-center px-4 py-3 font-semibold text-gray-700">Trạng thái</th>
+                  <th className="text-center px-4 py-3 font-semibold text-gray-700">Số AP</th>
+                  <th className="text-center px-4 py-3 font-semibold text-gray-700">Clients</th>
+                  <th className="text-center px-4 py-3 font-semibold text-gray-700">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {controllers.map((controller) => (
+                  <tr 
+                    key={controller.id} 
+                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+                      selectedControllerFilter === controller.name ? 'bg-blue-50 hover:bg-blue-100' : ''
+                    }`}
+                    onClick={() => setSelectedControllerFilter(
+                      selectedControllerFilter === controller.name ? null : controller.name
+                    )}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          controller.status === 'Online' ? 'bg-green-100' : 
+                          controller.status === 'Warning' ? 'bg-amber-100' : 'bg-red-100'
+                        }`}>
+                          <Server size={16} className={
+                            controller.status === 'Online' ? 'text-green-600' : 
+                            controller.status === 'Warning' ? 'text-amber-600' : 'text-red-600'
+                          } />
+                        </div>
+                        <span className="font-medium">{controller.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-gray-600">{controller.ipAddress}</td>
+                    <td className="px-4 py-3 text-gray-600">{controller.version}</td>
+                    <td className="px-4 py-3 text-gray-600">{controller.location}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(controller.status)}`}>
+                        {controller.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Wifi size={14} className="text-blue-500" />
+                        <span className="font-medium">{getAPCountByController(controller.name)}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Activity size={14} className="text-green-500" />
+                        <span className="font-medium">{getTotalClientsByController(controller.name)}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => { e.stopPropagation(); handleEditController(controller); }}
+                        >
+                          <Edit size={14} className="text-amber-600" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteController(controller); }}
+                        >
+                          <Trash2 size={14} className="text-red-600" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          <p className="text-xs text-gray-500 mt-2 italic">
+            * Nhấn vào Controller để lọc danh sách AP theo Controller đó
+          </p>
+        </Card>
+      )}
+
       {/* AP List Table */}
       <Card className="p-4">
         {/* Table Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-[#1e3a5f]">Danh mục điểm truy cập WIFI</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-[#1e3a5f]">Danh sách AP</h3>
+            {selectedControllerFilter && (
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full flex items-center gap-1">
+                <Server size={12} />
+                {selectedControllerFilter}
+                <button 
+                  className="ml-1 hover:text-blue-900" 
+                  onClick={() => setSelectedControllerFilter(null)}
+                >
+                  ×
+                </button>
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">Tìm kiếm</span>
@@ -337,15 +581,37 @@ export default function AccessPoints() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Vị trí</Label>
-              <Input
-                value={formData.location || ''}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="VD: Giảng đường 1"
-              />
+              <Label>Vị trí (Khu vực) <span className="text-red-500">*</span></Label>
+              {loadingAreas ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  Đang tải danh sách khu vực...
+                </div>
+              ) : (
+                <Select
+                  value={formData.location || ''}
+                  onValueChange={(value) => {
+                    const area = areaLocations.find(a => a.label === value);
+                    setFormData({ 
+                      ...formData, 
+                      location: value,
+                      building: area?.campusName || formData.building 
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn khu vực" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {areaLocations.map(area => (
+                      <SelectItem key={area.id} value={area.label}>{area.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
-              <Label>Khu vực</Label>
+              <Label>Campus</Label>
               <Select
                 value={formData.building || '227NVC'}
                 onValueChange={(value) => setFormData({ ...formData, building: value })}
@@ -371,16 +637,16 @@ export default function AccessPoints() {
             <div className="space-y-2">
               <Label>Controller</Label>
               <Select
-                value={formData.controller || 'UniFi 1'}
+                value={formData.controller || controllers[0]?.name || 'UniFi 1'}
                 onValueChange={(value) => setFormData({ ...formData, controller: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="UniFi 1">UniFi 1</SelectItem>
-                  <SelectItem value="UniFi 2">UniFi 2</SelectItem>
-                  <SelectItem value="UniFi 3">UniFi 3</SelectItem>
+                  {getControllerNames().map(name => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -408,14 +674,37 @@ export default function AccessPoints() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Vị trí</Label>
-              <Input
-                value={formData.location || ''}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              />
+              <Label>Vị trí (Khu vực) <span className="text-red-500">*</span></Label>
+              {loadingAreas ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  Đang tải danh sách khu vực...
+                </div>
+              ) : (
+                <Select
+                  value={formData.location || ''}
+                  onValueChange={(value) => {
+                    const area = areaLocations.find(a => a.label === value);
+                    setFormData({ 
+                      ...formData, 
+                      location: value,
+                      building: area?.campusName || formData.building 
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn khu vực" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {areaLocations.map(area => (
+                      <SelectItem key={area.id} value={area.label}>{area.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
-              <Label>Khu vực</Label>
+              <Label>Campus</Label>
               <Select
                 value={formData.building || '227NVC'}
                 onValueChange={(value) => setFormData({ ...formData, building: value })}
@@ -440,16 +729,16 @@ export default function AccessPoints() {
             <div className="space-y-2">
               <Label>Controller</Label>
               <Select
-                value={formData.controller || 'UniFi 1'}
+                value={formData.controller || controllers[0]?.name || 'UniFi 1'}
                 onValueChange={(value) => setFormData({ ...formData, controller: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="UniFi 1">UniFi 1</SelectItem>
-                  <SelectItem value="UniFi 2">UniFi 2</SelectItem>
-                  <SelectItem value="UniFi 3">UniFi 3</SelectItem>
+                  {getControllerNames().map(name => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -475,6 +764,205 @@ export default function AccessPoints() {
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
               Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add Controller Dialog */}
+      <Dialog open={addControllerDialogOpen} onOpenChange={setAddControllerDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Server size={20} className="text-[#1e3a5f]" />
+              Thêm Controller mới
+            </DialogTitle>
+            <DialogDescription>Nhập thông tin Controller mới</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Tên Controller <span className="text-red-500">*</span></Label>
+              <Input
+                value={controllerFormData.name || ''}
+                onChange={(e) => setControllerFormData({ ...controllerFormData, name: e.target.value })}
+                placeholder="VD: UniFi 4"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Địa chỉ IP <span className="text-red-500">*</span></Label>
+                <Input
+                  value={controllerFormData.ipAddress || ''}
+                  onChange={(e) => setControllerFormData({ ...controllerFormData, ipAddress: e.target.value })}
+                  placeholder="VD: 172.29.99.254"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phiên bản</Label>
+                <Input
+                  value={controllerFormData.version || ''}
+                  onChange={(e) => setControllerFormData({ ...controllerFormData, version: e.target.value })}
+                  placeholder="VD: 7.4.156"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Vị trí (Khu vực) <span className="text-red-500">*</span></Label>
+              {loadingAreas ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  Đang tải danh sách khu vực...
+                </div>
+              ) : (
+                <Select
+                  value={controllerFormData.location || ''}
+                  onValueChange={(value) => setControllerFormData({ ...controllerFormData, location: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn khu vực đặt Controller" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {areaLocations.map(area => (
+                      <SelectItem key={area.id} value={area.label}>{area.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Trạng thái</Label>
+              <Select
+                value={controllerFormData.status || 'Online'}
+                onValueChange={(value) => setControllerFormData({ ...controllerFormData, status: value as Controller['status'] })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Online">Online</SelectItem>
+                  <SelectItem value="Offline">Offline</SelectItem>
+                  <SelectItem value="Warning">Warning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddControllerDialogOpen(false)}>Hủy</Button>
+            <Button 
+              onClick={saveNewController} 
+              className="bg-[#1e3a5f] hover:bg-[#2d4a6f]"
+              disabled={!controllerFormData.name || !controllerFormData.ipAddress}
+            >
+              Thêm Controller
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Controller Dialog */}
+      <Dialog open={editControllerDialogOpen} onOpenChange={setEditControllerDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit size={20} className="text-amber-600" />
+              Chỉnh sửa Controller
+            </DialogTitle>
+            <DialogDescription>Cập nhật thông tin: {selectedController?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Tên Controller <span className="text-red-500">*</span></Label>
+              <Input
+                value={controllerFormData.name || ''}
+                onChange={(e) => setControllerFormData({ ...controllerFormData, name: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Địa chỉ IP <span className="text-red-500">*</span></Label>
+                <Input
+                  value={controllerFormData.ipAddress || ''}
+                  onChange={(e) => setControllerFormData({ ...controllerFormData, ipAddress: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phiên bản</Label>
+                <Input
+                  value={controllerFormData.version || ''}
+                  onChange={(e) => setControllerFormData({ ...controllerFormData, version: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Vị trí (Khu vực) <span className="text-red-500">*</span></Label>
+              {loadingAreas ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  Đang tải danh sách khu vực...
+                </div>
+              ) : (
+                <Select
+                  value={controllerFormData.location || ''}
+                  onValueChange={(value) => setControllerFormData({ ...controllerFormData, location: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn khu vực đặt Controller" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {areaLocations.map(area => (
+                      <SelectItem key={area.id} value={area.label}>{area.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Trạng thái</Label>
+              <Select
+                value={controllerFormData.status || 'Online'}
+                onValueChange={(value) => setControllerFormData({ ...controllerFormData, status: value as Controller['status'] })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Online">Online</SelectItem>
+                  <SelectItem value="Offline">Offline</SelectItem>
+                  <SelectItem value="Warning">Warning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditControllerDialogOpen(false)}>Hủy</Button>
+            <Button 
+              onClick={saveEditController} 
+              className="bg-[#1e3a5f] hover:bg-[#2d4a6f]"
+              disabled={!controllerFormData.name || !controllerFormData.ipAddress}
+            >
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Controller Dialog */}
+      <AlertDialog open={deleteControllerDialogOpen} onOpenChange={setDeleteControllerDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa Controller</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa Controller <strong>{selectedController?.name}</strong>?
+              <br /><br />
+              <span className="text-amber-600">
+                Cảnh báo: Các AP đang sử dụng Controller này có thể bị ảnh hưởng.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteController} className="bg-red-600 hover:bg-red-700">
+              Xóa Controller
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

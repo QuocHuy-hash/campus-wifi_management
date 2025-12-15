@@ -7,6 +7,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import AccessPoints from "./pages/AccessPoints";
+import Policies from "./pages/Policies";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
@@ -35,6 +36,7 @@ function Router() {
               <Route path={"/"} component={Dashboard} />
               <Route path={"/users"} component={Users} />
               <Route path={"/access-points"} component={AccessPoints} />
+              <Route path={"/policies"} component={Policies} />
               <Route path={"/reports"} component={Reports} />
               <Route path={"/settings"} component={Settings} />
             </Switch>

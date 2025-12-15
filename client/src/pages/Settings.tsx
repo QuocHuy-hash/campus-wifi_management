@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation, useSearch } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,89 +31,40 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Lock, Database, Mail, Shield, Clock, Eye, Plus, Edit, Trash2, Users, Search, FileText } from 'lucide-react';
+import { Lock, Database, Mail, Shield, Clock, Eye, Plus, Edit, Trash2, Users, Search, FileText, MapPin, Building2, Map } from 'lucide-react';
 
-// Types
-interface AdminUser {
-  id: number;
-  username: string;
-  email: string;
-  role: string;
-  status: 'Active' | 'Locked';
-  group: string;
-  accessTimeLimit?: string;
-}
-
-interface WifiPolicy {
-  id: number;
-  name: string;
-  description: string;
-  type: 'bandwidth' | 'auth' | 'session' | 'audit' | 'security';
-  downloadLimit?: number;
-  uploadLimit?: number;
-  maxSessionTime?: number;
-  maxSessionData?: number;
-  applyToRoles: string[];
-  applyToArea?: string;
-  applyByTime?: string;
-}
-
-interface Permission {
-  resource: string;
-  canView: boolean;
-  canEdit: boolean;
-}
-
-interface UserGroup {
-  id: number;
-  name: string;
-  permissions: Permission[];
-}
-
-interface LogEntry {
-  id: number;
-  timestamp: string;
-  user: string;
-  action: string;
-  details: string;
-  type: 'access' | 'error' | 'config' | 'account';
-}
-
-// Initial Data
-const systemRoles = ['Super Admin', 'Admin', 'Nhân viên IT', 'Người giám sát'];
-const userGroups = ['Quản trị viên cấp cao', 'Quản trị viên', 'Nhóm kỹ thuật', 'Nhóm giám sát'];
-const resourceList = ['Quản lý AP', 'Quản lý Policy', 'Quản lý Người dùng', 'Báo cáo', 'Cài đặt hệ thống', 'Nhật ký'];
-
-const initialAdminUsers: AdminUser[] = [
-  { id: 1, username: 'superadmin', email: 'superadmin@hcmus.edu.vn', role: 'Super Admin', status: 'Active', group: 'Quản trị viên cấp cao' },
-  { id: 2, username: 'admin_it', email: 'admin_it@hcmus.edu.vn', role: 'Admin', status: 'Active', group: 'Quản trị viên' },
-  { id: 3, username: 'tech_user', email: 'tech@hcmus.edu.vn', role: 'Nhân viên IT', status: 'Active', group: 'Nhóm kỹ thuật' },
-  { id: 4, username: 'monitor_user', email: 'monitor@hcmus.edu.vn', role: 'Người giám sát', status: 'Locked', group: 'Nhóm giám sát' },
-];
-
-const initialPolicies: WifiPolicy[] = [
-  { id: 1, name: 'Băng thông Sinh viên', description: 'Giới hạn băng thông cho sinh viên', type: 'bandwidth', downloadLimit: 10, uploadLimit: 5, applyToRoles: ['Sinh viên'] },
-  { id: 2, name: 'Băng thông Cán bộ', description: 'Băng thông cao cấp cho cán bộ', type: 'bandwidth', downloadLimit: 50, uploadLimit: 20, applyToRoles: ['Cán bộ'] },
-  { id: 3, name: 'Phiên Sinh viên', description: 'Thời gian phiên cho sinh viên', type: 'session', maxSessionTime: 480, maxSessionData: 5000, applyToRoles: ['Sinh viên'] },
-  { id: 4, name: 'Phiên Khách', description: 'Thời gian phiên cho khách', type: 'session', maxSessionTime: 120, maxSessionData: 1000, applyToRoles: ['Khách'] },
-  { id: 5, name: 'Kiểm toán Cơ bản', description: 'Ghi log cơ bản', type: 'audit', applyToRoles: ['Sinh viên', 'Khách'] },
-  { id: 6, name: 'Bảo mật Tiêu chuẩn', description: 'Chính sách bảo mật tiêu chuẩn', type: 'security', applyToRoles: ['Sinh viên', 'Cán bộ', 'Khách'] },
-];
-
-const initialLogs: LogEntry[] = [
-  { id: 1, timestamp: '2024-01-15 10:30:00', user: 'superadmin', action: 'Đăng nhập', details: 'Đăng nhập thành công từ IP 192.168.1.100', type: 'access' },
-  { id: 2, timestamp: '2024-01-15 10:35:00', user: 'superadmin', action: 'Thêm AP', details: 'Thêm mới AP-A1-07 tại Tòa A Tầng 1', type: 'config' },
-  { id: 3, timestamp: '2024-01-15 11:00:00', user: 'admin_it', action: 'Sửa Policy', details: 'Cập nhật chính sách băng thông Sinh viên', type: 'config' },
-  { id: 4, timestamp: '2024-01-15 11:30:00', user: 'system', action: 'Lỗi kết nối', details: 'Mất kết nối đến Controller UniFi 2', type: 'error' },
-  { id: 5, timestamp: '2024-01-15 12:00:00', user: 'superadmin', action: 'Khóa tài khoản', details: 'Khóa tài khoản monitor_user', type: 'account' },
-];
+// Import types and mock data from centralized file
+import {
+  AdminUser,
+  Permission,
+  UserGroup,
+  LogEntry,
+  Campus,
+  Building,
+  initialAdminUsers,
+  initialLogs,
+  initialCampuses,
+  initialBuildings,
+  systemRoles,
+  userGroups,
+  resourceList,
+} from "@/data/mockData";
 
 export default function Settings() {
+  const searchString = useSearch();
   const [activeTab, setActiveTab] = useState('users');
+
+  // Handle tab query parameter
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const tab = params.get('tab');
+    if (tab && ['users', 'areas', 'security', 'access', 'technical', 'logs'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchString]);
   
   // Data states
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>(initialAdminUsers);
-  const [policies, setPolicies] = useState<WifiPolicy[]>(initialPolicies);
   const [logs] = useState<LogEntry[]>(initialLogs);
   
   // Dialog states - Admin Users
@@ -122,13 +74,6 @@ export default function Settings() {
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [adminForm, setAdminForm] = useState<Partial<AdminUser>>({});
   const [adminSearchTerm, setAdminSearchTerm] = useState('');
-  
-  // Dialog states - Policies
-  const [addPolicyDialogOpen, setAddPolicyDialogOpen] = useState(false);
-  const [editPolicyDialogOpen, setEditPolicyDialogOpen] = useState(false);
-  const [deletePolicyDialogOpen, setDeletePolicyDialogOpen] = useState(false);
-  const [selectedPolicy, setSelectedPolicy] = useState<WifiPolicy | null>(null);
-  const [policyForm, setPolicyForm] = useState<Partial<WifiPolicy>>({});
   
   // Dialog states - Permission
   const [permissionDialogOpen, setPermissionDialogOpen] = useState(false);
@@ -141,6 +86,25 @@ export default function Settings() {
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
   const [logFilter, setLogFilter] = useState<string>('all');
 
+  // Data states - Areas (Campus & Buildings)
+  const [campuses, setCampuses] = useState<Campus[]>(initialCampuses);
+  const [buildings, setBuildings] = useState<Building[]>(initialBuildings);
+  
+  // Dialog states - Campus
+  const [addCampusDialogOpen, setAddCampusDialogOpen] = useState(false);
+  const [editCampusDialogOpen, setEditCampusDialogOpen] = useState(false);
+  const [deleteCampusDialogOpen, setDeleteCampusDialogOpen] = useState(false);
+  const [selectedCampus, setSelectedCampus] = useState<Campus | null>(null);
+  const [campusForm, setCampusForm] = useState<Partial<Campus>>({});
+  const [selectedCampusFilter, setSelectedCampusFilter] = useState<number | 'all'>('all');
+
+  // Dialog states - Building
+  const [addBuildingDialogOpen, setAddBuildingDialogOpen] = useState(false);
+  const [editBuildingDialogOpen, setEditBuildingDialogOpen] = useState(false);
+  const [deleteBuildingDialogOpen, setDeleteBuildingDialogOpen] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const [buildingForm, setBuildingForm] = useState<Partial<Building>>({});
+
   // Filtered data
   const filteredAdminUsers = adminUsers.filter(user =>
     user.username.toLowerCase().includes(adminSearchTerm.toLowerCase()) ||
@@ -148,6 +112,115 @@ export default function Settings() {
   );
   
   const filteredLogs = logFilter === 'all' ? logs : logs.filter(log => log.type === logFilter);
+  
+  const filteredBuildings = selectedCampusFilter === 'all' 
+    ? buildings 
+    : buildings.filter(b => b.campusId === selectedCampusFilter);
+
+  // Campus Handlers
+  const handleAddCampus = () => {
+    setCampusForm({});
+    setAddCampusDialogOpen(true);
+  };
+
+  const handleEditCampus = (campus: Campus) => {
+    setSelectedCampus(campus);
+    setCampusForm({ ...campus });
+    setEditCampusDialogOpen(true);
+  };
+
+  const handleDeleteCampus = (campus: Campus) => {
+    setSelectedCampus(campus);
+    setDeleteCampusDialogOpen(true);
+  };
+
+  const saveNewCampus = () => {
+    const newCampus: Campus = {
+      id: Math.max(...campuses.map(c => c.id), 0) + 1,
+      name: campusForm.name || '',
+      code: campusForm.code || '',
+      address: campusForm.address || '',
+      description: campusForm.description || '',
+    };
+    setCampuses([...campuses, newCampus]);
+    setAddCampusDialogOpen(false);
+    setCampusForm({});
+  };
+
+  const saveEditCampus = () => {
+    if (selectedCampus) {
+      setCampuses(campuses.map(c => c.id === selectedCampus.id ? { ...c, ...campusForm } as Campus : c));
+    }
+    setEditCampusDialogOpen(false);
+    setSelectedCampus(null);
+    setCampusForm({});
+  };
+
+  const confirmDeleteCampus = () => {
+    if (selectedCampus) {
+      // Also delete all buildings in this campus
+      setBuildings(buildings.filter(b => b.campusId !== selectedCampus.id));
+      setCampuses(campuses.filter(c => c.id !== selectedCampus.id));
+    }
+    setDeleteCampusDialogOpen(false);
+    setSelectedCampus(null);
+  };
+
+  // Building Handlers
+  const handleAddBuilding = () => {
+    setBuildingForm({ campusId: selectedCampusFilter === 'all' ? campuses[0]?.id : selectedCampusFilter });
+    setAddBuildingDialogOpen(true);
+  };
+
+  const handleEditBuilding = (building: Building) => {
+    setSelectedBuilding(building);
+    setBuildingForm({ ...building });
+    setEditBuildingDialogOpen(true);
+  };
+
+  const handleDeleteBuilding = (building: Building) => {
+    setSelectedBuilding(building);
+    setDeleteBuildingDialogOpen(true);
+  };
+
+  const saveNewBuilding = () => {
+    const newBuilding: Building = {
+      id: Math.max(...buildings.map(b => b.id), 0) + 1,
+      campusId: buildingForm.campusId || campuses[0]?.id || 1,
+      name: buildingForm.name || '',
+      code: buildingForm.code || '',
+      floors: buildingForm.floors || 1,
+      description: buildingForm.description || '',
+    };
+    setBuildings([...buildings, newBuilding]);
+    setAddBuildingDialogOpen(false);
+    setBuildingForm({});
+  };
+
+  const saveEditBuilding = () => {
+    if (selectedBuilding) {
+      setBuildings(buildings.map(b => b.id === selectedBuilding.id ? { ...b, ...buildingForm } as Building : b));
+    }
+    setEditBuildingDialogOpen(false);
+    setSelectedBuilding(null);
+    setBuildingForm({});
+  };
+
+  const confirmDeleteBuilding = () => {
+    if (selectedBuilding) {
+      setBuildings(buildings.filter(b => b.id !== selectedBuilding.id));
+    }
+    setDeleteBuildingDialogOpen(false);
+    setSelectedBuilding(null);
+  };
+
+  const getCampusName = (campusId: number) => {
+    return campuses.find(c => c.id === campusId)?.name || 'N/A';
+  };
+
+  const getBuildingCountByCampus = (campusId: number) => {
+    return buildings.filter(b => b.campusId === campusId).length;
+  };
 
   // Admin User Handlers
   const handleAddAdmin = () => {
@@ -204,72 +277,9 @@ export default function Settings() {
     setSelectedAdmin(null);
   };
 
-  // Policy Handlers
-  const handleAddPolicy = (type: WifiPolicy['type']) => {
-    setPolicyForm({ type, applyToRoles: [] });
-    setAddPolicyDialogOpen(true);
-  };
-
-  const handleEditPolicy = (policy: WifiPolicy) => {
-    setSelectedPolicy(policy);
-    setPolicyForm({ ...policy });
-    setEditPolicyDialogOpen(true);
-  };
-
-  const handleDeletePolicy = (policy: WifiPolicy) => {
-    setSelectedPolicy(policy);
-    setDeletePolicyDialogOpen(true);
-  };
-
-  const saveNewPolicy = () => {
-    const newPolicy: WifiPolicy = {
-      id: Math.max(...policies.map(p => p.id)) + 1,
-      name: policyForm.name || '',
-      description: policyForm.description || '',
-      type: policyForm.type || 'bandwidth',
-      downloadLimit: policyForm.downloadLimit,
-      uploadLimit: policyForm.uploadLimit,
-      maxSessionTime: policyForm.maxSessionTime,
-      maxSessionData: policyForm.maxSessionData,
-      applyToRoles: policyForm.applyToRoles || [],
-      applyToArea: policyForm.applyToArea,
-      applyByTime: policyForm.applyByTime,
-    };
-    setPolicies([...policies, newPolicy]);
-    setAddPolicyDialogOpen(false);
-    setPolicyForm({});
-  };
-
-  const saveEditPolicy = () => {
-    if (selectedPolicy) {
-      setPolicies(policies.map(p => p.id === selectedPolicy.id ? { ...p, ...policyForm } as WifiPolicy : p));
-    }
-    setEditPolicyDialogOpen(false);
-    setSelectedPolicy(null);
-    setPolicyForm({});
-  };
-
-  const confirmDeletePolicy = () => {
-    if (selectedPolicy) {
-      setPolicies(policies.filter(p => p.id !== selectedPolicy.id));
-    }
-    setDeletePolicyDialogOpen(false);
-    setSelectedPolicy(null);
-  };
-
   const handleViewLog = (log: LogEntry) => {
     setSelectedLog(log);
     setLogDetailDialogOpen(true);
-  };
-
-  const getPolicyTypeLabel = (type: WifiPolicy['type']) => {
-    switch (type) {
-      case 'bandwidth': return 'Băng thông';
-      case 'auth': return 'Xác thực';
-      case 'session': return 'Cấp quyền truy cập';
-      case 'audit': return 'Kiểm toán';
-      case 'security': return 'Bảo mật';
-    }
   };
 
   return (
@@ -287,8 +297,8 @@ export default function Settings() {
             <TabsTrigger value="users" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
               Người dùng
             </TabsTrigger>
-            <TabsTrigger value="policies" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
-              Chính sách
+            <TabsTrigger value="areas" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
+              Khu vực
             </TabsTrigger>
             <TabsTrigger value="security" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
               Bảo mật
@@ -389,46 +399,161 @@ export default function Settings() {
             </div>
           </TabsContent>
 
-          {/* Tab 2: Policies */}
-          <TabsContent value="policies" className="p-6 space-y-6">
+          {/* Tab 2: Areas (Campus & Buildings) */}
+          <TabsContent value="areas" className="p-6 space-y-6">
+            {/* Campus Section */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quản lý Chính sách WIFI</h3>
-              <div className="space-y-4">
-                {[
-                  { type: 'bandwidth' as const, name: 'Chính sách Băng thông', desc: 'Giới hạn tốc độ theo nhóm/vai trò' },
-                  { type: 'session' as const, name: 'Chính sách Cấp quyền truy cập', desc: 'Quản lý phiên và thời gian truy cập' },
-                ].map((policyType) => (
-                  <div key={policyType.type} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 mb-1">{policyType.name}</p>
-                        <p className="text-sm text-gray-600">{policyType.desc}</p>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={() => handleAddPolicy(policyType.type)}>
-                        <Plus size={16} className="mr-1" /> Tạo mới
-                      </Button>
-                    </div>
-                    {/* List policies of this type */}
-                    <div className="mt-3 space-y-2">
-                      {policies.filter(p => p.type === policyType.type).map(policy => (
-                        <div key={policy.id} className="flex items-center justify-between p-2 bg-white rounded border">
-                          <div>
-                            <p className="text-sm font-medium">{policy.name}</p>
-                            <p className="text-xs text-gray-500">{policy.description}</p>
-                          </div>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => handleEditPolicy(policy)}>
-                              <Edit size={16} className="text-amber-600" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeletePolicy(policy)}>
-                              <Trash2 size={16} className="text-red-600" />
-                            </Button>
-                          </div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Map size={20} className="text-blue-600" />
+                    Quản lý Cơ sở (Campus)
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">Quản lý các cơ sở/khuôn viên của trường</p>
+                </div>
+                <Button onClick={handleAddCampus} className="bg-blue-600 hover:bg-blue-700">
+                  <Plus size={18} className="mr-2" />
+                  Thêm cơ sở
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {campuses.map((campus) => (
+                  <div 
+                    key={campus.id} 
+                    className={`p-4 bg-white rounded-lg border-2 cursor-pointer transition-all ${
+                      selectedCampusFilter === campus.id 
+                        ? 'border-blue-500 shadow-md ring-2 ring-blue-100' 
+                        : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                    }`}
+                    onClick={() => setSelectedCampusFilter(selectedCampusFilter === campus.id ? 'all' : campus.id)}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          selectedCampusFilter === campus.id ? 'bg-blue-500' : 'bg-blue-100'
+                        }`}>
+                          <MapPin size={20} className={selectedCampusFilter === campus.id ? 'text-white' : 'text-blue-600'} />
                         </div>
-                      ))}
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{campus.name}</h4>
+                          <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">{campus.code}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" onClick={() => handleEditCampus(campus)}>
+                          <Edit size={16} className="text-amber-600" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteCampus(campus)}>
+                          <Trash2 size={16} className="text-red-600" />
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2">{campus.address}</p>
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                      <span className="text-xs text-gray-500">{campus.description}</span>
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        selectedCampusFilter === campus.id 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-blue-50 text-blue-700'
+                      }`}>
+                        {getBuildingCountByCampus(campus.id)} tòa nhà
+                      </span>
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Buildings Section */}
+            <div className="border-t pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Building2 size={20} className="text-green-600" />
+                    Quản lý Tòa nhà
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">Quản lý các tòa nhà trong từng cơ sở</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Select
+                    value={selectedCampusFilter === 'all' ? 'all' : String(selectedCampusFilter)}
+                    onValueChange={(v) => setSelectedCampusFilter(v === 'all' ? 'all' : Number(v))}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Lọc theo cơ sở" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả cơ sở</SelectItem>
+                      {campuses.map((campus) => (
+                        <SelectItem key={campus.id} value={String(campus.id)}>{campus.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={handleAddBuilding} className="bg-green-600 hover:bg-green-700">
+                    <Plus size={18} className="mr-2" />
+                    Thêm tòa nhà
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Buildings Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên tòa nhà</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Mã</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Cơ sở</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Số tầng</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Mô tả</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBuildings.map((building, index) => (
+                      <tr
+                        key={building.id}
+                        className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }`}
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          <div className="flex items-center gap-2">
+                            <Building2 size={16} className="text-gray-400" />
+                            {building.name}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="bg-gray-100 px-2 py-1 rounded text-gray-700 font-mono text-xs">{building.code}</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{getCampusName(building.campusId)}</td>
+                        <td className="px-4 py-3 text-sm text-center">
+                          <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">{building.floors} tầng</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{building.description}</td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button variant="ghost" size="sm" title="Chỉnh sửa" onClick={() => handleEditBuilding(building)}>
+                              <Edit size={18} className="text-amber-600" />
+                            </Button>
+                            <Button variant="ghost" size="sm" title="Xóa" onClick={() => handleDeleteBuilding(building)}>
+                              <Trash2 size={18} className="text-red-600" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredBuildings.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                          <Building2 size={40} className="mx-auto text-gray-300 mb-2" />
+                          <p>Chưa có tòa nhà nào{selectedCampusFilter !== 'all' && ` trong cơ sở "${getCampusName(selectedCampusFilter)}"`}</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </TabsContent>
@@ -945,277 +1070,6 @@ export default function Settings() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Policy Dialog */}
-      <Dialog open={addPolicyDialogOpen} onOpenChange={setAddPolicyDialogOpen}>
-        <DialogContent className="sm:max-w-[550px]">
-          <DialogHeader>
-            <DialogTitle>Thêm Chính sách {getPolicyTypeLabel(policyForm.type || 'bandwidth')}</DialogTitle>
-            <DialogDescription>
-              Tạo chính sách WIFI mới
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="policy-name">Tên Chính sách</Label>
-              <Input
-                id="policy-name"
-                value={policyForm.name || ''}
-                onChange={(e) => setPolicyForm({ ...policyForm, name: e.target.value })}
-                placeholder="Tên chính sách"
-              />
-            </div>
-            <div>
-              <Label htmlFor="policy-desc">Mô tả</Label>
-              <Input
-                id="policy-desc"
-                value={policyForm.description || ''}
-                onChange={(e) => setPolicyForm({ ...policyForm, description: e.target.value })}
-                placeholder="Mô tả chính sách"
-              />
-            </div>
-            
-            {policyForm.type === 'bandwidth' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="policy-dl">Giới hạn Tải xuống (Mbps)</Label>
-                  <Input
-                    id="policy-dl"
-                    type="number"
-                    value={policyForm.downloadLimit || ''}
-                    onChange={(e) => setPolicyForm({ ...policyForm, downloadLimit: Number(e.target.value) })}
-                    placeholder="10"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="policy-ul">Giới hạn Tải lên (Mbps)</Label>
-                  <Input
-                    id="policy-ul"
-                    type="number"
-                    value={policyForm.uploadLimit || ''}
-                    onChange={(e) => setPolicyForm({ ...policyForm, uploadLimit: Number(e.target.value) })}
-                    placeholder="5"
-                  />
-                </div>
-              </div>
-            )}
-            
-            {policyForm.type === 'session' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="policy-session-time">Thời gian phiên tối đa (phút)</Label>
-                  <Input
-                    id="policy-session-time"
-                    type="number"
-                    value={policyForm.maxSessionTime || ''}
-                    onChange={(e) => setPolicyForm({ ...policyForm, maxSessionTime: Number(e.target.value) })}
-                    placeholder="480"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="policy-session-data">Lưu lượng phiên tối đa (MB)</Label>
-                  <Input
-                    id="policy-session-data"
-                    type="number"
-                    value={policyForm.maxSessionData || ''}
-                    onChange={(e) => setPolicyForm({ ...policyForm, maxSessionData: Number(e.target.value) })}
-                    placeholder="5000"
-                  />
-                </div>
-              </div>
-            )}
-            
-            <div>
-              <Label>Áp dụng cho Vai trò</Label>
-              <div className="flex flex-wrap gap-4 mt-2">
-                {['Sinh viên', 'Cán bộ', 'Khách'].map((role) => (
-                  <div key={role} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`role-${role}`}
-                      checked={policyForm.applyToRoles?.includes(role)}
-                      onCheckedChange={(checked) => {
-                        const currentRoles = policyForm.applyToRoles || [];
-                        if (checked) {
-                          setPolicyForm({ ...policyForm, applyToRoles: [...currentRoles, role] });
-                        } else {
-                          setPolicyForm({ ...policyForm, applyToRoles: currentRoles.filter(r => r !== role) });
-                        }
-                      }}
-                    />
-                    <Label htmlFor={`role-${role}`} className="text-sm">{role}</Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="policy-area">Áp dụng theo Khu vực (tùy chọn)</Label>
-                <Input
-                  id="policy-area"
-                  value={policyForm.applyToArea || ''}
-                  onChange={(e) => setPolicyForm({ ...policyForm, applyToArea: e.target.value })}
-                  placeholder="Tất cả / Tòa A / Khoa CNTT"
-                />
-              </div>
-              <div>
-                <Label htmlFor="policy-time">Áp dụng theo Thời gian (tùy chọn)</Label>
-                <Input
-                  id="policy-time"
-                  value={policyForm.applyByTime || ''}
-                  onChange={(e) => setPolicyForm({ ...policyForm, applyByTime: e.target.value })}
-                  placeholder="24/7 / 8:00-22:00"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddPolicyDialogOpen(false)}>Hủy</Button>
-            <Button onClick={saveNewPolicy} className="bg-blue-600 hover:bg-blue-700">Tạo chính sách</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Policy Dialog */}
-      <Dialog open={editPolicyDialogOpen} onOpenChange={setEditPolicyDialogOpen}>
-        <DialogContent className="sm:max-w-[550px]">
-          <DialogHeader>
-            <DialogTitle>Chỉnh sửa Chính sách</DialogTitle>
-            <DialogDescription>
-              Cập nhật thông tin chính sách WIFI
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="edit-policy-name">Tên Chính sách</Label>
-              <Input
-                id="edit-policy-name"
-                value={policyForm.name || ''}
-                onChange={(e) => setPolicyForm({ ...policyForm, name: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-policy-desc">Mô tả</Label>
-              <Input
-                id="edit-policy-desc"
-                value={policyForm.description || ''}
-                onChange={(e) => setPolicyForm({ ...policyForm, description: e.target.value })}
-              />
-            </div>
-            
-            {policyForm.type === 'bandwidth' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-policy-dl">Giới hạn Tải xuống (Mbps)</Label>
-                  <Input
-                    id="edit-policy-dl"
-                    type="number"
-                    value={policyForm.downloadLimit || ''}
-                    onChange={(e) => setPolicyForm({ ...policyForm, downloadLimit: Number(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-policy-ul">Giới hạn Tải lên (Mbps)</Label>
-                  <Input
-                    id="edit-policy-ul"
-                    type="number"
-                    value={policyForm.uploadLimit || ''}
-                    onChange={(e) => setPolicyForm({ ...policyForm, uploadLimit: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {policyForm.type === 'session' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-policy-session-time">Thời gian phiên tối đa (phút)</Label>
-                  <Input
-                    id="edit-policy-session-time"
-                    type="number"
-                    value={policyForm.maxSessionTime || ''}
-                    onChange={(e) => setPolicyForm({ ...policyForm, maxSessionTime: Number(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-policy-session-data">Lưu lượng phiên tối đa (MB)</Label>
-                  <Input
-                    id="edit-policy-session-data"
-                    type="number"
-                    value={policyForm.maxSessionData || ''}
-                    onChange={(e) => setPolicyForm({ ...policyForm, maxSessionData: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
-            )}
-            
-            <div>
-              <Label>Áp dụng cho Vai trò</Label>
-              <div className="flex flex-wrap gap-4 mt-2">
-                {['Sinh viên', 'Cán bộ', 'Khách'].map((role) => (
-                  <div key={role} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`edit-role-${role}`}
-                      checked={policyForm.applyToRoles?.includes(role)}
-                      onCheckedChange={(checked) => {
-                        const currentRoles = policyForm.applyToRoles || [];
-                        if (checked) {
-                          setPolicyForm({ ...policyForm, applyToRoles: [...currentRoles, role] });
-                        } else {
-                          setPolicyForm({ ...policyForm, applyToRoles: currentRoles.filter(r => r !== role) });
-                        }
-                      }}
-                    />
-                    <Label htmlFor={`edit-role-${role}`} className="text-sm">{role}</Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-policy-area">Áp dụng theo Khu vực</Label>
-                <Input
-                  id="edit-policy-area"
-                  value={policyForm.applyToArea || ''}
-                  onChange={(e) => setPolicyForm({ ...policyForm, applyToArea: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-policy-time">Áp dụng theo Thời gian</Label>
-                <Input
-                  id="edit-policy-time"
-                  value={policyForm.applyByTime || ''}
-                  onChange={(e) => setPolicyForm({ ...policyForm, applyByTime: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditPolicyDialogOpen(false)}>Hủy</Button>
-            <Button onClick={saveEditPolicy} className="bg-blue-600 hover:bg-blue-700">Lưu thay đổi</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Policy Dialog */}
-      <AlertDialog open={deletePolicyDialogOpen} onOpenChange={setDeletePolicyDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận xóa chính sách</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa chính sách <strong>{selectedPolicy?.name}</strong>?
-              Các người dùng đang áp dụng chính sách này sẽ bị ảnh hưởng.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeletePolicy} className="bg-red-600 hover:bg-red-700">
-              Xóa
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Log Detail Dialog */}
       <Dialog open={logDetailDialogOpen} onOpenChange={setLogDetailDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
@@ -1265,6 +1119,291 @@ export default function Settings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Campus Dialog */}
+      <Dialog open={addCampusDialogOpen} onOpenChange={setAddCampusDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin size={20} className="text-blue-600" />
+              Thêm Cơ sở mới
+            </DialogTitle>
+            <DialogDescription>Nhập thông tin cơ sở/khuôn viên mới</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Tên cơ sở <span className="text-red-500">*</span></Label>
+                <Input
+                  value={campusForm.name || ''}
+                  onChange={(e) => setCampusForm({ ...campusForm, name: e.target.value })}
+                  placeholder="VD: Cơ sở Dĩ An"
+                />
+              </div>
+              <div>
+                <Label>Mã cơ sở <span className="text-red-500">*</span></Label>
+                <Input
+                  value={campusForm.code || ''}
+                  onChange={(e) => setCampusForm({ ...campusForm, code: e.target.value.toUpperCase() })}
+                  placeholder="VD: DA"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Địa chỉ</Label>
+              <Input
+                value={campusForm.address || ''}
+                onChange={(e) => setCampusForm({ ...campusForm, address: e.target.value })}
+                placeholder="Nhập địa chỉ cơ sở"
+              />
+            </div>
+            <div>
+              <Label>Mô tả</Label>
+              <Input
+                value={campusForm.description || ''}
+                onChange={(e) => setCampusForm({ ...campusForm, description: e.target.value })}
+                placeholder="Mô tả ngắn về cơ sở"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddCampusDialogOpen(false)}>Hủy</Button>
+            <Button onClick={saveNewCampus} disabled={!campusForm.name || !campusForm.code}>Thêm cơ sở</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Campus Dialog */}
+      <Dialog open={editCampusDialogOpen} onOpenChange={setEditCampusDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit size={20} className="text-amber-600" />
+              Chỉnh sửa Cơ sở
+            </DialogTitle>
+            <DialogDescription>Cập nhật thông tin cơ sở "{selectedCampus?.name}"</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Tên cơ sở <span className="text-red-500">*</span></Label>
+                <Input
+                  value={campusForm.name || ''}
+                  onChange={(e) => setCampusForm({ ...campusForm, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Mã cơ sở <span className="text-red-500">*</span></Label>
+                <Input
+                  value={campusForm.code || ''}
+                  onChange={(e) => setCampusForm({ ...campusForm, code: e.target.value.toUpperCase() })}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Địa chỉ</Label>
+              <Input
+                value={campusForm.address || ''}
+                onChange={(e) => setCampusForm({ ...campusForm, address: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Mô tả</Label>
+              <Input
+                value={campusForm.description || ''}
+                onChange={(e) => setCampusForm({ ...campusForm, description: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditCampusDialogOpen(false)}>Hủy</Button>
+            <Button onClick={saveEditCampus} disabled={!campusForm.name || !campusForm.code}>Lưu thay đổi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Campus Dialog */}
+      <AlertDialog open={deleteCampusDialogOpen} onOpenChange={setDeleteCampusDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa cơ sở</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa cơ sở <strong>{selectedCampus?.name}</strong>?
+              <br /><br />
+              <span className="text-red-600 font-medium">
+                Cảnh báo: Tất cả {getBuildingCountByCampus(selectedCampus?.id || 0)} tòa nhà trong cơ sở này cũng sẽ bị xóa!
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCampus} className="bg-red-600 hover:bg-red-700">
+              Xóa cơ sở
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add Building Dialog */}
+      <Dialog open={addBuildingDialogOpen} onOpenChange={setAddBuildingDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 size={20} className="text-green-600" />
+              Thêm Tòa nhà mới
+            </DialogTitle>
+            <DialogDescription>Nhập thông tin tòa nhà mới</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Thuộc cơ sở <span className="text-red-500">*</span></Label>
+              <Select
+                value={String(buildingForm.campusId)}
+                onValueChange={(v) => setBuildingForm({ ...buildingForm, campusId: Number(v) })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn cơ sở" />
+                </SelectTrigger>
+                <SelectContent>
+                  {campuses.map((campus) => (
+                    <SelectItem key={campus.id} value={String(campus.id)}>{campus.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Tên tòa nhà <span className="text-red-500">*</span></Label>
+                <Input
+                  value={buildingForm.name || ''}
+                  onChange={(e) => setBuildingForm({ ...buildingForm, name: e.target.value })}
+                  placeholder="VD: Tòa nhà A"
+                />
+              </div>
+              <div>
+                <Label>Mã tòa nhà <span className="text-red-500">*</span></Label>
+                <Input
+                  value={buildingForm.code || ''}
+                  onChange={(e) => setBuildingForm({ ...buildingForm, code: e.target.value.toUpperCase() })}
+                  placeholder="VD: A"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Số tầng</Label>
+              <Input
+                type="number"
+                min={1}
+                value={buildingForm.floors || 1}
+                onChange={(e) => setBuildingForm({ ...buildingForm, floors: parseInt(e.target.value) || 1 })}
+              />
+            </div>
+            <div>
+              <Label>Mô tả</Label>
+              <Input
+                value={buildingForm.description || ''}
+                onChange={(e) => setBuildingForm({ ...buildingForm, description: e.target.value })}
+                placeholder="Mô tả ngắn về tòa nhà"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddBuildingDialogOpen(false)}>Hủy</Button>
+            <Button onClick={saveNewBuilding} disabled={!buildingForm.name || !buildingForm.code || !buildingForm.campusId}>
+              Thêm tòa nhà
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Building Dialog */}
+      <Dialog open={editBuildingDialogOpen} onOpenChange={setEditBuildingDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit size={20} className="text-amber-600" />
+              Chỉnh sửa Tòa nhà
+            </DialogTitle>
+            <DialogDescription>Cập nhật thông tin tòa nhà "{selectedBuilding?.name}"</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Thuộc cơ sở <span className="text-red-500">*</span></Label>
+              <Select
+                value={String(buildingForm.campusId)}
+                onValueChange={(v) => setBuildingForm({ ...buildingForm, campusId: Number(v) })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn cơ sở" />
+                </SelectTrigger>
+                <SelectContent>
+                  {campuses.map((campus) => (
+                    <SelectItem key={campus.id} value={String(campus.id)}>{campus.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Tên tòa nhà <span className="text-red-500">*</span></Label>
+                <Input
+                  value={buildingForm.name || ''}
+                  onChange={(e) => setBuildingForm({ ...buildingForm, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Mã tòa nhà <span className="text-red-500">*</span></Label>
+                <Input
+                  value={buildingForm.code || ''}
+                  onChange={(e) => setBuildingForm({ ...buildingForm, code: e.target.value.toUpperCase() })}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Số tầng</Label>
+              <Input
+                type="number"
+                min={1}
+                value={buildingForm.floors || 1}
+                onChange={(e) => setBuildingForm({ ...buildingForm, floors: parseInt(e.target.value) || 1 })}
+              />
+            </div>
+            <div>
+              <Label>Mô tả</Label>
+              <Input
+                value={buildingForm.description || ''}
+                onChange={(e) => setBuildingForm({ ...buildingForm, description: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditBuildingDialogOpen(false)}>Hủy</Button>
+            <Button onClick={saveEditBuilding} disabled={!buildingForm.name || !buildingForm.code || !buildingForm.campusId}>
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Building Dialog */}
+      <AlertDialog open={deleteBuildingDialogOpen} onOpenChange={setDeleteBuildingDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa tòa nhà</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa tòa nhà <strong>{selectedBuilding?.name}</strong> thuộc cơ sở <strong>{getCampusName(selectedBuilding?.campusId || 0)}</strong>?
+              <br /><br />
+              Các Access Point đang được gán cho tòa nhà này có thể bị ảnh hưởng.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteBuilding} className="bg-red-600 hover:bg-red-700">
+              Xóa tòa nhà
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -669,15 +669,7 @@ export default function Users() {
                 </Select>
               </div>
             </div>
-            <div>
-              <Label htmlFor="add-mac">MAC Address (Tùy chọn)</Label>
-              <Input 
-                id="add-mac" 
-                value={addForm.macAddress || ''} 
-                onChange={(e) => setAddForm({ ...addForm, macAddress: e.target.value })}
-                placeholder="AA:BB:CC:DD:EE:FF"
-              />
-            </div>
+            
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Hủy</Button>
