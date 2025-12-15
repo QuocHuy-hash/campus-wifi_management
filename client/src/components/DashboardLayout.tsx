@@ -15,8 +15,8 @@ interface UserInfo {
 
 const menuItems = [
   { label: 'Tổng quan', path: '/' },
-  { label: 'Quản lý Người dùng', path: '/users' },
   { label: 'Quản lý Điểm phát WIFI', path: '/access-points' },
+  { label: 'Quản lý Người dùng', path: '/users' },
   { label: 'Chính sách', path: '/policies' },
   { label: 'Báo cáo', path: '/reports' },
   { label: 'Cài đặt', path: '/settings' },

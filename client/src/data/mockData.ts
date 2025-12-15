@@ -15,6 +15,8 @@ export interface AP {
   controller: string;
   clients: number;
   usage: number;
+  status: "Online" | "Offline" | "Warning";
+  usagePercent: number;
 }
 
 export interface Controller {
@@ -68,7 +70,7 @@ export interface WifiPolicy {
   id: number;
   name: string;
   description: string;
-  type: "bandwidth" | "auth" | "session" | "audit" | "security";
+  type: "bandwidth" | "auth" | "session" | "audit" | "security" | "authorization";
   downloadLimit?: number;
   uploadLimit?: number;
   maxSessionTime?: number;
@@ -76,6 +78,13 @@ export interface WifiPolicy {
   applyToRoles: string[];
   applyToArea?: string;
   applyByTime?: string;
+  // Authorization policy specific fields
+  vlanId?: number;
+  maxDailyData?: number; // Lưu lượng tối đa/ngày (MB/GB)
+  idleTimeout?: number; // Timeout không hoạt động (phút)
+  autoReLogin?: boolean; // Cho phép đăng nhập lại tự động
+  bindMacAddress?: boolean; // Gắn với MAC address
+  isActive?: boolean; // Trạng thái Bật/Tắt
   // Audit policy specific fields
   auditMaxSessionTime?: number; // Giới hạn thời gian phiên (phút)
   auditMaxSessionTimeUnit?: "minute" | "hour";
@@ -101,6 +110,50 @@ export interface Permission {
   resource: string;
   canView: boolean;
   canEdit: boolean;
+}
+
+// Authentication Policy Types
+export type AuthUserType = 'teacher' | 'student' | 'guest_reg' | 'guest_noreg';
+export type AuthMethod = 'azure_ad' | 'google_workspace' | 'email' | 'social' | 'zalo' | 'local_db';
+
+export interface IdPConfig {
+  // Azure AD
+  azureTenantId?: string;
+  azureClientId?: string;
+  azureClientSecret?: string;
+  
+  // Google Workspace
+  googleClientId?: string;
+  googleClientSecret?: string;
+  googleDomain?: string;
+  
+  // Social
+  socialPlatform?: 'facebook' | 'google' | 'apple';
+  socialAppId?: string;
+  socialAppSecret?: string;
+}
+
+export interface AuthPolicy {
+  id: number;
+  name: string;
+  description: string;
+  isActive: boolean;
+  
+  // User & Method
+  userType: AuthUserType;
+  authMethod: AuthMethod;
+  
+  // IdP Config
+  idpConfig?: IdPConfig;
+  
+  // Additional Config
+  require2FA: boolean;
+  allowRegistration?: boolean; // For guests
+  applyByTime?: string; // 'all', '6-22', etc.
+  appliedAreas: string[]; // 'all', 'cs1', 'ap:1', etc.
+  
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UserGroup {
@@ -282,6 +335,96 @@ export const initialControllers: Controller[] = [
   },
 ];
 
+// Authentication
+// Authentication Policy Helper Types
+export interface AuthOption {
+  id: number;
+  value: string;
+  label: string;
+  description?: string;
+}
+
+export const authUserTypeOptions: AuthOption[] = [
+  { id: 1, value: "teacher", label: "Cán bộ/Giáo viên", description: "Giảng viên và cán bộ nhân viên" },
+  { id: 2, value: "student", label: "Sinh viên", description: "Sinh viên chính quy và liên thông" },
+  { id: 3, value: "guest_reg", label: "Khách (Có đăng ký)", description: "Khách đã được cấp tài khoản" },
+  { id: 4, value: "guest_noreg", label: "Khách (Vãng lai)", description: "Khách chưa có tài khoản" },
+];
+
+export const authMethodOptions: AuthOption[] = [
+  { id: 1, value: "azure_ad", label: "Microsoft Azure AD", description: "Sử dụng tài khoản Office 365" },
+  { id: 2, value: "google_workspace", label: "Google Workspace", description: "Sử dụng Gmail tổ chức" },
+  { id: 3, value: "email", label: "Email & Password", description: "Đăng nhập bằng Email cá nhân" },
+  { id: 4, value: "social", label: "Mạng xã hội", description: "Facebook, Google, Apple" },
+  { id: 5, value: "zalo", label: "Zalo OA", description: "Xác thực qua Zalo" },
+  { id: 6, value: "local_db", label: "Tài khoản nội bộ", description: "Database cục bộ" },
+];
+
+// Auth Policies
+export const initialAuthPolicies: AuthPolicy[] = [
+  {
+    id: 1,
+    name: "Cán bộ - LDAP/Azure",
+    description: "Xác thực cán bộ qua Azure AD",
+    isActive: true,
+    userType: 'teacher',
+    authMethod: 'azure_ad',
+    idpConfig: {
+      azureTenantId: "tenant-123",
+      azureClientId: "client-abc",
+    },
+    require2FA: true,
+    applyByTime: 'all',
+    appliedAreas: ['all'],
+    createdAt: "2023-01-01",
+    updatedAt: "2023-06-15"
+  },
+  {
+    id: 2,
+    name: "Sinh viên - Google",
+    description: "Xác thực sinh viên qua Google Workspace",
+    isActive: true,
+    userType: 'student',
+    authMethod: 'google_workspace',
+    idpConfig: {
+      googleClientId: "google-client-123",
+      googleDomain: "hcmus.edu.vn"
+    },
+    require2FA: false,
+    applyByTime: '8:00-17:00',
+    appliedAreas: ['all'],
+    createdAt: "2023-01-01",
+    updatedAt: "2023-08-20"
+  },
+  {
+    id: 3,
+    name: "Khách - Social",
+    description: "Khách đăng nhập qua Facebook",
+    isActive: true,
+    userType: 'guest_reg',
+    authMethod: 'social',
+    idpConfig: {
+      socialPlatform: 'facebook',
+      socialAppId: "fb-app-123"
+    },
+    require2FA: false,
+    allowRegistration: true,
+    appliedAreas: ['DA', 'TD'],
+    createdAt: "2023-01-01",
+    updatedAt: "2023-01-01"
+  }
+];
+
+// Authentication Source Types for dropdown
+export const authSourceTypes = [
+  { value: "azure_ad", label: "Azure AD" },
+  { value: "google_workspace", label: "Google Workspace" },
+  { value: "ldap", label: "LDAP Server" },
+  { value: "radius", label: "RADIUS Server" },
+  { value: "local_db", label: "Local Database" },
+  { value: "guest_db", label: "Guest Portal Database" },
+];
+
 // Access Points
 export const initialAPs: AP[] = [
   {
@@ -294,6 +437,8 @@ export const initialAPs: AP[] = [
     controller: "UniFi 1",
     clients: 112,
     usage: 90,
+    status: "Online",
+    usagePercent: 90,
   },
   {
     id: 2,
@@ -305,6 +450,8 @@ export const initialAPs: AP[] = [
     controller: "UniFi 1",
     clients: 69,
     usage: 88,
+    status: "Online",
+    usagePercent: 88,
   },
   {
     id: 3,
@@ -316,6 +463,8 @@ export const initialAPs: AP[] = [
     controller: "UniFi 1",
     clients: 225,
     usage: 92,
+    status: "Warning",
+    usagePercent: 92,
   },
   {
     id: 4,
@@ -327,6 +476,8 @@ export const initialAPs: AP[] = [
     controller: "UniFi 2",
     clients: 88,
     usage: 70,
+    status: "Online",
+    usagePercent: 70,
   },
   {
     id: 5,
@@ -338,6 +489,8 @@ export const initialAPs: AP[] = [
     controller: "UniFi 2",
     clients: 45,
     usage: 55,
+    status: "Offline",
+    usagePercent: 55,
   },
   {
     id: 6,
@@ -349,6 +502,8 @@ export const initialAPs: AP[] = [
     controller: "UniFi 1",
     clients: 32,
     usage: 45,
+    status: "Online",
+    usagePercent: 45,
   },
   {
     id: 7,
@@ -360,6 +515,8 @@ export const initialAPs: AP[] = [
     controller: "UniFi 3",
     clients: 78,
     usage: 82,
+    status: "Warning",
+    usagePercent: 82,
   },
   {
     id: 8,
@@ -371,6 +528,8 @@ export const initialAPs: AP[] = [
     controller: "UniFi 3",
     clients: 95,
     usage: 78,
+    status: "Online",
+    usagePercent: 78,
   },
 ];
 
@@ -523,7 +682,42 @@ export const initialPolicies: WifiPolicy[] = [
     allowUserMacManagement: false,
     retryLimit: 3,
   },
+  {
+    id: 10,
+    name: "AUTHZ_Sinh_viên_Default",
+    description: "Chính sách cấp quyền mặc định cho sinh viên",
+    type: "authorization",
+    applyToRoles: ["Sinh viên"],
+    vlanId: 10,
+    downloadLimit: 20,
+    uploadLimit: 20,
+    maxSessionTime: 4, // 4 hours
+    maxDailyData: 5, // 5 GB
+    idleTimeout: 30, // 30 mins
+    autoReLogin: true,
+    bindMacAddress: true,
+    isActive: true,
+    maxConcurrentDevices: 2,
+  },
+  {
+    id: 11,
+    name: "AUTHZ_Cán_bộ_VIP",
+    description: "Chính sách cấp quyền ưu tiên cho cán bộ",
+    type: "authorization",
+    applyToRoles: ["Cán bộ"],
+    vlanId: 20,
+    downloadLimit: 100,
+    uploadLimit: 100,
+    maxSessionTime: 12, // 12 hours
+    maxDailyData: 50, // 50 GB
+    idleTimeout: 120, // 2 hours
+    autoReLogin: true,
+    bindMacAddress: false,
+    isActive: true,
+    maxConcurrentDevices: 5,
+  },
 ];
+
 
 // Logs
 export const initialLogs: LogEntry[] = [
@@ -605,6 +799,8 @@ export const getPolicyTypeLabel = (type: WifiPolicy["type"]) => {
       return "Kiểm toán";
     case "security":
       return "Bảo mật";
+    case "authorization":
+      return "Cấp quyền (Phiên)";
   }
 };
 

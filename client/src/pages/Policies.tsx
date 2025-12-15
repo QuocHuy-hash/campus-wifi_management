@@ -31,17 +31,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Trash2, Shield, Wifi, Clock, FileText, Search, RefreshCw, Filter } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Plus, Edit, Trash2, Shield, Wifi, Clock, FileText, Search, RefreshCw, Filter, Key, GripVertical, ArrowDown, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
 
 // Import types and mock data from centralized file
 import {
   WifiPolicy,
+  AuthPolicy,
   AreaLocation,
   initialPolicies,
+  initialAuthPolicies,
+  authUserTypeOptions,
+  authMethodOptions,
+  AuthUserType,
+  AuthMethod,
   initialCampuses,
   initialBuildings,
+  initialAPs,
   initialControllers,
-  getDisconnectActionLabel,
   getPolicyTypeLabel,
 } from "@/data/mockData";
 
@@ -62,13 +70,14 @@ export default function Policies() {
   
   // Update tab from URL on mount
   useEffect(() => {
-    if (tabFromUrl && ['bandwidth', 'session', 'audit', 'security'].includes(tabFromUrl)) {
+    if (tabFromUrl && ['bandwidth', 'auth', 'audit', 'security', 'authorization'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
 
   // Data states
   const [policies, setPolicies] = useState<WifiPolicy[]>(initialPolicies);
+  // ...existing code...
   
   // Area locations for select
   const [areaLocations, setAreaLocations] = useState<AreaLocation[]>([]);
@@ -96,6 +105,32 @@ export default function Policies() {
   const [deletePolicyDialogOpen, setDeletePolicyDialogOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<WifiPolicy | null>(null);
   const [policyForm, setPolicyForm] = useState<Partial<WifiPolicy>>({});
+
+  // Auth Policy States
+  const [authPolicies, setAuthPolicies] = useState<AuthPolicy[]>(initialAuthPolicies);
+  const [addAuthPolicyDialogOpen, setAddAuthPolicyDialogOpen] = useState(false);
+  const [editAuthPolicyDialogOpen, setEditAuthPolicyDialogOpen] = useState(false);
+  const [deleteAuthPolicyDialogOpen, setDeleteAuthPolicyDialogOpen] = useState(false);
+  const [selectedAuthPolicy, setSelectedAuthPolicy] = useState<AuthPolicy | null>(null);
+  const [authPolicyForm, setAuthPolicyForm] = useState<Partial<AuthPolicy>>({});
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Validate Auth Policy
+  const validateAuthPolicy = (policy: Partial<AuthPolicy>) => {
+    if (!policy.name) return "Tên chính sách là bắt buộc";
+    if (!policy.userType) return "Loại người dùng là bắt buộc";
+    if (!policy.authMethod) return "Phương thức xác thực là bắt buộc";
+
+    // Validate Guest vs Enterprise Auth
+    const isGuest = policy.userType === 'guest_reg' || policy.userType === 'guest_noreg';
+    const isEnterprise = policy.authMethod === 'azure_ad' || policy.authMethod === 'google_workspace';
+    
+    if (isGuest && isEnterprise) {
+      return "Người dùng Khách không thể sử dụng phương thức xác thực Doanh nghiệp (Azure/Google)";
+    }
+
+    return null;
+  };
 
   // Filter states
   const [filterRole, setFilterRole] = useState('all');
@@ -162,6 +197,13 @@ export default function Policies() {
       applyToRoles: policyForm.applyToRoles || [],
       applyToArea: policyForm.applyToArea,
       applyByTime: policyForm.applyByTime,
+      // Authorization-specific fields
+      vlanId: policyForm.vlanId,
+      maxDailyData: policyForm.maxDailyData,
+      idleTimeout: policyForm.idleTimeout,
+      autoReLogin: policyForm.autoReLogin,
+      bindMacAddress: policyForm.bindMacAddress,
+      isActive: policyForm.isActive,
     };
     setPolicies([...policies, newPolicy]);
     setAddPolicyDialogOpen(false);
@@ -184,6 +226,77 @@ export default function Policies() {
     setDeletePolicyDialogOpen(false);
     setSelectedPolicy(null);
   };
+
+
+  // Auth Policy Handlers
+  const handleEditAuthPolicy = (policy: AuthPolicy) => {
+    setSelectedAuthPolicy(policy);
+    setAuthPolicyForm(policy);
+    setEditAuthPolicyDialogOpen(true);
+    setValidationError(null); // Clear validation errors on open
+  };
+
+  const handleDeleteAuthPolicy = (policy: AuthPolicy) => {
+    setSelectedAuthPolicy(policy);
+    setDeleteAuthPolicyDialogOpen(true);
+  };
+
+  const saveNewAuthPolicy = () => {
+    const error = validateAuthPolicy(authPolicyForm);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+
+    const newPolicy: AuthPolicy = {
+      id: Math.max(...authPolicies.map(p => p.id), 0) + 1,
+      name: authPolicyForm.name!,
+      description: authPolicyForm.description || '',
+      isActive: authPolicyForm.isActive ?? true,
+      userType: authPolicyForm.userType!,
+      authMethod: authPolicyForm.authMethod!,
+      require2FA: authPolicyForm.require2FA || false,
+      allowRegistration: authPolicyForm.allowRegistration || false,
+      applyByTime: authPolicyForm.applyByTime || 'all',
+      appliedAreas: authPolicyForm.appliedAreas || ['all'],
+      createdAt: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString().split('T')[0],
+    };
+    setAuthPolicies([...authPolicies, newPolicy]);
+    setAddAuthPolicyDialogOpen(false);
+    setAuthPolicyForm({});
+    setValidationError(null);
+  };
+
+  const saveEditAuthPolicy = () => {
+    const error = validateAuthPolicy(authPolicyForm);
+    if (error) {
+       setValidationError(error);
+       return;
+    }
+
+    if (selectedAuthPolicy && authPolicyForm.name) {
+      setAuthPolicies(authPolicies.map(p => 
+        p.id === selectedAuthPolicy.id 
+          ? { ...p, ...authPolicyForm, updatedAt: new Date().toISOString().split('T')[0] } as AuthPolicy 
+          : p
+      ));
+    }
+    setEditAuthPolicyDialogOpen(false);
+    setSelectedAuthPolicy(null);
+    setAuthPolicyForm({});
+    setValidationError(null);
+  };
+
+  const confirmDeleteAuthPolicy = () => {
+    if (selectedAuthPolicy) {
+      setAuthPolicies(authPolicies.filter(p => p.id !== selectedAuthPolicy.id));
+    }
+    setDeleteAuthPolicyDialogOpen(false);
+    setSelectedAuthPolicy(null);
+  };
+
+
 
 
   // Render policy table
@@ -377,6 +490,89 @@ export default function Policies() {
         </div>
       );
     }
+
+    // Table for auth type
+    if (type === 'auth') {
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên chính sách</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Phương thức</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Áp dụng cho</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">IdP / Cấu hình</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Trạng thái</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {authPolicies.map((policy, index) => (
+                <tr
+                  key={policy.id}
+                  className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{policy.name}</p>
+                      {policy.description && (
+                        <p className="text-xs text-gray-500 truncate max-w-[200px]">{policy.description}</p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {authMethodOptions.find(m => m.value === policy.authMethod)?.label || policy.authMethod}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                     <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-medium">
+                      {authUserTypeOptions.find(u => u.value === policy.userType)?.label || policy.userType}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    <div className="flex flex-col text-xs">
+                       {policy.authMethod === 'azure_ad' && <span>Tenant: {policy.idpConfig?.azureTenantId}</span>}
+                       {policy.authMethod === 'google_workspace' && <span>Domain: {policy.idpConfig?.googleDomain}</span>}
+                       {policy.authMethod === 'social' && <span>Platform: {policy.idpConfig?.socialPlatform}</span>}
+                       {(policy.authMethod === 'email' || policy.authMethod === 'local_db') && <span>Nội bộ</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                     <div className="flex items-center justify-center">
+                        <Switch
+                          checked={policy.isActive}
+                          onCheckedChange={(checked) => {
+                             const updated = { ...policy, isActive: checked, updatedAt: new Date().toISOString().split('T')[0] };
+                             setAuthPolicies(authPolicies.map(p => p.id === policy.id ? updated : p));
+                          }}
+                        />
+                     </div>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                       <Button variant="ghost" size="sm" title="Chỉnh sửa" onClick={() => handleEditAuthPolicy(policy)}>
+                        <Edit size={18} className="text-amber-600" />
+                      </Button>
+                      <Button variant="ghost" size="sm" title="Xóa" onClick={() => handleDeleteAuthPolicy(policy)}>
+                        <Trash2 size={18} className="text-red-600" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {authPolicies.length === 0 && (
+                <tr>
+                   <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    <p>Chưa có chính sách xác thực nào</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
     
     return (
       <div className="overflow-x-auto">
@@ -470,11 +666,12 @@ export default function Policies() {
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Quản trị Chính sách</h1>
-        <p className="text-gray-600 mt-1">Quản lý các chính sách băng thông, phiên truy cập, kiểm toán và bảo mật</p>
+        <p className="text-gray-600 mt-1">Quản lý các chính sách xác thực, băng thông, phiên truy cập, kiểm toán và bảo mật</p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        
         <Card 
           className="p-4 bg-[#1e3a5f]/5 border-[#1e3a5f]/20 cursor-pointer hover:bg-[#1e3a5f]/10 transition-colors"
           onClick={() => handleTabChange('bandwidth')}
@@ -528,6 +725,20 @@ export default function Policies() {
             <div>
               <p className="text-2xl font-bold text-[#1e3a5f]">{policies.filter(p => p.type === 'security').length}</p>
               <p className="text-sm text-[#1e3a5f]/70">Chính sách Bảo mật</p>
+            </div>
+          </div>
+        </Card>
+        <Card 
+          className="p-4 bg-[#1e3a5f]/5 border-[#1e3a5f]/20 cursor-pointer hover:bg-[#1e3a5f]/10 transition-colors"
+          onClick={() => handleTabChange('authorization')}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#1e3a5f] rounded-lg flex items-center justify-center">
+              <CheckCircle size={20} className="text-white" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-[#1e3a5f]">{policies.filter(p => p.type === 'authorization').length}</p>
+              <p className="text-sm text-[#1e3a5f]/70">Cấp quyền (Phiên)</p>
             </div>
           </div>
         </Card>
@@ -617,7 +828,7 @@ export default function Policies() {
       <Card className="bg-white shadow-sm">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
-            <div className="grid grid-cols-4 w-full">
+            <div className="grid grid-cols-5 w-full">
               <TabsTrigger 
                 value="bandwidth" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#1e3a5f] data-[state=active]:bg-transparent data-[state=active]:text-[#1e3a5f] py-3 px-4 flex items-center gap-2"
@@ -626,11 +837,11 @@ export default function Policies() {
                 Băng thông
               </TabsTrigger>
               <TabsTrigger 
-                value="session" 
+                value="auth" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#1e3a5f] data-[state=active]:bg-transparent data-[state=active]:text-[#1e3a5f] py-3 px-4 flex items-center gap-2"
               >
-                <Clock size={18} />
-                Phiên truy cập
+                <Key size={18} />
+                Chính sách Xác thực
               </TabsTrigger>
               <TabsTrigger 
                 value="audit" 
@@ -646,8 +857,16 @@ export default function Policies() {
                 <Shield size={18} />
                 Bảo mật
               </TabsTrigger>
+              <TabsTrigger 
+                value="authorization" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#1e3a5f] data-[state=active]:bg-transparent data-[state=active]:text-[#1e3a5f] py-3 px-4 flex items-center gap-2"
+              >
+                <CheckCircle size={18} />
+                Cấp quyền (Phiên)
+              </TabsTrigger>
             </div>
           </TabsList>
+
 
           {/* Tab: Bandwidth */}
           <TabsContent value="bandwidth" className="p-6">
@@ -664,19 +883,19 @@ export default function Policies() {
             {renderPolicyTable('bandwidth')}
           </TabsContent>
 
-          {/* Tab: Session */}
-          <TabsContent value="session" className="p-6">
+          {/* Tab: Auth */}
+          <TabsContent value="auth" className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Chính sách Phiên truy cập</h3>
-                <p className="text-sm text-gray-500">Quản lý thời gian và lưu lượng phiên kết nối</p>
+                <h3 className="text-lg font-semibold text-gray-900">Chính sách Xác thực</h3>
+                <p className="text-sm text-gray-500">Quản lý phương thức đăng nhập cho từng nhóm người dùng</p>
               </div>
-              <Button onClick={() => handleAddPolicy('session')} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90">
+              <Button onClick={() => {setAddAuthPolicyDialogOpen(true); setValidationError(null);}} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90">
                 <Plus size={18} className="mr-2" />
                 Thêm chính sách
               </Button>
             </div>
-            {renderPolicyTable('session')}
+            {renderPolicyTable('auth')}
           </TabsContent>
 
           {/* Tab: Audit */}
@@ -707,6 +926,21 @@ export default function Policies() {
               </Button>
             </div>
             {renderPolicyTable('security')}
+          </TabsContent>
+
+          {/* Tab: Authorization */}
+          <TabsContent value="authorization" className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Chính sách Cấp quyền</h3>
+                <p className="text-sm text-gray-500">Quản lý quyền truy cập danh cho người dùng</p>
+              </div>
+              <Button onClick={() => handleAddPolicy('authorization')} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90">
+                <Plus size={18} className="mr-2" />
+                Thêm chính sách
+              </Button>
+            </div>
+            {renderPolicyTable('authorization')}
           </TabsContent>
         </Tabs>
       </Card>
@@ -739,6 +973,17 @@ export default function Policies() {
                 placeholder="Mô tả chính sách"
               />
             </div>
+            
+            {policyForm.type === 'authorization' && (
+              <div className="flex items-center space-x-2 pb-2">
+                 <Switch 
+                  id="policy-active" 
+                  checked={policyForm.isActive}
+                  onCheckedChange={(checked) => setPolicyForm({ ...policyForm, isActive: checked })}
+                />
+                <Label htmlFor="policy-active">Kích hoạt chính sách</Label>
+              </div>
+            )}
             
             {policyForm.type === 'bandwidth' && (
               <div className="grid grid-cols-2 gap-4">
@@ -929,6 +1174,130 @@ export default function Policies() {
               </div>
             )}
             
+            {policyForm.type === 'authorization' && (
+              <div className="space-y-6">
+                {/* Cấu hình Quyền truy cập */}
+                <div className="space-y-4 border-b pb-4">
+                  <h4 className="text-sm font-semibold text-[#1e3a5f]">Cấu hình Quyền truy cập</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <Label htmlFor="authz-vlan">VLAN ID (1-4096)</Label>
+                       <Input
+                         id="authz-vlan"
+                         type="number"
+                         min={1}
+                         max={4096}
+                         value={policyForm.vlanId || ''}
+                         onChange={(e) => setPolicyForm({ ...policyForm, vlanId: Number(e.target.value) })}
+                         placeholder="10"
+                       />
+                     </div>
+                     <div>
+                       <Label htmlFor="authz-devices">Thiết bị đồng thời</Label>
+                       <Input
+                         id="authz-devices"
+                         type="number"
+                         value={policyForm.maxConcurrentDevices || ''}
+                         onChange={(e) => setPolicyForm({ ...policyForm, maxConcurrentDevices: Number(e.target.value) })}
+                         placeholder="3"
+                       />
+                     </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="authz-dl">Tải xuống (Mbps)</Label>
+                      <Input
+                        id="authz-dl"
+                        type="number"
+                        value={policyForm.downloadLimit || ''}
+                        onChange={(e) => setPolicyForm({ ...policyForm, downloadLimit: Number(e.target.value) })}
+                        placeholder="20"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="authz-ul">Tải lên (Mbps)</Label>
+                      <Input
+                        id="authz-ul"
+                        type="number"
+                        value={policyForm.uploadLimit || ''}
+                        onChange={(e) => setPolicyForm({ ...policyForm, uploadLimit: Number(e.target.value) })}
+                        placeholder="20"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="authz-time">Thời gian phiên (giờ)</Label>
+                      <Input
+                        id="authz-time"
+                        type="number"
+                        value={policyForm.maxSessionTime || ''}
+                        onChange={(e) => setPolicyForm({ ...policyForm, maxSessionTime: Number(e.target.value) })}
+                        placeholder="4"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="authz-data">Lưu lượng/ngày (GB)</Label>
+                      <Input
+                        id="authz-data"
+                        type="number"
+                        value={policyForm.maxDailyData || ''}
+                        onChange={(e) => setPolicyForm({ ...policyForm, maxDailyData: Number(e.target.value) })}
+                        placeholder="5"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cấu hình Bảo mật phiên */}
+                <div className="space-y-4">
+                   <h4 className="text-sm font-semibold text-[#1e3a5f]">Bảo mật phiên</h4>
+                   
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <Label htmlFor="authz-timeout">Timeout không hoạt động (phút)</Label>
+                       <Input
+                         id="authz-timeout"
+                         type="number"
+                         value={policyForm.idleTimeout || ''}
+                         onChange={(e) => setPolicyForm({ ...policyForm, idleTimeout: Number(e.target.value) })}
+                         placeholder="30"
+                       />
+                     </div>
+                     <div className="flex items-center space-x-2 pt-6">
+                        <Checkbox
+                          id="authz-mac"
+                          checked={policyForm.bindMacAddress}
+                          onCheckedChange={(checked) => setPolicyForm({ ...policyForm, bindMacAddress: checked as boolean })}
+                        />
+                        <Label htmlFor="authz-mac">Gắn với MAC Address</Label>
+                     </div>
+                   </div>
+                   
+                   <div>
+                     <Label className="mb-2 block">Cho phép đăng nhập lại tự động</Label>
+                     <RadioGroup 
+                        value={policyForm.autoReLogin ? "yes" : "no"} 
+                        onValueChange={(val) => setPolicyForm({ ...policyForm, autoReLogin: val === "yes" })}
+                        className="flex space-x-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id="relogin-yes" />
+                          <Label htmlFor="relogin-yes">Có</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id="relogin-no" />
+                          <Label htmlFor="relogin-no">Không</Label>
+                        </div>
+                      </RadioGroup>
+                   </div>
+                </div>
+              </div>
+            )}
+            
             <div>
               <Label>Áp dụng cho Vai trò</Label>
               <div className="flex flex-wrap gap-4 mt-2">
@@ -1026,6 +1395,17 @@ export default function Policies() {
                 onChange={(e) => setPolicyForm({ ...policyForm, description: e.target.value })}
               />
             </div>
+            
+            {policyForm.type === 'authorization' && (
+              <div className="flex items-center space-x-2 pb-2">
+                 <Switch 
+                  id="edit-policy-active" 
+                  checked={policyForm.isActive}
+                  onCheckedChange={(checked) => setPolicyForm({ ...policyForm, isActive: checked })}
+                />
+                <Label htmlFor="edit-policy-active">Kích hoạt chính sách</Label>
+              </div>
+            )}
             
             {policyForm.type === 'bandwidth' && (
               <div className="grid grid-cols-2 gap-4">
@@ -1248,6 +1628,123 @@ export default function Policies() {
               </div>
             )}
             
+            {policyForm.type === 'authorization' && (
+              <div className="space-y-6">
+                {/* Cấu hình Quyền truy cập */}
+                <div className="space-y-4 border-b pb-4">
+                  <h4 className="text-sm font-semibold text-[#1e3a5f]">Cấu hình Quyền truy cập</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <Label htmlFor="edit-authz-vlan">VLAN ID (1-4096)</Label>
+                       <Input
+                         id="edit-authz-vlan"
+                         type="number"
+                         min={1}
+                         max={4096}
+                         value={policyForm.vlanId || ''}
+                         onChange={(e) => setPolicyForm({ ...policyForm, vlanId: Number(e.target.value) })}
+                       />
+                     </div>
+                     <div>
+                       <Label htmlFor="edit-authz-devices">Thiết bị đồng thời</Label>
+                       <Input
+                         id="edit-authz-devices"
+                         type="number"
+                         value={policyForm.maxConcurrentDevices || ''}
+                         onChange={(e) => setPolicyForm({ ...policyForm, maxConcurrentDevices: Number(e.target.value) })}
+                       />
+                     </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-authz-dl">Tải xuống (Mbps)</Label>
+                      <Input
+                        id="edit-authz-dl"
+                        type="number"
+                        value={policyForm.downloadLimit || ''}
+                        onChange={(e) => setPolicyForm({ ...policyForm, downloadLimit: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-authz-ul">Tải lên (Mbps)</Label>
+                      <Input
+                        id="edit-authz-ul"
+                        type="number"
+                        value={policyForm.uploadLimit || ''}
+                        onChange={(e) => setPolicyForm({ ...policyForm, uploadLimit: Number(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-authz-time">Thời gian phiên (giờ)</Label>
+                      <Input
+                        id="edit-authz-time"
+                        type="number"
+                        value={policyForm.maxSessionTime || ''}
+                        onChange={(e) => setPolicyForm({ ...policyForm, maxSessionTime: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-authz-data">Lưu lượng/ngày (GB)</Label>
+                      <Input
+                        id="edit-authz-data"
+                        type="number"
+                        value={policyForm.maxDailyData || ''}
+                        onChange={(e) => setPolicyForm({ ...policyForm, maxDailyData: Number(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cấu hình Bảo mật phiên */}
+                <div className="space-y-4">
+                   <h4 className="text-sm font-semibold text-[#1e3a5f]">Bảo mật phiên</h4>
+                   
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <Label htmlFor="edit-authz-timeout">Timeout không hoạt động (phút)</Label>
+                       <Input
+                         id="edit-authz-timeout"
+                         type="number"
+                         value={policyForm.idleTimeout || ''}
+                         onChange={(e) => setPolicyForm({ ...policyForm, idleTimeout: Number(e.target.value) })}
+                       />
+                     </div>
+                     <div className="flex items-center space-x-2 pt-6">
+                        <Checkbox
+                          id="edit-authz-mac"
+                          checked={policyForm.bindMacAddress}
+                          onCheckedChange={(checked) => setPolicyForm({ ...policyForm, bindMacAddress: checked as boolean })}
+                        />
+                        <Label htmlFor="edit-authz-mac">Gắn với MAC Address</Label>
+                     </div>
+                   </div>
+                   
+                   <div>
+                     <Label className="mb-2 block">Cho phép đăng nhập lại tự động</Label>
+                     <RadioGroup 
+                        value={policyForm.autoReLogin ? "yes" : "no"} 
+                        onValueChange={(val) => setPolicyForm({ ...policyForm, autoReLogin: val === "yes" })}
+                        className="flex space-x-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id="edit-relogin-yes" />
+                          <Label htmlFor="edit-relogin-yes">Có</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id="edit-relogin-no" />
+                          <Label htmlFor="edit-relogin-no">Không</Label>
+                        </div>
+                      </RadioGroup>
+                   </div>
+                </div>
+              </div>
+            )}
+            
             <div>
               <Label>Áp dụng cho Vai trò</Label>
               <div className="flex flex-wrap gap-4 mt-2">
@@ -1332,6 +1829,368 @@ export default function Policies() {
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeletePolicy} className="bg-red-600 hover:bg-red-700">
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add Auth Policy Dialog */}
+      <Dialog open={addAuthPolicyDialogOpen} onOpenChange={setAddAuthPolicyDialogOpen}>
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Thêm Chính sách Xác thực</DialogTitle>
+            <DialogDescription>Cấu hình phương thức đăng nhập cho người dùng</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+             {validationError && (
+               <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm border border-red-200">
+                 {validationError}
+               </div>
+             )}
+             {/* Basic Info */}
+             <div className="grid grid-cols-2 gap-4">
+               <div className="col-span-2">
+                 <Label htmlFor="auth-name">Tên chính sách <span className="text-red-500">*</span></Label>
+                 <Input 
+                    id="auth-name" 
+                    value={authPolicyForm.name || ''} 
+                    onChange={e => setAuthPolicyForm({...authPolicyForm, name: e.target.value})}
+                    placeholder="VD: Cán bộ - Azure AD"
+                  />
+               </div>
+               <div className="col-span-2">
+                 <Label htmlFor="auth-desc">Mô tả</Label>
+                 <Input 
+                    id="auth-desc" 
+                    value={authPolicyForm.description || ''} 
+                    onChange={e => setAuthPolicyForm({...authPolicyForm, description: e.target.value})}
+                  />
+               </div>
+               <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="auth-active"
+                    checked={authPolicyForm.isActive ?? true}
+                    onCheckedChange={(checked) => setAuthPolicyForm({...authPolicyForm, isActive: checked})} 
+                  />
+                  <Label htmlFor="auth-active">Kích hoạt chính sách này</Label>
+               </div>
+             </div>
+
+             {/* User & Method */}
+             <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                <div>
+                   <Label>Loại người dùng <span className="text-red-500">*</span></Label>
+                   <Select 
+                      value={authPolicyForm.userType} 
+                      onValueChange={(val: AuthUserType) => setAuthPolicyForm({...authPolicyForm, userType: val})}
+                   >
+                      <SelectTrigger><SelectValue placeholder="Chọn loại người dùng" /></SelectTrigger>
+                      <SelectContent>
+                        {authUserTypeOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                   </Select>
+                </div>
+                <div>
+                   <Label>Phương thức xác thực <span className="text-red-500">*</span></Label>
+                   <Select 
+                      value={authPolicyForm.authMethod} 
+                      onValueChange={(val: AuthMethod) => setAuthPolicyForm({...authPolicyForm, authMethod: val})}
+                   >
+                      <SelectTrigger><SelectValue placeholder="Chọn phương thức" /></SelectTrigger>
+                      <SelectContent>
+                        {authMethodOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                   </Select>
+                </div>
+             </div>
+
+            
+
+             {/* Additional Config */}
+             <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                <div className="flex items-center space-x-2">
+                   <Checkbox 
+                      id="req-2fa" 
+                      checked={authPolicyForm.require2FA}
+                      onCheckedChange={(c) => setAuthPolicyForm({...authPolicyForm, require2FA: !!c})}
+                   />
+                   <Label htmlFor="req-2fa">Yêu cầu xác thực 2 bước (2FA)</Label>
+                </div>
+                {(authPolicyForm.userType === 'guest_reg' || authPolicyForm.userType === 'guest_noreg') && (
+                  <div className="flex items-center space-x-2">
+                     <Checkbox 
+                        id="allow-reg" 
+                        checked={authPolicyForm.allowRegistration}
+                        onCheckedChange={(c) => setAuthPolicyForm({...authPolicyForm, allowRegistration: !!c})}
+                     />
+                     <Label htmlFor="allow-reg">Cho phép khách tự đăng ký</Label>
+                  </div>
+                )}
+             </div>
+             
+          
+             {/* Applied Scope - Devices Only (Controllers/APs) */}
+             <div className="pt-2">
+               <Label className="mb-2 block">Phạm vi áp dụng (Thiết bị)</Label>
+               <div className="border rounded-md p-3 max-h-48 overflow-y-auto mt-2 bg-white">
+                    {/* Controllers */}
+                    <div>
+                      <h5 className="font-semibold text-sm mb-2 text-gray-700 sticky top-0 bg-white">Controllers</h5>
+                      {initialControllers.map(ctrl => (
+                        <div key={ctrl.id} className="flex items-center space-x-2 ml-2 mb-1">
+                          <Checkbox 
+                             id={`ctrl-${ctrl.id}`}
+                             checked={authPolicyForm.appliedAreas?.includes(`ctrl:${ctrl.id}`)}
+                             onCheckedChange={(checked) => {
+                                const val = `ctrl:${ctrl.id}`;
+                                const current = authPolicyForm.appliedAreas || [];
+                                if (checked) {
+                                  setAuthPolicyForm({...authPolicyForm, appliedAreas: [...current, val]});
+                                } else {
+                                  setAuthPolicyForm({...authPolicyForm, appliedAreas: current.filter(x => x !== val)});
+                                }
+                             }}
+                          />
+                          <Label htmlFor={`ctrl-${ctrl.id}`} className="text-sm font-normal cursor-pointer">
+                            {ctrl.name} <span className="text-gray-500 text-xs">({ctrl.ipAddress})</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* APs */}
+                    <div className="mt-3">
+                      <h5 className="font-semibold text-sm mb-2 text-gray-700 sticky top-0 bg-white">Access Points</h5>
+                      {initialAPs.map(ap => (
+                        <div key={ap.id} className="flex items-center space-x-2 ml-2 mb-1">
+                          <Checkbox 
+                             id={`ap-${ap.id}`}
+                             checked={authPolicyForm.appliedAreas?.includes(`ap:${ap.id}`)}
+                             onCheckedChange={(checked) => {
+                                const val = `ap:${ap.id}`;
+                                const current = authPolicyForm.appliedAreas || [];
+                                if (checked) {
+                                  setAuthPolicyForm({...authPolicyForm, appliedAreas: [...current, val]});
+                                } else {
+                                  setAuthPolicyForm({...authPolicyForm, appliedAreas: current.filter(x => x !== val)});
+                                }
+                             }}
+                          />
+                          <Label htmlFor={`ap-${ap.id}`} className="text-sm font-normal cursor-pointer">
+                            {ap.name} <span className="text-gray-500 text-xs">- {ap.location}</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+               </div>
+             </div>
+          </div>
+          <DialogFooter>
+             <Button variant="outline" onClick={() => setAddAuthPolicyDialogOpen(false)}>Hủy</Button>
+             <Button onClick={saveNewAuthPolicy} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90">Lưu chính sách</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Auth Policy Dialog - Reusing similar structure via generic component or just copy paste for now as per simplicity */}
+      <Dialog open={editAuthPolicyDialogOpen} onOpenChange={setEditAuthPolicyDialogOpen}>
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+           {/* Basically same as add but with Edit title and Save func */}
+           <DialogHeader>
+             <DialogTitle>Chỉnh sửa Chính sách Xác thực</DialogTitle>
+          </DialogHeader>
+           {/* Repetitive form logic - in a real app this should be a component. duplicating for now to ensure functionality */}
+            <div className="space-y-6 py-4">
+             {validationError && (
+               <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm border border-red-200">
+                 {validationError}
+               </div>
+             )}
+             {/* Basic Info */}
+             <div className="grid grid-cols-2 gap-4">
+               <div className="col-span-2">
+                 <Label htmlFor="edit-auth-name">Tên chính sách <span className="text-red-500">*</span></Label>
+                 <Input 
+                    id="edit-auth-name" 
+                    value={authPolicyForm.name || ''} 
+                    onChange={e => setAuthPolicyForm({...authPolicyForm, name: e.target.value})}
+                  />
+               </div>
+               <div className="col-span-2">
+                 <Label htmlFor="edit-auth-desc">Mô tả</Label>
+                 <Input 
+                    id="edit-auth-desc" 
+                    value={authPolicyForm.description || ''} 
+                    onChange={e => setAuthPolicyForm({...authPolicyForm, description: e.target.value})}
+                  />
+               </div>
+               <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="edit-auth-active"
+                    checked={authPolicyForm.isActive ?? true}
+                    onCheckedChange={(checked) => setAuthPolicyForm({...authPolicyForm, isActive: checked})} 
+                  />
+                  <Label htmlFor="edit-auth-active">Kích hoạt chính sách này</Label>
+               </div>
+             </div>
+
+             {/* User & Method */}
+             <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                <div>
+                   <Label>Loại người dùng <span className="text-red-500">*</span></Label>
+                   <Select 
+                      value={authPolicyForm.userType} 
+                      onValueChange={(val: AuthUserType) => setAuthPolicyForm({...authPolicyForm, userType: val})}
+                   >
+                      <SelectTrigger><SelectValue placeholder="Chọn loại người dùng" /></SelectTrigger>
+                      <SelectContent>
+                        {authUserTypeOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                   </Select>
+                </div>
+                <div>
+                   <Label>Phương thức xác thực <span className="text-red-500">*</span></Label>
+                   <Select 
+                      value={authPolicyForm.authMethod} 
+                      onValueChange={(val: AuthMethod) => setAuthPolicyForm({...authPolicyForm, authMethod: val})}
+                   >
+                      <SelectTrigger><SelectValue placeholder="Chọn phương thức" /></SelectTrigger>
+                      <SelectContent>
+                        {authMethodOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                   </Select>
+                </div>
+             </div>
+             
+             {/* Additional */}
+            <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                <div className="flex items-center space-x-2">
+                   <Checkbox 
+                      id="edit-req-2fa" 
+                      checked={authPolicyForm.require2FA}
+                      onCheckedChange={(c) => setAuthPolicyForm({...authPolicyForm, require2FA: !!c})}
+                   />
+                   <Label htmlFor="edit-req-2fa">Yêu cầu 2FA</Label>
+                </div>
+                {(authPolicyForm.userType === 'guest_reg' || authPolicyForm.userType === 'guest_noreg') && (
+                  <div className="flex items-center space-x-2">
+                     <Checkbox 
+                        id="edit-allow-reg" 
+                        checked={authPolicyForm.allowRegistration}
+                        onCheckedChange={(c) => setAuthPolicyForm({...authPolicyForm, allowRegistration: !!c})}
+                     />
+                     <Label htmlFor="edit-allow-reg">Cho phép khách tự đăng ký</Label>
+                  </div>
+                )}
+            </div>
+
+            {/* Time & Scope */}
+             <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                <div>
+                   <Label>Áp dụng theo Thời gian</Label>
+                   <Select 
+                      value={authPolicyForm.applyByTime || 'all'} 
+                      onValueChange={(val) => setAuthPolicyForm({...authPolicyForm, applyByTime: val})}
+                   >
+                      <SelectTrigger><SelectValue placeholder="Chọn thời gian" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">24/7</SelectItem>
+                        <SelectItem value="6:00-22:00">6:00 - 22:00 (Giờ học)</SelectItem>
+                        <SelectItem value="8:00-17:00">8:00 - 17:00 (Giờ hành chính)</SelectItem>
+                        <SelectItem value="18:00-6:00">18:00 - 6:00 (Ngoài giờ)</SelectItem>
+                        <SelectItem value="T2-T6">Thứ 2 - Thứ 6</SelectItem>
+                        <SelectItem value="T7-CN">Thứ 7 - Chủ nhật</SelectItem>
+                      </SelectContent>
+                   </Select>
+                </div>
+             </div>
+
+             {/* Applied Scope - Devices Only (Controllers/APs) */}
+             <div className="pt-2">
+               <Label className="mb-2 block">Phạm vi áp dụng (Thiết bị)</Label>
+               <div className="border rounded-md p-3 max-h-48 overflow-y-auto mt-2 bg-white">
+                    {/* Controllers */}
+                    <div>
+                      <h5 className="font-semibold text-sm mb-2 text-gray-700 sticky top-0 bg-white">Controllers</h5>
+                      {initialControllers.map(ctrl => (
+                        <div key={ctrl.id} className="flex items-center space-x-2 ml-2 mb-1">
+                          <Checkbox 
+                             id={`edit-ctrl-${ctrl.id}`}
+                             checked={authPolicyForm.appliedAreas?.includes(`ctrl:${ctrl.id}`)}
+                             onCheckedChange={(checked) => {
+                                const val = `ctrl:${ctrl.id}`;
+                                const current = authPolicyForm.appliedAreas || [];
+                                if (checked) {
+                                  setAuthPolicyForm({...authPolicyForm, appliedAreas: [...current, val]});
+                                } else {
+                                  setAuthPolicyForm({...authPolicyForm, appliedAreas: current.filter(x => x !== val)});
+                                }
+                             }}
+                          />
+                          <Label htmlFor={`edit-ctrl-${ctrl.id}`} className="text-sm font-normal cursor-pointer">
+                            {ctrl.name} <span className="text-gray-500 text-xs">({ctrl.ipAddress})</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* APs */}
+                    <div className="mt-3">
+                      <h5 className="font-semibold text-sm mb-2 text-gray-700 sticky top-0 bg-white">Access Points</h5>
+                      {initialAPs.map(ap => (
+                        <div key={ap.id} className="flex items-center space-x-2 ml-2 mb-1">
+                          <Checkbox 
+                             id={`edit-ap-${ap.id}`}
+                             checked={authPolicyForm.appliedAreas?.includes(`ap:${ap.id}`)}
+                             onCheckedChange={(checked) => {
+                                const val = `ap:${ap.id}`;
+                                const current = authPolicyForm.appliedAreas || [];
+                                if (checked) {
+                                  setAuthPolicyForm({...authPolicyForm, appliedAreas: [...current, val]});
+                                } else {
+                                  setAuthPolicyForm({...authPolicyForm, appliedAreas: current.filter(x => x !== val)});
+                                }
+                             }}
+                          />
+                          <Label htmlFor={`edit-ap-${ap.id}`} className="text-sm font-normal cursor-pointer">
+                            {ap.name} <span className="text-gray-500 text-xs">- {ap.location}</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+               </div>
+             </div>
+
+          </div>
+          <DialogFooter>
+             <Button variant="outline" onClick={() => setEditAuthPolicyDialogOpen(false)}>Hủy</Button>
+             <Button onClick={saveEditAuthPolicy} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90">Cập nhật</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Auth Policy Dialog */}
+      <AlertDialog open={deleteAuthPolicyDialogOpen} onOpenChange={setDeleteAuthPolicyDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa chính sách xác thực</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa chính sách <strong>{selectedAuthPolicy?.name}</strong>?
+              Các Controller đang sử dụng chính sách này sẽ cần được cấu hình lại.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteAuthPolicy} className="bg-red-600 hover:bg-red-700">
               Xóa
             </AlertDialogAction>
           </AlertDialogFooter>

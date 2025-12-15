@@ -295,7 +295,7 @@ export default function Settings() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 border-b border-gray-200 rounded-none">
             <TabsTrigger value="users" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
-              Người dùng
+              Quản trị viên
             </TabsTrigger>
             <TabsTrigger value="areas" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
               Khu vực
