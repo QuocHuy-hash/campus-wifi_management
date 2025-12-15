@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HCMUS WiFi Management - Mockup Template</title>
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  
+  <style>
+    /* =============================================
+       CSS VARIABLES - Màu sắc và kích thước chung
+       ============================================= */
+    :root {
+      /* Colors - HCMUS Theme */
+      --primary: #1e3a5f;
+      --primary-light: #2d4a6f;
+      --primary-dark: #0f2847;
+      --accent: #3b82f6;
+      --accent-light: #60a5fa;
+      
+      /* Status Colors */
+      --success: #22c55e;
+      --success-bg: #f0fdf4;
+      --warning: #f59e0b;
+      --warning-bg: #fffbeb;
+      --error: #ef4444;
+      --error-bg: #fef2f2;
+      --info: #3b82f6;
+      --info-bg: #eff6ff;
+      
+      /* Neutrals */
+      --white: #ffffff;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      
+      /* Spacing */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      
+      /* Border Radius */
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+      
+      /* Shadows */
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    /* =============================================
+       RESET & BASE STYLES
+       ============================================= */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--gray-50);
+      color: var(--gray-900);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* =============================================
+       LAYOUT COMPONENTS
+       ============================================= */
+    
+    /* Main Layout Container */
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: var(--white);
+      border-right: 1px solid var(--gray-200);
+      padding: var(--space-4);
+      flex-shrink: 0;
+    }
+    
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    
+    .sidebar-item {
+      display: block;
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-md);
+      color: var(--gray-700);
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .sidebar-item:hover {
+      background: var(--gray-100);
+    }
+    
+    .sidebar-item.active {
+      background: var(--primary);
+      color: var(--white);
+    }
+    
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Header */
+    .header {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: var(--space-4) var(--space-6);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    
+    .header-logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--white);
+      font-weight: 700;
+      font-size: 18px;
+    }
+    
+    .header-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    
+    .header-subtitle {
+      font-size: 11px;
+      color: var(--gray-500);
+      text-transform: uppercase;
+    }
+    
+    .header-user {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    
+    .header-user-info {
+      text-align: right;
+    }
+    
+    .header-user-name {
+      font-weight: 500;
+      color: var(--gray-900);
+    }
+    
+    .header-user-role {
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+    
+    .header-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--primary));
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--white);
+    }
+    
+    /* Page Content */
+    .page-content {
+      padding: var(--space-6);
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* =============================================
+       CARD COMPONENTS
+       ============================================= */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-4);
+    }
+    
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    /* KPI Card */
+    .kpi-card {
+      padding: var(--space-4);
+      border-right: 1px solid var(--gray-200);
+    }
+    
+    .kpi-card:last-child {
+      border-right: none;
+    }
+    
+    .kpi-label {
+      font-size: 12px;
+      color: var(--gray-600);
+      margin-bottom: var(--space-1);
+    }
+    
+    .kpi-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    
+    .kpi-unit {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--gray-600);
+    }
+    
+    .kpi-trend {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      font-size: 12px;
+      margin-top: var(--space-1);
+    }
+    
+    .kpi-trend.up { color: var(--success); }
+    .kpi-trend.down { color: var(--error); }
+
+    /* Stats Card with Color */
+    .stats-card {
+      padding: var(--space-4);
+      border-radius: var(--radius-lg);
+      color: var(--white);
+    }
+    
+    .stats-card.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .stats-card.cyan { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .stats-card.green { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .stats-card.red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .stats-card.purple { background: linear-gradient(135deg, #a855f7, #9333ea); }
+    
+    .stats-card-label {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    .stats-card-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-top: var(--space-1);
+    }
+    
+    .stats-card-subtitle {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-top: var(--space-1);
+    }
+
+    /* =============================================
+       BUTTON COMPONENTS
+       ============================================= */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
+      color: var(--white);
+    }
+    
+    .btn-primary:hover {
+      background: var(--primary-light);
+    }
+    
+    .btn-secondary {
+      background: var(--white);
+      color: var(--gray-700);
+      border-color: var(--gray-300);
+    }
+    
+    .btn-secondary:hover {
+      background: var(--gray-50);
+    }
+    
+    .btn-danger {
+      background: var(--error);
+      color: var(--white);
+    }
+    
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+    
+    .btn-ghost {
+      background: transparent;
+      color: var(--gray-600);
+    }
+    
+    .btn-ghost:hover {
+      background: var(--gray-100);
+    }
+    
+    .btn-sm {
+      padding: var(--space-1) var(--space-2);
+      font-size: 12px;
+    }
+    
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+    }
+
+    /* =============================================
+       FORM COMPONENTS
+       ============================================= */
+    .form-group {
+      margin-bottom: var(--space-4);
+    }
+    
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gray-700);
+      margin-bottom: var(--space-1);
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .form-input-sm {
+      padding: var(--space-1) var(--space-2);
+      font-size: 13px;
+    }
+    
+    .form-select {
+      width: 100%;
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      background: var(--white);
+      cursor: pointer;
+    }
+    
+    .form-select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    /* Input with icon */
+    .input-group {
+      position: relative;
+    }
+    
+    .input-group-icon {
+      position: absolute;
+      left: var(--space-3);
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray-400);
+    }
+    
+    .input-group .form-input {
+      padding-left: 36px;
+    }
+
+    /* =============================================
+       TABLE COMPONENTS
+       ============================================= */
+    .table-container {
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    
+    .table th {
+      background: var(--gray-50);
+      padding: var(--space-3) var(--space-4);
+      text-align: left;
+      font-weight: 600;
+      color: var(--gray-700);
+      border-bottom: 1px solid var(--gray-200);
+    }
+    
+    .table td {
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--gray-200);
+      color: var(--gray-600);
+    }
+    
+    .table tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .table tr:hover td {
+      background: var(--gray-50);
+    }
+    
+    .table-cell-primary {
+      color: var(--gray-900);
+      font-weight: 500;
+    }
+
+    /* =============================================
+       BADGE COMPONENTS
+       ============================================= */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .badge-success {
+      background: var(--success-bg);
+      color: #166534;
+    }
+    
+    .badge-warning {
+      background: var(--warning-bg);
+      color: #92400e;
+    }
+    
+    .badge-error {
+      background: var(--error-bg);
+      color: #991b1b;
+    }
+    
+    .badge-info {
+      background: var(--info-bg);
+      color: #1e40af;
+    }
+    
+    .badge-neutral {
+      background: var(--gray-100);
+      color: var(--gray-700);
+    }
+
+    /* =============================================
+       DIALOG / MODAL COMPONENTS
+       ============================================= */
+    .dialog-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .dialog {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow: auto;
+    }
+    
+    .dialog-header {
+      padding: var(--space-4) var(--space-6);
+      border-bottom: 1px solid var(--gray-200);
+    }
+    
+    .dialog-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+    
+    .dialog-description {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-top: var(--space-1);
+    }
+    
+    .dialog-body {
+      padding: var(--space-6);
+    }
+    
+    .dialog-footer {
+      padding: var(--space-4) var(--space-6);
+      border-top: 1px solid var(--gray-200);
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-3);
+    }
+
+    /* =============================================
+       TABS COMPONENTS
+       ============================================= */
+    .tabs-list {
+      display: flex;
+      border-bottom: 1px solid var(--gray-200);
+      background: var(--gray-50);
+    }
+    
+    .tab-item {
+      padding: var(--space-3) var(--space-6);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-600);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      transition: all 0.2s;
+    }
+    
+    .tab-item:hover {
+      color: var(--primary);
+    }
+    
+    .tab-item.active {
+      color: var(--primary);
+      background: var(--white);
+      border-bottom-color: var(--primary);
+    }
+    
+    .tab-content {
+      padding: var(--space-6);
+    }
+
+    /* =============================================
+       PROGRESS BAR
+       ============================================= */
+    .progress {
+      height: 8px;
+      background: var(--gray-200);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      border-radius: var(--radius-full);
+      transition: width 0.3s;
+    }
+    
+    .progress-bar.green { background: var(--success); }
+    .progress-bar.yellow { background: var(--warning); }
+    .progress-bar.red { background: var(--error); }
+    .progress-bar.blue { background: var(--accent); }
+
+    /* =============================================
+       ALERT COMPONENTS
+       ============================================= */
+    .alert {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      border-radius: var(--radius-md);
+      border-left: 4px solid;
+    }
+    
+    .alert-success {
+      background: var(--success-bg);
+      border-left-color: var(--success);
+      color: #166534;
+    }
+    
+    .alert-warning {
+      background: var(--warning-bg);
+      border-left-color: var(--warning);
+      color: #92400e;
+    }
+    
+    .alert-error {
+      background: var(--error-bg);
+      border-left-color: var(--error);
+      color: #991b1b;
+    }
+    
+    .alert-info {
+      background: var(--info-bg);
+      border-left-color: var(--info);
+      color: #1e40af;
+    }
+
+    /* =============================================
+       UTILITY CLASSES
+       ============================================= */
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .items-center { align-items: center; }
+    .items-start { align-items: flex-start; }
+    .justify-between { justify-content: space-between; }
+    .justify-center { justify-content: center; }
+    .justify-end { justify-content: flex-end; }
+    .gap-1 { gap: var(--space-1); }
+    .gap-2 { gap: var(--space-2); }
+    .gap-3 { gap: var(--space-3); }
+    .gap-4 { gap: var(--space-4); }
+    .gap-6 { gap: var(--space-6); }
+    
+    .grid { display: grid; }
+    .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-cols-5 { grid-template-columns: repeat(5, 1fr); }
+    .grid-cols-12 { grid-template-columns: repeat(12, 1fr); }
+    .col-span-3 { grid-column: span 3; }
+    .col-span-4 { grid-column: span 4; }
+    .col-span-8 { grid-column: span 8; }
+    .col-span-9 { grid-column: span 9; }
+    
+    .mb-2 { margin-bottom: var(--space-2); }
+    .mb-4 { margin-bottom: var(--space-4); }
+    .mb-6 { margin-bottom: var(--space-6); }
+    .mt-2 { margin-top: var(--space-2); }
+    .mt-4 { margin-top: var(--space-4); }
+    
+    .text-sm { font-size: 12px; }
+    .text-base { font-size: 14px; }
+    .text-lg { font-size: 16px; }
+    .text-xl { font-size: 18px; }
+    .text-2xl { font-size: 24px; }
+    .text-3xl { font-size: 30px; }
+    
+    .font-medium { font-weight: 500; }
+    .font-semibold { font-weight: 600; }
+    .font-bold { font-weight: 700; }
+    
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    
+    .text-primary { color: var(--primary); }
+    .text-gray-500 { color: var(--gray-500); }
+    .text-gray-600 { color: var(--gray-600); }
+    .text-gray-900 { color: var(--gray-900); }
+    .text-success { color: var(--success); }
+    .text-warning { color: var(--warning); }
+    .text-error { color: var(--error); }
+    
+    .bg-gray-50 { background: var(--gray-50); }
+    .bg-white { background: var(--white); }
+    
+    .rounded-md { border-radius: var(--radius-md); }
+    .rounded-lg { border-radius: var(--radius-lg); }
+    
+    .border { border: 1px solid var(--gray-200); }
+    .border-b { border-bottom: 1px solid var(--gray-200); }
+    
+    .p-4 { padding: var(--space-4); }
+    .p-6 { padding: var(--space-6); }
+    
+    .w-full { width: 100%; }
+    .h-full { height: 100%; }
+    
+    .hidden { display: none; }
+
+    /* =============================================
+       COMPONENT SHOWCASE STYLES
+       ============================================= */
+    .showcase-section {
+      margin-bottom: 48px;
+      padding-bottom: 48px;
+      border-bottom: 2px dashed var(--gray-300);
+    }
+    
+    .showcase-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+    
+    .showcase-desc {
+      color: var(--gray-600);
+      margin-bottom: 24px;
+    }
+    
+    .component-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    
+    .component-box {
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      background: var(--white);
+    }
+    
+    .component-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =============================================
+       SECTION: FULL LAYOUT EXAMPLE
+       ============================================= -->
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <nav class="sidebar-nav">
+        <a href="#" class="sidebar-item">Quản lý người dùng</a>
+        <a href="#" class="sidebar-item active">Điểm phát WIFI</a>
+        <a href="#" class="sidebar-item">Báo cáo</a>
+        <a href="#" class="sidebar-item">Cài đặt</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-logo">
+          <div class="header-logo-icon">H</div>
+          <div>
+            <div class="header-title">WIFI MANAGEMENT</div>
+            <div class="header-subtitle">Hệ thống quản lý truy cập WIFI</div>
+          </div>
+        </div>
+        <div class="header-user">
+          <div class="header-user-info">
+            <div class="header-user-name">Admin</div>
+            <div class="header-user-role">Logout</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="page-content">
+
+        <!-- =============================================
+             SHOWCASE: KPI CARDS BAR
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">1. KPI Stats Bar</h2>
+          <p class="showcase-desc">Thanh thống kê KPI ngang - dùng cho Dashboard</p>
+          
+          <div class="card" style="padding: 0;">
+            <div class="grid grid-cols-5">
+              <div class="kpi-card">
+                <div class="kpi-label">Người dùng online</div>
+                <div class="kpi-value">7822 <i data-lucide="trending-up" style="width:16px;height:16px;color:var(--success);"></i></div>
+                <div class="kpi-trend up">vs 2h trước 7616 (29%)</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Số điểm phát WIFI online/tổng</div>
+                <div class="kpi-value">323/412</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Tổng số lượt truy cập</div>
+                <div class="kpi-value">2048K</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Thời gian truy cập trung bình</div>
+                <div class="kpi-value">78 <span class="kpi-unit">phút</span></div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Date</div>
+                <input type="date" class="form-input form-input-sm" value="2023-05-23">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: STATS CARDS (COLORED)
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">2. Stats Cards (Màu)</h2>
+          <p class="showcase-desc">Card thống kê có màu gradient - dùng cho Báo cáo</p>
+          
+          <div class="grid grid-cols-4 gap-4">
+            <div class="stats-card blue">
+              <div class="stats-card-label">Tổng người dùng</div>
+              <div class="stats-card-value">6,568</div>
+              <div class="stats-card-subtitle">+3% so với hôm qua</div>
+            </div>
+            <div class="stats-card cyan">
+              <div class="stats-card-label">Băng thông hôm nay</div>
+              <div class="stats-card-value">56.7 GB</div>
+              <div class="stats-card-subtitle">DL: 45.2 GB | UL: 11.5 GB</div>
+            </div>
+            <div class="stats-card green">
+              <div class="stats-card-label">AP hoạt động</div>
+              <div class="stats-card-value">323/412</div>
+              <div class="stats-card-subtitle">78% online</div>
+            </div>
+            <div class="stats-card red">
+              <div class="stats-card-label">Vi phạm hôm nay</div>
+              <div class="stats-card-value">12</div>
+              <div class="stats-card-subtitle">-5% so với hôm qua</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: BUTTONS
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">3. Buttons</h2>
+          <p class="showcase-desc">Các loại button trong hệ thống</p>
+          
+          <div class="flex gap-4 items-center mb-4">
+            <button class="btn btn-primary">
+              <i data-lucide="plus" style="width:16px;height:16px;"></i>
+              Primary Button
+            </button>
+            <button class="btn btn-secondary">
+              <i data-lucide="download" style="width:16px;height:16px;"></i>
+              Secondary Button
+            </button>
+            <button class="btn btn-danger">
+              <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+              Danger Button
+            </button>
+            <button class="btn btn-ghost">
+              Ghost Button
+            </button>
+          </div>
+          
+          <div class="flex gap-4 items-center">
+            <button class="btn btn-primary btn-sm">Small Primary</button>
+            <button class="btn btn-secondary btn-sm">Small Secondary</button>
+            <button class="btn btn-icon btn-ghost">
+              <i data-lucide="edit" style="width:16px;height:16px;"></i>
+            </button>
+            <button class="btn btn-icon btn-ghost">
+              <i data-lucide="trash-2" style="width:16px;height:16px;color:var(--error);"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: FORM INPUTS
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">4. Form Inputs</h2>
+          <p class="showcase-desc">Các loại input form</p>
+          
+          <div class="grid grid-cols-3 gap-4">
+            <div class="component-box">
+              <div class="component-label">Text Input</div>
+              <div class="form-group">
+                <label class="form-label">Tên người dùng</label>
+                <input type="text" class="form-input" placeholder="Nhập tên...">
+              </div>
+            </div>
+            
+            <div class="component-box">
+              <div class="component-label">Input with Icon</div>
+              <div class="form-group">
+                <label class="form-label">Tìm kiếm</label>
+                <div class="input-group">
+                  <i data-lucide="search" class="input-group-icon" style="width:16px;height:16px;"></i>
+                  <input type="text" class="form-input" placeholder="Tìm kiếm...">
+                </div>
+              </div>
+            </div>
+            
+            <div class="component-box">
+              <div class="component-label">Select</div>
+              <div class="form-group">
+                <label class="form-label">Chọn khu vực</label>
+                <select class="form-select">
+                  <option>Tất cả</option>
+                  <option>227 NVC</option>
+                  <option>Dĩ An</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="component-box">
+              <div class="component-label">Date Input</div>
+              <div class="form-group">
+                <label class="form-label">Ngày bắt đầu</label>
+                <input type="date" class="form-input" value="2024-01-15">
+              </div>
+            </div>
+            
+            <div class="component-box">
+              <div class="component-label">Small Input</div>
+              <div class="form-group">
+                <label class="form-label">Mã AP</label>
+                <input type="text" class="form-input form-input-sm" placeholder="VD: GD1-01">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: TABLE
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">5. Data Table</h2>
+          <p class="showcase-desc">Bảng dữ liệu với header, actions</p>
+          
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Danh mục điểm truy cập WIFI</h3>
+              <div class="flex gap-3 items-center">
+                <div class="input-group" style="width: 200px;">
+                  <i data-lucide="search" class="input-group-icon" style="width:14px;height:14px;"></i>
+                  <input type="text" class="form-input form-input-sm" placeholder="Tìm kiếm...">
+                </div>
+                <select class="form-select" style="width: 120px; padding: 4px 8px; font-size: 13px;">
+                  <option>227NVC</option>
+                </select>
+                <button class="btn btn-primary btn-sm">
+                  <i data-lucide="plus" style="width:14px;height:14px;"></i>
+                  Thêm AP
+                </button>
+              </div>
+            </div>
+            
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Tên AP</th>
+                    <th>Vị trí</th>
+                    <th>Khu vực</th>
+                    <th>Uptime</th>
+                    <th>IP / Model</th>
+                    <th>Controller</th>
+                    <th style="text-align:center;">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="table-cell-primary">GD1-01</td>
+                    <td>Giảng đường 1</td>
+                    <td>227 NVC</td>
+                    <td>15h00 1days</td>
+                    <td>172.29.99.1 - AC Mesh Pro</td>
+                    <td>UniFi 1</td>
+                    <td style="text-align:center;">
+                      <button class="btn btn-icon btn-ghost"><i data-lucide="edit" style="width:14px;height:14px;color:var(--accent);"></i></button>
+                      <button class="btn btn-icon btn-ghost"><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--error);"></i></button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="table-cell-primary">I1-01</td>
+                    <td>Sảnh nhà I</td>
+                    <td>227NVC</td>
+                    <td>03h15 98days</td>
+                    <td>172.29.99.2 - AC Pro 7</td>
+                    <td>UniFi 1</td>
+                    <td style="text-align:center;">
+                      <button class="btn btn-icon btn-ghost"><i data-lucide="edit" style="width:14px;height:14px;color:var(--accent);"></i></button>
+                      <button class="btn btn-icon btn-ghost"><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--error);"></i></button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="table-cell-primary">I11-01</td>
+                    <td>Nhà I lầu 11</td>
+                    <td>227NVC</td>
+                    <td>05h00 1days</td>
+                    <td>172.29.99.9 - AC Mesh Pro</td>
+                    <td>UniFi 1</td>
+                    <td style="text-align:center;">
+                      <button class="btn btn-icon btn-ghost"><i data-lucide="edit" style="width:14px;height:14px;color:var(--accent);"></i></button>
+                      <button class="btn btn-icon btn-ghost"><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--error);"></i></button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: BADGES
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">6. Badges / Status</h2>
+          <p class="showcase-desc">Badge trạng thái</p>
+          
+          <div class="flex gap-3">
+            <span class="badge badge-success">Hoạt động</span>
+            <span class="badge badge-warning">Đang xử lý</span>
+            <span class="badge badge-error">Ngừng</span>
+            <span class="badge badge-info">Thông tin</span>
+            <span class="badge badge-neutral">Mặc định</span>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: PROGRESS BAR
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">7. Progress Bars</h2>
+          <p class="showcase-desc">Thanh tiến trình / sử dụng</p>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div class="component-box">
+              <div class="flex justify-between mb-2">
+                <span class="text-sm">Sử dụng: 45%</span>
+                <span class="text-sm text-success">Tốt</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar green" style="width: 45%;"></div>
+              </div>
+            </div>
+            
+            <div class="component-box">
+              <div class="flex justify-between mb-2">
+                <span class="text-sm">Sử dụng: 72%</span>
+                <span class="text-sm text-warning">Cảnh báo</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar yellow" style="width: 72%;"></div>
+              </div>
+            </div>
+            
+            <div class="component-box">
+              <div class="flex justify-between mb-2">
+                <span class="text-sm">Sử dụng: 92%</span>
+                <span class="text-sm text-error">Quá tải</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar red" style="width: 92%;"></div>
+              </div>
+            </div>
+            
+            <div class="component-box">
+              <div class="flex justify-between mb-2">
+                <span class="text-sm">Tiến độ: 60%</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar blue" style="width: 60%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: ALERTS
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">8. Alerts</h2>
+          <p class="showcase-desc">Thông báo cảnh báo</p>
+          
+          <div class="flex flex-col gap-3">
+            <div class="alert alert-success">
+              <i data-lucide="check-circle" style="width:20px;height:20px;flex-shrink:0;"></i>
+              <div>
+                <strong>Thành công!</strong> Đã lưu cấu hình AP thành công.
+              </div>
+            </div>
+            
+            <div class="alert alert-warning">
+              <i data-lucide="alert-triangle" style="width:20px;height:20px;flex-shrink:0;"></i>
+              <div>
+                <strong>Cảnh báo!</strong> AP GD1-01 đang quá tải (92% sử dụng).
+              </div>
+            </div>
+            
+            <div class="alert alert-error">
+              <i data-lucide="x-circle" style="width:20px;height:20px;flex-shrink:0;"></i>
+              <div>
+                <strong>Lỗi!</strong> Không thể kết nối đến Controller.
+              </div>
+            </div>
+            
+            <div class="alert alert-info">
+              <i data-lucide="info" style="width:20px;height:20px;flex-shrink:0;"></i>
+              <div>
+                <strong>Thông tin:</strong> Hệ thống sẽ bảo trì vào 22:00 hôm nay.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: TABS
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">9. Tabs</h2>
+          <p class="showcase-desc">Tab navigation - dùng cho Báo cáo, Cài đặt</p>
+          
+          <div class="card" style="padding:0; overflow:hidden;">
+            <div class="tabs-list">
+              <div class="tab-item active">
+                <i data-lucide="users" style="width:16px;height:16px;"></i>
+                Người dùng
+              </div>
+              <div class="tab-item">
+                <i data-lucide="activity" style="width:16px;height:16px;"></i>
+                Băng thông
+              </div>
+              <div class="tab-item">
+                <i data-lucide="wifi" style="width:16px;height:16px;"></i>
+                Điểm phát
+              </div>
+              <div class="tab-item">
+                <i data-lucide="shield" style="width:16px;height:16px;"></i>
+                Vi phạm
+              </div>
+              <div class="tab-item">
+                <i data-lucide="file-text" style="width:16px;height:16px;"></i>
+                Nhật ký
+              </div>
+            </div>
+            <div class="tab-content">
+              <p class="text-gray-600">Nội dung tab sẽ hiển thị ở đây...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: DIALOG
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">10. Dialog / Modal</h2>
+          <p class="showcase-desc">Popup dialog cho thêm/sửa/xóa</p>
+          
+          <button class="btn btn-primary mb-4" onclick="document.getElementById('demo-dialog').style.display='flex'">
+            Mở Dialog Demo
+          </button>
+          
+          <!-- Dialog Demo (initially hidden) -->
+          <div id="demo-dialog" class="dialog-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+            <div class="dialog">
+              <div class="dialog-header">
+                <h3 class="dialog-title">Thêm Access Point mới</h3>
+                <p class="dialog-description">Nhập thông tin AP mới vào hệ thống</p>
+              </div>
+              <div class="dialog-body">
+                <div class="form-group">
+                  <label class="form-label">Tên AP *</label>
+                  <input type="text" class="form-input" placeholder="VD: GD1-01">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Vị trí</label>
+                  <input type="text" class="form-input" placeholder="VD: Giảng đường 1">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Khu vực</label>
+                  <select class="form-select">
+                    <option>227 NVC</option>
+                    <option>Dĩ An</option>
+                    <option>Thủ Đức</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">IP / Model</label>
+                  <input type="text" class="form-input" placeholder="VD: 172.29.99.1 - AC Mesh Pro">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Controller</label>
+                  <select class="form-select">
+                    <option>UniFi 1</option>
+                    <option>UniFi 2</option>
+                    <option>UniFi 3</option>
+                  </select>
+                </div>
+              </div>
+              <div class="dialog-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('demo-dialog').style.display='none'">Hủy</button>
+                <button class="btn btn-primary">Thêm</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Static Dialog Example -->
+          <div class="card" style="max-width: 500px;">
+            <div style="border-bottom:1px solid var(--gray-200); padding-bottom: 12px; margin-bottom: 16px;">
+              <h3 style="font-size:18px; font-weight:600; color:var(--gray-900);">Xác nhận xóa</h3>
+              <p style="font-size:14px; color:var(--gray-500); margin-top:4px;">Bạn có chắc chắn muốn xóa AP "GD1-01"?</p>
+            </div>
+            <p style="color:var(--gray-600); margin-bottom:16px;">Hành động này không thể hoàn tác. Tất cả dữ liệu liên quan đến AP này sẽ bị xóa vĩnh viễn.</p>
+            <div class="flex justify-end gap-3">
+              <button class="btn btn-secondary">Hủy</button>
+              <button class="btn btn-danger">Xóa</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: SMALL TABLE (AP Overload)
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">11. Small Info Table</h2>
+          <p class="showcase-desc">Bảng nhỏ hiển thị thông tin tóm tắt</p>
+          
+          <div class="card" style="max-width: 400px;">
+            <h3 class="card-title mb-4">AP quá tải</h3>
+            <table class="table" style="font-size:13px;">
+              <thead>
+                <tr>
+                  <th style="padding:8px 12px;">Tên AP</th>
+                  <th style="padding:8px 12px; text-align:right;">Số client</th>
+                  <th style="padding:8px 12px; text-align:right;">% sử dụng</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding:8px 12px;">GD1-01</td>
+                  <td style="padding:8px 12px; text-align:right;">112</td>
+                  <td style="padding:8px 12px; text-align:right; color:var(--error); font-weight:500;">90%</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 12px;">F103-02</td>
+                  <td style="padding:8px 12px; text-align:right;">69</td>
+                  <td style="padding:8px 12px; text-align:right; color:var(--warning);">88%</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 12px;">I1-01</td>
+                  <td style="padding:8px 12px; text-align:right;">225</td>
+                  <td style="padding:8px 12px; text-align:right; color:var(--error); font-weight:500;">92%</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 12px;">GD2-02</td>
+                  <td style="padding:8px 12px; text-align:right;">88</td>
+                  <td style="padding:8px 12px; text-align:right;">70%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: PIE CHART LEGEND
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">12. Summary Boxes</h2>
+          <p class="showcase-desc">Box tóm tắt thống kê nhỏ</p>
+          
+          <div class="grid grid-cols-3 gap-4" style="max-width: 600px;">
+            <div class="card text-center" style="background: #eff6ff;">
+              <div class="text-3xl font-bold text-primary">79%</div>
+              <div class="text-sm text-gray-600 mt-1">Sinh viên</div>
+            </div>
+            <div class="card text-center" style="background: #f0fdf4;">
+              <div class="text-3xl font-bold" style="color: var(--success);">19%</div>
+              <div class="text-sm text-gray-600 mt-1">Cán bộ</div>
+            </div>
+            <div class="card text-center" style="background: var(--gray-100);">
+              <div class="text-3xl font-bold text-gray-600">2%</div>
+              <div class="text-sm text-gray-600 mt-1">Khách</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: LOG TERMINAL
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">13. Log Terminal</h2>
+          <p class="showcase-desc">Hiển thị log dạng terminal</p>
+          
+          <div class="card" style="background: #111827; color: #f3f4f6; font-family: monospace; font-size: 13px; max-height: 300px; overflow: auto;">
+            <p style="color: #60a5fa;">[2024-01-15 10:30:00] <span style="color: #4ade80;">INFO</span>  Auth: User login: superadmin from 192.168.1.100</p>
+            <p style="color: #60a5fa;">[2024-01-15 10:35:00] <span style="color: #4ade80;">INFO</span>  Config: AP configuration updated: AP-A1-07</p>
+            <p style="color: #60a5fa;">[2024-01-15 11:00:00] <span style="color: #fbbf24;">WARNING</span>  System: High memory usage detected on server</p>
+            <p style="color: #60a5fa;">[2024-01-15 11:30:00] <span style="color: #f87171;">ERROR</span>  Controller: Connection lost to UniFi Controller 2</p>
+            <p style="color: #60a5fa;">[2024-01-15 12:00:00] <span style="color: #4ade80;">INFO</span>  Policy: Bandwidth policy updated for Students group</p>
+            <p style="color: #60a5fa;">[2024-01-15 12:15:00] <span style="color: #4ade80;">INFO</span>  Auth: User logout: superadmin</p>
+            <p style="color: #60a5fa;">[2024-01-15 12:30:00] <span style="color: #fbbf24;">WARNING</span>  AP: High CPU usage on AP-C1-01 (89%)</p>
+          </div>
+        </div>
+
+        <!-- =============================================
+             SHOWCASE: LOGIN FORM
+             ============================================= -->
+        <div class="showcase-section">
+          <h2 class="showcase-title">14. Login Form</h2>
+          <p class="showcase-desc">Form đăng nhập</p>
+          
+          <div style="background: linear-gradient(135deg, #1e3a8a, #1e40af); padding: 40px; border-radius: 12px; max-width: 450px;">
+            <div class="card" style="padding: 32px;">
+              <div class="text-center mb-6">
+                <div style="width:60px;height:60px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));border-radius:12px;display:inline-flex;align-items:center;justify-content:center;color:white;font-size:24px;font-weight:700;margin-bottom:16px;">H</div>
+                <h2 style="font-size:24px;font-weight:700;color:var(--gray-900);">Đăng nhập</h2>
+                <p style="color:var(--gray-500);margin-top:4px;">Nhập thông tin để truy cập hệ thống</p>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Tên đăng nhập</label>
+                <div class="input-group">
+                  <i data-lucide="user" class="input-group-icon" style="width:16px;height:16px;"></i>
+                  <input type="text" class="form-input" placeholder="Nhập tên đăng nhập">
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Mật khẩu</label>
+                <div class="input-group">
+                  <i data-lucide="lock" class="input-group-icon" style="width:16px;height:16px;"></i>
+                  <input type="password" class="form-input" placeholder="Nhập mật khẩu">
+                </div>
+              </div>
+              
+              <div class="flex justify-between items-center mb-4">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray-600);cursor:pointer;">
+                  <input type="checkbox"> Ghi nhớ đăng nhập
+                </label>
+                <a href="#" style="font-size:13px;color:var(--accent);text-decoration:none;">Quên mật khẩu?</a>
+              </div>
+              
+              <button class="btn btn-primary w-full" style="height:44px;">Đăng nhập</button>
+              
+              <div style="margin-top:16px;padding:12px;background:#eff6ff;border-radius:8px;border:1px solid #bfdbfe;">
+                <p style="font-size:11px;color:#1e40af;font-weight:500;margin-bottom:4px;">Thông tin demo:</p>
+                <p style="font-size:11px;color:#3b82f6;">Tên đăng nhập: <strong>admin</strong> | Mật khẩu: <strong>admin123</strong></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Initialize Lucide Icons -->
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>
