@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,8 +25,15 @@ import {
   TrendingUp,
   TrendingDown,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  Search,
+  Filter,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
+
+// Import mock data
+import { initialCampuses, initialBuildings } from '@/data/mockData';
 
 // Mock data
 const mockUserReportData = [
@@ -61,10 +68,110 @@ const mockViolationData = [
 ];
 
 const mockSessionData = [
-  { user: '10011@student', duration: '4h 15m', data: '1.2 GB', ap: 'AP-A1-01' },
-  { user: '10012@student', duration: '8h 30m', data: '2.8 GB', ap: 'AP-B1-01' },
-  { user: 'admin@hcmus', duration: '10h 15m', data: '5.5 GB', ap: 'AP-C1-01' },
-  { user: 'guest001', duration: '2h 00m', data: '0.3 GB', ap: 'AP-A1-02' },
+  { 
+    id: 1,
+    username: '21120001@student.hcmus.edu.vn', 
+    role: 'Sinh viên',
+    macAddress: 'AA:BB:CC:DD:EE:01',
+    ipAddress: '10.0.1.101',
+    startTime: '2024-01-15 08:30:00',
+    endTime: '2024-01-15 12:45:00',
+    duration: '4h 15m',
+    dataUsed: 1.24,
+    ap: 'AP-DA-A-01',
+    location: 'Cơ sở Dĩ An - Tòa A'
+  },
+  { 
+    id: 2,
+    username: '21120045@student.hcmus.edu.vn', 
+    role: 'Sinh viên',
+    macAddress: 'AA:BB:CC:DD:EE:02',
+    ipAddress: '10.0.1.102',
+    startTime: '2024-01-15 09:00:00',
+    endTime: '2024-01-15 17:30:00',
+    duration: '8h 30m',
+    dataUsed: 2.85,
+    ap: 'AP-DA-B-02',
+    location: 'Cơ sở Dĩ An - Tòa B'
+  },
+  { 
+    id: 3,
+    username: 'nv.nguyen@hcmus.edu.vn', 
+    role: 'Cán bộ',
+    macAddress: 'AA:BB:CC:DD:EE:03',
+    ipAddress: '10.0.2.50',
+    startTime: '2024-01-15 07:45:00',
+    endTime: '2024-01-15 18:00:00',
+    duration: '10h 15m',
+    dataUsed: 5.52,
+    ap: 'AP-TD-E-01',
+    location: 'Cơ sở Thủ Đức - Tòa E'
+  },
+  { 
+    id: 4,
+    username: 'guest_event_001', 
+    role: 'Khách',
+    macAddress: 'AA:BB:CC:DD:EE:04',
+    ipAddress: '10.0.3.15',
+    startTime: '2024-01-15 14:00:00',
+    endTime: '2024-01-15 16:00:00',
+    duration: '2h 00m',
+    dataUsed: 0.32,
+    ap: 'AP-227-G-01',
+    location: 'Cơ sở 227 NVC - Hội trường'
+  },
+  { 
+    id: 5,
+    username: '21120089@student.hcmus.edu.vn', 
+    role: 'Sinh viên',
+    macAddress: 'AA:BB:CC:DD:EE:05',
+    ipAddress: '10.0.1.156',
+    startTime: '2024-01-15 10:15:00',
+    endTime: '2024-01-15 15:30:00',
+    duration: '5h 15m',
+    dataUsed: 1.89,
+    ap: 'AP-DA-C-03',
+    location: 'Cơ sở Dĩ An - Tòa C'
+  },
+  { 
+    id: 6,
+    username: 'pv.tran@hcmus.edu.vn', 
+    role: 'Cán bộ',
+    macAddress: 'AA:BB:CC:DD:EE:06',
+    ipAddress: '10.0.2.78',
+    startTime: '2024-01-15 08:00:00',
+    endTime: '2024-01-15 17:00:00',
+    duration: '9h 00m',
+    dataUsed: 3.45,
+    ap: 'AP-DA-B-01',
+    location: 'Cơ sở Dĩ An - Tòa B'
+  },
+  { 
+    id: 7,
+    username: '20120156@student.hcmus.edu.vn', 
+    role: 'Sinh viên',
+    macAddress: 'AA:BB:CC:DD:EE:07',
+    ipAddress: '10.0.1.201',
+    startTime: '2024-01-15 13:00:00',
+    endTime: '2024-01-15 18:45:00',
+    duration: '5h 45m',
+    dataUsed: 2.15,
+    ap: 'AP-TD-F-02',
+    location: 'Cơ sở Thủ Đức - Tòa F'
+  },
+  { 
+    id: 8,
+    username: 'guest_visitor_002', 
+    role: 'Khách',
+    macAddress: 'AA:BB:CC:DD:EE:08',
+    ipAddress: '10.0.3.28',
+    startTime: '2024-01-15 09:30:00',
+    endTime: '2024-01-15 11:00:00',
+    duration: '1h 30m',
+    dataUsed: 0.18,
+    ap: 'AP-227-G-02',
+    location: 'Cơ sở 227 NVC - Thư viện'
+  },
 ];
 
 const mockIncidentData = [
@@ -78,6 +185,29 @@ export default function Reports() {
   const [dateRange, setDateRange] = useState('week');
   const [startDate, setStartDate] = useState('2024-01-11');
   const [endDate, setEndDate] = useState('2024-01-15');
+
+  // Session Logs Filter States
+  const [sessionStartDate, setSessionStartDate] = useState('2024-01-15');
+  const [sessionEndDate, setSessionEndDate] = useState('2024-01-15');
+  const [sessionRoleFilter, setSessionRoleFilter] = useState('all');
+  const [sessionCampusFilter, setSessionCampusFilter] = useState('all');
+  const [sessionBuildingFilter, setSessionBuildingFilter] = useState('all');
+  const [sessionApFilter, setSessionApFilter] = useState('');
+  const [sessionIdentityFilter, setSessionIdentityFilter] = useState('');
+  const [sessionCurrentPage, setSessionCurrentPage] = useState(1);
+  const [filteredBuildings, setFilteredBuildings] = useState(initialBuildings);
+  const sessionItemsPerPage = 5;
+
+  // Update buildings when campus changes
+  useEffect(() => {
+    if (sessionCampusFilter === 'all') {
+      setFilteredBuildings(initialBuildings);
+    } else {
+      const campusId = parseInt(sessionCampusFilter);
+      setFilteredBuildings(initialBuildings.filter(b => b.campusId === campusId));
+    }
+    setSessionBuildingFilter('all');
+  }, [sessionCampusFilter]);
 
   const handleExport = (format: 'excel' | 'pdf', reportName: string) => {
     if (format === 'excel') {
@@ -198,16 +328,12 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Báo cáo & Thống kê</h1>
-        <p className="text-gray-600 mt-1">Xem và xuất báo cáo hệ thống WIFI</p>
-      </div>
-
+     
       {/* KPI Cards */}
-      <KPICards />
+      {/* <KPICards /> */}
 
       {/* Filter Bar */}
-      <FilterBar />
+      {/* <FilterBar /> */}
 
       {/* Report Tabs */}
       <Card className="overflow-hidden">
@@ -243,10 +369,10 @@ export default function Reports() {
             </TabsTrigger>
             <TabsTrigger 
               value="sessions"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-white px-6 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#1e3a5f] data-[state=active]:bg-white px-6 py-3"
             >
               <Clock size={16} className="mr-2" />
-              Phiên
+              Nhật ký Phiên
             </TabsTrigger>
             <TabsTrigger 
               value="incidents"
@@ -470,34 +596,255 @@ export default function Reports() {
             </div>
           </TabsContent>
 
-          {/* Tab: Sessions */}
+          {/* Tab: Sessions - Nhật ký Phiên truy cập WIFI */}
           <TabsContent value="sessions" className="p-6 m-0">
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Báo cáo phiên làm việc</h3>
-              
-              {/* Table */}
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Người dùng</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Thời lượng</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Dữ liệu</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Điểm phát</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {mockSessionData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium">{row.user}</td>
-                        <td className="px-4 py-3 text-sm text-right">{row.duration}</td>
-                        <td className="px-4 py-3 text-sm text-right text-blue-600 font-medium">{row.data}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{row.ap}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="space-y-6">
+              {/* A. Header */}
+              <div>
+                <h2 className="text-xl font-bold text-[#1e3a5f]">Nhật ký Phiên truy cập WIFI </h2>
+                <p className="text-sm text-gray-500 mt-1">Theo dõi và kiểm toán chi tiết các phiên kết nối của người dùng</p>
               </div>
+              
+              {/* B. Khu vực Bộ lọc (Filter Bar) - Compact */}
+              <Card className="p-3 bg-gray-50 border-[#1e3a5f]/20">
+                <div className="flex flex-wrap items-end gap-3">
+                  {/* Thời gian */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs text-gray-500 whitespace-nowrap">Từ</Label>
+                      <Input 
+                        type="date" 
+                        value={sessionStartDate} 
+                        onChange={(e) => setSessionStartDate(e.target.value)}
+                        className="w-[130px] h-9"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs text-gray-500 whitespace-nowrap">Đến</Label>
+                      <Input 
+                        type="date" 
+                        value={sessionEndDate} 
+                        onChange={(e) => setSessionEndDate(e.target.value)}
+                        className="w-[130px] h-9"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Vai trò */}
+                  <Select value={sessionRoleFilter} onValueChange={setSessionRoleFilter}>
+                    <SelectTrigger className="w-[120px] h-9">
+                      <SelectValue placeholder="Vai trò" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      <SelectItem value="Sinh viên">Sinh viên</SelectItem>
+                      <SelectItem value="Cán bộ">Cán bộ</SelectItem>
+                      <SelectItem value="Khách">Khách</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  {/* Cơ sở */}
+                  <Select value={sessionCampusFilter} onValueChange={setSessionCampusFilter}>
+                    <SelectTrigger className="w-[140px] h-9">
+                      <SelectValue placeholder="Cơ sở" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả cơ sở</SelectItem>
+                      {initialCampuses.map((campus) => (
+                        <SelectItem key={campus.id} value={campus.id.toString()}>
+                          {campus.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {/* Tòa nhà */}
+                  <Select value={sessionBuildingFilter} onValueChange={setSessionBuildingFilter}>
+                    <SelectTrigger className="w-[130px] h-9">
+                      <SelectValue placeholder="Tòa nhà" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      {filteredBuildings.map((building) => (
+                        <SelectItem key={building.id} value={building.id.toString()}>
+                          {building.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {/* AP/Controller */}
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Input 
+                      placeholder="AP / Controller"
+                      value={sessionApFilter}
+                      onChange={(e) => setSessionApFilter(e.target.value)}
+                      className="pl-7 w-[140px] h-9"
+                    />
+                  </div>
+                  
+                  {/* Username/MAC/IP */}
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Input 
+                      placeholder="User / MAC / IP"
+                      value={sessionIdentityFilter}
+                      onChange={(e) => setSessionIdentityFilter(e.target.value)}
+                      className="pl-7 w-[150px] h-9"
+                    />
+                  </div>
+                  
+                  {/* Buttons */}
+                  <Button size="sm" className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 h-9">
+                    <Search size={14} className="mr-1" />
+                    Lọc
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-9" onClick={() => {
+                    setSessionRoleFilter('all');
+                    setSessionCampusFilter('all');
+                    setSessionBuildingFilter('all');
+                    setSessionApFilter('');
+                    setSessionIdentityFilter('');
+                  }}>
+                    <RefreshCw size={14} />
+                  </Button>
+                  
+                  <div className="ml-auto flex gap-2">
+                    <Button size="sm" variant="outline" className="h-9" onClick={() => handleExport('excel', 'session-logs')}>
+                      <FileSpreadsheet size={14} className="mr-1" />
+                      Excel
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-9" onClick={() => handleExport('pdf', 'session-logs')}>
+                      <Download size={14} className="mr-1" />
+                      CSV
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+              
+              {/* D. Tóm tắt Biểu đồ - Summary Stats */}
+              {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="p-2 bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f] text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-200 text-sm">Tổng số Phiên</p>
+                      <p className="text-3xl font-bold">{mockSessionData.length}</p>
+                    </div>
+                    <Clock size={28} className="text-blue-200" />
+                  </div>
+                </Card>
+                <Card className="p-4 bg-gradient-to-br from-cyan-500 to-cyan-600 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-cyan-100 text-sm">Tổng Data Used</p>
+                      <p className="text-3xl font-bold">
+                        {mockSessionData.reduce((sum, s) => sum + s.dataUsed, 0).toFixed(2)} GB
+                      </p>
+                    </div>
+                    <Activity size={28} className="text-cyan-200" />
+                  </div>
+                </Card>
+                <Card className="p-4 bg-gradient-to-br from-green-500 to-green-600 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-100 text-sm">Sinh viên</p>
+                      <p className="text-3xl font-bold">
+                        {mockSessionData.filter(s => s.role === 'Sinh viên').length}
+                      </p>
+                    </div>
+                    <Users size={28} className="text-green-200" />
+                  </div>
+                </Card>
+                <Card className="p-4 bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-amber-100 text-sm">Cán bộ + Khách</p>
+                      <p className="text-3xl font-bold">
+                        {mockSessionData.filter(s => s.role !== 'Sinh viên').length}
+                      </p>
+                    </div>
+                    <Users size={28} className="text-amber-200" />
+                  </div>
+                </Card>
+              </div> */}
+              
+              {/* C. Bảng Dữ liệu (Data Table) */}
+              <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#1e3a5f] text-white">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-semibold">Username</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold">Vai trò</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold">MAC Address</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold">IP Address</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold">Bắt đầu</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold">Kết thúc</th>
+                        <th className="px-4 py-3 text-right text-sm font-semibold">Thời lượng</th>
+                        <th className="px-4 py-3 text-right text-sm font-semibold">Data (GB)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {mockSessionData
+                        .slice((sessionCurrentPage - 1) * sessionItemsPerPage, sessionCurrentPage * sessionItemsPerPage)
+                        .map((row) => (
+                        <tr key={row.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{row.username}</p>
+                              <p className="text-xs text-gray-500">{row.ap}</p>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              row.role === 'Sinh viên' ? 'bg-blue-100 text-blue-700' :
+                              row.role === 'Cán bộ' ? 'bg-green-100 text-green-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {row.role}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-mono text-gray-600">{row.macAddress}</td>
+                          <td className="px-4 py-3 text-sm font-mono text-gray-600">{row.ipAddress}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{row.startTime}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{row.endTime}</td>
+                          <td className="px-4 py-3 text-sm text-right font-medium">{row.duration}</td>
+                          <td className="px-4 py-3 text-sm text-right font-bold text-[#1e3a5f]">{row.dataUsed.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Pagination */}
+                <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    Hiển thị {Math.min((sessionCurrentPage - 1) * sessionItemsPerPage + 1, mockSessionData.length)} - {Math.min(sessionCurrentPage * sessionItemsPerPage, mockSessionData.length)} / {mockSessionData.length} phiên
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      disabled={sessionCurrentPage === 1}
+                      onClick={() => setSessionCurrentPage(p => p - 1)}
+                    >
+                      <ChevronLeft size={16} />
+                    </Button>
+                    <span className="px-3 py-1 bg-[#1e3a5f] text-white rounded text-sm font-medium">
+                      {sessionCurrentPage}
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      disabled={sessionCurrentPage * sessionItemsPerPage >= mockSessionData.length}
+                      onClick={() => setSessionCurrentPage(p => p + 1)}
+                    >
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
             </div>
           </TabsContent>
 

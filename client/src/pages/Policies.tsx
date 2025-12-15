@@ -31,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Trash2, Shield, Wifi, Clock, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Shield, Wifi, Clock, FileText, Search, RefreshCw, Filter } from 'lucide-react';
 
 // Import types and mock data from centralized file
 import {
@@ -40,6 +40,9 @@ import {
   initialPolicies,
   initialCampuses,
   initialBuildings,
+  initialControllers,
+  getDisconnectActionLabel,
+  getPolicyTypeLabel,
 } from "@/data/mockData";
 
 export default function Policies() {
@@ -94,6 +97,22 @@ export default function Policies() {
   const [selectedPolicy, setSelectedPolicy] = useState<WifiPolicy | null>(null);
   const [policyForm, setPolicyForm] = useState<Partial<WifiPolicy>>({});
 
+  // Filter states
+  const [filterRole, setFilterRole] = useState('all');
+  const [filterArea, setFilterArea] = useState('all');
+  const [filterTime, setFilterTime] = useState('all');
+  const [filterController, setFilterController] = useState('all');
+  const [filterSearch, setFilterSearch] = useState('');
+
+  // Reset filters
+  const resetFilters = () => {
+    setFilterRole('all');
+    setFilterArea('all');
+    setFilterTime('all');
+    setFilterController('all');
+    setFilterSearch('');
+  };
+
   // Policy Handlers
   const handleAddPolicy = (type: WifiPolicy['type']) => {
     setPolicyForm({ type, applyToRoles: [] });
@@ -121,6 +140,25 @@ export default function Policies() {
       uploadLimit: policyForm.uploadLimit,
       maxSessionTime: policyForm.maxSessionTime,
       maxSessionData: policyForm.maxSessionData,
+      // Audit-specific fields
+      auditMaxSessionTime: policyForm.auditMaxSessionTime,
+      auditMaxSessionTimeUnit: policyForm.auditMaxSessionTimeUnit,
+      auditMaxDataUsage: policyForm.auditMaxDataUsage,
+      auditMaxDataUsageUnit: policyForm.auditMaxDataUsageUnit,
+      accountingInterval: policyForm.accountingInterval,
+      accountingIntervalUnit: policyForm.accountingIntervalUnit,
+      logRetentionPeriod: policyForm.logRetentionPeriod,
+      logRetentionUnit: policyForm.logRetentionUnit,
+      disconnectAction: policyForm.disconnectAction,
+      // Security-specific fields
+      maxConcurrentDevices: policyForm.maxConcurrentDevices,
+      macCachingEnabled: policyForm.macCachingEnabled,
+      macCacheTime: policyForm.macCacheTime,
+      macCacheTimeUnit: policyForm.macCacheTimeUnit,
+      reAuthInterval: policyForm.reAuthInterval,
+      reAuthIntervalUnit: policyForm.reAuthIntervalUnit,
+      allowUserMacManagement: policyForm.allowUserMacManagement,
+      retryLimit: policyForm.retryLimit,
       applyToRoles: policyForm.applyToRoles || [],
       applyToArea: policyForm.applyToArea,
       applyByTime: policyForm.applyByTime,
@@ -147,19 +185,198 @@ export default function Policies() {
     setSelectedPolicy(null);
   };
 
-  const getPolicyTypeLabel = (type: WifiPolicy['type']) => {
-    switch (type) {
-      case 'bandwidth': return 'Băng thông';
-      case 'auth': return 'Xác thực';
-      case 'session': return 'Phiên truy cập';
-      case 'audit': return 'Kiểm toán';
-      case 'security': return 'Bảo mật';
-    }
-  };
 
   // Render policy table
   const renderPolicyTable = (type: WifiPolicy['type']) => {
-    const filteredPolicies = policies.filter(p => p.type === type);
+    // Apply filters
+    let filteredPolicies = policies.filter(p => p.type === type);
+    
+    // Filter by role
+    if (filterRole !== 'all') {
+      filteredPolicies = filteredPolicies.filter(p => p.applyToRoles.includes(filterRole));
+    }
+    
+    // Filter by area
+    if (filterArea !== 'all') {
+      filteredPolicies = filteredPolicies.filter(p => 
+        !p.applyToArea || p.applyToArea === '' || p.applyToArea.includes(filterArea)
+      );
+    }
+    
+    // Filter by time
+    if (filterTime !== 'all') {
+      filteredPolicies = filteredPolicies.filter(p => 
+        !p.applyByTime || p.applyByTime === '' || p.applyByTime === filterTime
+      );
+    }
+    
+    // Filter by search text
+    if (filterSearch) {
+      const searchLower = filterSearch.toLowerCase();
+      filteredPolicies = filteredPolicies.filter(p => 
+        p.name.toLowerCase().includes(searchLower) || 
+        p.description.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Special table for audit type
+    if (type === 'audit') {
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên chính sách</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Giới hạn Thời gian Phiên</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Giới hạn Dung lượng</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Chu kỳ Ghi nhận</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Áp dụng cho</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPolicies.map((policy, index) => (
+                <tr
+                  key={policy.id}
+                  className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{policy.name}</p>
+                      <p className="text-xs text-gray-500 truncate max-w-[200px]">{policy.description}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-center">
+                    <span className="bg-[#1e3a5f]/10 text-[#1e3a5f] px-2 py-1 rounded">
+                      {policy.auditMaxSessionTime || 0} {policy.auditMaxSessionTimeUnit === 'hour' ? 'giờ' : 'phút'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-center">
+                    <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded">
+                      {policy.auditMaxDataUsage || 0} {policy.auditMaxDataUsageUnit || 'GB'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-center">
+                    <span className="bg-green-50 text-green-700 px-2 py-1 rounded">
+                      {policy.accountingInterval || 0} {policy.accountingIntervalUnit === 'minute' ? 'phút' : 'giây'}
+                    </span>
+                  </td>
+                 
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    <div className="flex flex-wrap gap-1">
+                      {policy.applyToRoles.map((role) => (
+                        <span key={role} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">
+                          {role}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                 
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <Button variant="ghost" size="sm" title="Chỉnh sửa" onClick={() => handleEditPolicy(policy)}>
+                        <Edit size={18} className="text-amber-600" />
+                      </Button>
+                      <Button variant="ghost" size="sm" title="Xóa" onClick={() => handleDeletePolicy(policy)}>
+                        <Trash2 size={18} className="text-red-600" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredPolicies.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                    <p>Chưa có chính sách kiểm toán nào</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+    
+    // Special table for security type
+    if (type === 'security') {
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên chính sách</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Thiết bị đồng thời</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Tái xác thực</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Retry</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Áp dụng cho</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPolicies.map((policy, index) => (
+                <tr
+                  key={policy.id}
+                  className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{policy.name}</p>
+                      <p className="text-xs text-gray-500 truncate max-w-[200px]">{policy.description}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-center">
+                    <span className="bg-[#1e3a5f]/10 text-[#1e3a5f] px-2 py-1 rounded font-medium">
+                      {policy.maxConcurrentDevices || 0} thiết bị
+                    </span>
+                  </td>
+                 
+                  <td className="px-4 py-3 text-sm text-center">
+                    <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded">
+                      {policy.reAuthInterval || 0} {policy.reAuthIntervalUnit === 'day' ? 'ngày' : 'giờ'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-center">
+                    <span className="bg-red-50 text-red-700 px-2 py-1 rounded">
+                      {policy.retryLimit || 0} lần
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    <div className="flex flex-wrap gap-1">
+                      {policy.applyToRoles.map((role) => (
+                        <span key={role} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">
+                          {role}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <Button variant="ghost" size="sm" title="Chỉnh sửa" onClick={() => handleEditPolicy(policy)}>
+                        <Edit size={18} className="text-amber-600" />
+                      </Button>
+                      <Button variant="ghost" size="sm" title="Xóa" onClick={() => handleDeletePolicy(policy)}>
+                        <Trash2 size={18} className="text-red-600" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredPolicies.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                    <p>Chưa có chính sách bảo mật nào</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
     
     return (
       <div className="overflow-x-auto">
@@ -181,11 +398,6 @@ export default function Policies() {
                 </>
               )}
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Áp dụng cho</th>
-              {(type === 'audit' || type === 'security') && (
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">
-                  {type === 'audit' ? 'Khu vực' : 'Thời gian'}
-                </th>
-              )}
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hành động</th>
             </tr>
           </thead>
@@ -228,12 +440,6 @@ export default function Policies() {
                     ))}
                   </div>
                 </td>
-                {type === 'audit' && (
-                  <td className="px-4 py-3 text-sm text-gray-600">{policy.applyToArea || 'Tất cả'}</td>
-                )}
-                {type === 'security' && (
-                  <td className="px-4 py-3 text-sm text-gray-600">{policy.applyByTime || '24/7'}</td>
-                )}
                 <td className="px-4 py-3 text-center">
                   <div className="flex items-center justify-center gap-2">
                     <Button variant="ghost" size="sm" title="Chỉnh sửa" onClick={() => handleEditPolicy(policy)}>
@@ -263,7 +469,7 @@ export default function Policies() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Quản trị Chính sách WiFi</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Quản trị Chính sách</h1>
         <p className="text-gray-600 mt-1">Quản lý các chính sách băng thông, phiên truy cập, kiểm toán và bảo mật</p>
       </div>
 
@@ -326,6 +532,86 @@ export default function Policies() {
           </div>
         </Card>
       </div>
+
+      {/* Filter Bar */}
+      <Card className="bg-white shadow-sm p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter size={16} className="text-[#1e3a5f]" />
+          <span className="text-sm font-medium text-[#1e3a5f] mr-1">Bộ lọc:</span>
+          
+          <Select value={filterRole} onValueChange={setFilterRole}>
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue placeholder="Vai trò" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả vai trò</SelectItem>
+              <SelectItem value="student">Sinh viên</SelectItem>
+              <SelectItem value="lecturer">Giảng viên</SelectItem>
+              <SelectItem value="staff">Nhân viên</SelectItem>
+              <SelectItem value="guest">Khách</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterArea} onValueChange={setFilterArea}>
+            <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectValue placeholder="Khu vực" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả khu vực</SelectItem>
+              <SelectItem value="campus-a">Cơ sở A (Q.5)</SelectItem>
+              <SelectItem value="campus-b">Cơ sở B (Q.TĐ)</SelectItem>
+              <SelectItem value="campus-c">Cơ sở C (Q.10)</SelectItem>
+              <SelectItem value="library">Thư viện</SelectItem>
+              <SelectItem value="lab">Phòng máy</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterTime} onValueChange={setFilterTime}>
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue placeholder="Thời gian" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="active">Đang hoạt động</SelectItem>
+              <SelectItem value="scheduled">Theo lịch</SelectItem>
+              <SelectItem value="weekday">Trong tuần</SelectItem>
+              <SelectItem value="weekend">Cuối tuần</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterController} onValueChange={setFilterController}>
+            <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectValue placeholder="Controller" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả controller</SelectItem>
+              {initialControllers.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="relative">
+            <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              placeholder="Tìm kiếm..."
+              className="h-8 w-[150px] text-xs pl-7"
+            />
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetFilters}
+            className="h-8 text-xs gap-1"
+          >
+            <RefreshCw size={12} />
+            Đặt lại
+          </Button>
+        </div>
+      </Card>
 
       {/* Main Content with Tabs */}
       <Card className="bg-white shadow-sm">
@@ -398,7 +684,7 @@ export default function Policies() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Chính sách Kiểm toán</h3>
-                <p className="text-sm text-gray-500">Cấu hình ghi log và theo dõi hoạt động người dùng</p>
+                <p className="text-sm text-gray-500">Quản lý giới hạn phiên, dung lượng và lưu trữ logs hoạt động người dùng</p>
               </div>
               <Button onClick={() => handleAddPolicy('audit')} className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90">
                 <Plus size={18} className="mr-2" />
@@ -431,7 +717,7 @@ export default function Policies() {
           <DialogHeader>
             <DialogTitle>Thêm Chính sách {getPolicyTypeLabel(policyForm.type || 'bandwidth')}</DialogTitle>
             <DialogDescription>
-              Tạo chính sách WiFi mới
+              Tạo chính sách mới
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -499,6 +785,145 @@ export default function Policies() {
                     value={policyForm.maxSessionData || ''}
                     onChange={(e) => setPolicyForm({ ...policyForm, maxSessionData: Number(e.target.value) })}
                     placeholder="5000"
+                  />
+                </div>
+              </div>
+            )}
+            
+            {policyForm.type === 'audit' && (
+              <div className="space-y-4">
+                {/* Giới hạn Thời gian Phiên */}
+                <div>
+                  <Label>Giới hạn Thời gian Phiên</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="number"
+                      value={policyForm.auditMaxSessionTime || ''}
+                      onChange={(e) => setPolicyForm({ ...policyForm, auditMaxSessionTime: Number(e.target.value) })}
+                      placeholder="8"
+                      className="flex-1"
+                    />
+                    <Select
+                      value={policyForm.auditMaxSessionTimeUnit || 'hour'}
+                      onValueChange={(value: 'minute' | 'hour') => setPolicyForm({ ...policyForm, auditMaxSessionTimeUnit: value })}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Đơn vị" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="minute">Phút</SelectItem>
+                        <SelectItem value="hour">Giờ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Giới hạn Tổng Dung lượng */}
+                <div>
+                  <Label>Giới hạn Tổng Dung lượng</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="number"
+                      value={policyForm.auditMaxDataUsage || ''}
+                      onChange={(e) => setPolicyForm({ ...policyForm, auditMaxDataUsage: Number(e.target.value) })}
+                      placeholder="10"
+                      className="flex-1"
+                    />
+                    <Select
+                      value={policyForm.auditMaxDataUsageUnit || 'GB'}
+                      onValueChange={(value: 'MB' | 'GB') => setPolicyForm({ ...policyForm, auditMaxDataUsageUnit: value })}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Đơn vị" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MB">MB</SelectItem>
+                        <SelectItem value="GB">GB</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {policyForm.type === 'security' && (
+              <div className="space-y-4">
+                {/* Giới hạn Thiết bị Đồng thời */}
+                <div>
+                  <Label>Giới hạn Thiết bị Đồng thời</Label>
+                  <p className="text-xs text-gray-500 mb-1">Số lượng MAC Address tối đa được phép kết nối cùng lúc</p>
+                  <Input
+                    type="number"
+                    value={policyForm.maxConcurrentDevices || ''}
+                    onChange={(e) => setPolicyForm({ ...policyForm, maxConcurrentDevices: Number(e.target.value) })}
+                    placeholder="3"
+                  />
+                </div>
+                
+                {/* MAC Caching/Bypass */}
+                <div className="space-y-2">
+                
+                  {policyForm.macCachingEnabled && (
+                    <div className="flex gap-2 mt-2 pl-4 border-l-2 border-[#1e3a5f]/20">
+                      <Input
+                        type="number"
+                        value={policyForm.macCacheTime || ''}
+                        onChange={(e) => setPolicyForm({ ...policyForm, macCacheTime: Number(e.target.value) })}
+                        placeholder="24"
+                        className="flex-1"
+                      />
+                      <Select
+                        value={policyForm.macCacheTimeUnit || 'hour'}
+                        onValueChange={(value: 'hour' | 'day') => setPolicyForm({ ...policyForm, macCacheTimeUnit: value })}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Đơn vị" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hour">Giờ</SelectItem>
+                          <SelectItem value="day">Ngày</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Thời gian Tái Xác thực */}
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Thời gian bắt buộc đăng nhập lại</p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={policyForm.reAuthInterval || ''}
+                      onChange={(e) => setPolicyForm({ ...policyForm, reAuthInterval: Number(e.target.value) })}
+                      placeholder="7"
+                      className="flex-1"
+                    />
+                    <Select
+                      value={policyForm.reAuthIntervalUnit || 'day'}
+                      onValueChange={(value: 'hour' | 'day') => setPolicyForm({ ...policyForm, reAuthIntervalUnit: value })}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue placeholder="Đơn vị" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hour">Giờ</SelectItem>
+                        <SelectItem value="day">Ngày</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                
+                {/* Số lần Thử lại */}
+                <div>
+                  <Label>Số lần Thử lại</Label>
+                  <p className="text-xs text-gray-500 mb-1">Giới hạn số lần nhập sai mật khẩu trước khi khóa tạm thời</p>
+                  <Input
+                    type="number"
+                    value={policyForm.retryLimit || ''}
+                    onChange={(e) => setPolicyForm({ ...policyForm, retryLimit: Number(e.target.value) })}
+                    placeholder="5"
                   />
                 </div>
               </div>
@@ -581,7 +1006,7 @@ export default function Policies() {
           <DialogHeader>
             <DialogTitle>Chỉnh sửa Chính sách</DialogTitle>
             <DialogDescription>
-              Cập nhật thông tin chính sách WiFi
+              Cập nhật thông tin chính sách
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -643,6 +1068,181 @@ export default function Policies() {
                     type="number"
                     value={policyForm.maxSessionData || ''}
                     onChange={(e) => setPolicyForm({ ...policyForm, maxSessionData: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {policyForm.type === 'audit' && (
+              <div className="space-y-4">
+                {/* Giới hạn Thời gian Phiên */}
+                <div>
+                  <Label>Giới hạn Thời gian Phiên</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="number"
+                      value={policyForm.auditMaxSessionTime || ''}
+                      onChange={(e) => setPolicyForm({ ...policyForm, auditMaxSessionTime: Number(e.target.value) })}
+                      className="flex-1"
+                    />
+                    <Select
+                      value={policyForm.auditMaxSessionTimeUnit || 'hour'}
+                      onValueChange={(value: 'minute' | 'hour') => setPolicyForm({ ...policyForm, auditMaxSessionTimeUnit: value })}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Đơn vị" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="minute">Phút</SelectItem>
+                        <SelectItem value="hour">Giờ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Giới hạn Tổng Dung lượng */}
+                <div>
+                  <Label>Giới hạn Tổng Dung lượng</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="number"
+                      value={policyForm.auditMaxDataUsage || ''}
+                      onChange={(e) => setPolicyForm({ ...policyForm, auditMaxDataUsage: Number(e.target.value) })}
+                      className="flex-1"
+                    />
+                    <Select
+                      value={policyForm.auditMaxDataUsageUnit || 'GB'}
+                      onValueChange={(value: 'MB' | 'GB') => setPolicyForm({ ...policyForm, auditMaxDataUsageUnit: value })}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Đơn vị" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MB">MB</SelectItem>
+                        <SelectItem value="GB">GB</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Chu kỳ Ghi nhận */}
+                <div>
+                  <Label>Chu kỳ Ghi nhận (Accounting Interval)</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="number"
+                      value={policyForm.accountingInterval || ''}
+                      onChange={(e) => setPolicyForm({ ...policyForm, accountingInterval: Number(e.target.value) })}
+                      className="flex-1"
+                    />
+                    <Select
+                      value={policyForm.accountingIntervalUnit || 'second'}
+                      onValueChange={(value: 'second' | 'minute') => setPolicyForm({ ...policyForm, accountingIntervalUnit: value })}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Đơn vị" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="second">Giây</SelectItem>
+                        <SelectItem value="minute">Phút</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Thời gian Lưu trữ Logs */}
+                <div>
+                  <Label>Thời gian Lưu trữ Logs Phiên</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="number"
+                      value={policyForm.logRetentionPeriod || ''}
+                      onChange={(e) => setPolicyForm({ ...policyForm, logRetentionPeriod: Number(e.target.value) })}
+                      className="flex-1"
+                    />
+                    <Select
+                      value={policyForm.logRetentionUnit || 'month'}
+                      onValueChange={(value: 'month' | 'year') => setPolicyForm({ ...policyForm, logRetentionUnit: value })}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Đơn vị" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="month">Tháng</SelectItem>
+                        <SelectItem value="year">Năm</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Hành động Ngắt kết nối */}
+                <div>
+                  <Label>Hành động khi đạt giới hạn</Label>
+                  <Select
+                    value={policyForm.disconnectAction || 'disconnect'}
+                    onValueChange={(value: 'disconnect' | 'reauth' | 'notify') => setPolicyForm({ ...policyForm, disconnectAction: value })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Chọn hành động" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="disconnect">Ngắt kết nối</SelectItem>
+                      <SelectItem value="reauth">Yêu cầu xác thực lại</SelectItem>
+                      <SelectItem value="notify">Chỉ cảnh báo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            
+            {policyForm.type === 'security' && (
+              <div className="space-y-4">
+                {/* Giới hạn Thiết bị Đồng thời */}
+                <div>
+                  <Label>Giới hạn Thiết bị Đồng thời</Label>
+                  <p className="text-xs text-gray-500 mb-1">Số lượng MAC Address tối đa được phép kết nối cùng lúc</p>
+                  <Input
+                    type="number"
+                    value={policyForm.maxConcurrentDevices || ''}
+                    onChange={(e) => setPolicyForm({ ...policyForm, maxConcurrentDevices: Number(e.target.value) })}
+                  />
+                </div>
+                {/* Thời gian Tái Xác thực */}
+                <div>
+                  <Label>Thời gian Tái Xác thực </Label>
+                  <p className="text-xs text-gray-500 mb-1">Thời gian buộc người dùng phải đăng nhập lại Captive Portal</p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={policyForm.reAuthInterval || ''}
+                      onChange={(e) => setPolicyForm({ ...policyForm, reAuthInterval: Number(e.target.value) })}
+                      className="flex-1"
+                    />
+                    <Select
+                      value={policyForm.reAuthIntervalUnit || 'day'}
+                      onValueChange={(value: 'hour' | 'day') => setPolicyForm({ ...policyForm, reAuthIntervalUnit: value })}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue placeholder="Đơn vị" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hour">Giờ</SelectItem>
+                        <SelectItem value="day">Ngày</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+             
+                
+                {/* Số lần Thử lại */}
+                <div>
+                  <Label>Số lần Thử lại </Label>
+                  <p className="text-xs text-gray-500 mb-1">Giới hạn số lần nhập sai mật khẩu trước khi khóa tạm thời</p>
+                  <Input
+                    type="number"
+                    value={policyForm.retryLimit || ''}
+                    onChange={(e) => setPolicyForm({ ...policyForm, retryLimit: Number(e.target.value) })}
                   />
                 </div>
               </div>
