@@ -197,6 +197,108 @@ export const initialCampuses: Campus[] = [
     description: "Cơ sở trung tâm thành phố",
   },
 ];
+// users 
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+  unit: string;
+  created: string;
+  role: string;
+  status: string;
+  macAddress: string;
+  bandwidthPolicy: string;
+  sessionPolicy: string;
+  auditPolicy: string;
+  securityPolicy: string;
+}
+
+export const initialUsers: User[] = [
+  {
+    id: 1,
+    email: '10011@student.hcmus.edu.vn',
+    name: 'Nguyễn Văn Minh',
+    unit: 'Khoa CNTT',
+    created: '2024-01-15',
+    role: 'Sinh viên',
+    status: 'Active',
+    macAddress: 'AA:BB:CC:DD:EE:01',
+    bandwidthPolicy: 'Băng thông Sinh viên',
+    sessionPolicy: 'Sinh viên - AUTHZ_Standard',
+    auditPolicy: 'Accounting Policy - Sinh viên 8H',
+    securityPolicy: 'SEC_Sinh_viên_Standard',
+  },
+  {
+    id: 2,
+    email: '10012@student.hcmus.edu.vn',
+    name: 'Trần Thị Hương',
+    unit: 'Khoa Toán',
+    created: '2024-01-14',
+    role: 'Sinh viên',
+    status: 'Active',
+    macAddress: 'AA:BB:CC:DD:EE:02',
+    bandwidthPolicy: 'Băng thông Sinh viên',
+    sessionPolicy: 'Sinh viên - AUTHZ_Standard',
+    auditPolicy: 'Accounting Policy - Sinh viên 8H',
+    securityPolicy: 'SEC_Sinh_viên_Standard',
+  },
+  {
+    id: 3,
+    email: 'admin@hcmus.edu.vn',
+    name: 'Phạm Văn Tuấn',
+    unit: 'Phòng Công nghệ Thông tin',
+    created: '2024-01-10',
+    role: 'Cán bộ',
+    status: 'Active',
+    macAddress: 'AA:BB:CC:DD:EE:03',
+    bandwidthPolicy: 'Băng thông Cán bộ',
+    sessionPolicy: 'AUTHZ_Cán_bộ_VIP',
+    auditPolicy: 'Accounting Policy - Sinh viên 8H', // Fallback as no specific Teacher audit
+    securityPolicy: 'SEC_Cán_bộ_Premium',
+  },
+  {
+    id: 4,
+    email: '10013@student.hcmus.edu.vn',
+    name: 'Lê Quốc Huy',
+    unit: 'Khoa Hóa',
+    created: '2024-01-12',
+    role: 'Sinh viên',
+    status: 'Disabled',
+    macAddress: 'AA:BB:CC:DD:EE:04',
+    bandwidthPolicy: 'Băng thông Sinh viên',
+    sessionPolicy: 'Sinh viên - AUTHZ_Standard',
+    auditPolicy: 'Accounting Policy - Sinh viên 8H',
+    securityPolicy: 'SEC_Sinh_viên_Standard',
+  },
+  {
+    id: 5,
+    email: 'guest@example.com',
+    name: 'Khách Vãng lai',
+    unit: 'Ngoài',
+    created: '2024-01-11',
+    role: 'Khách',
+    status: 'Active',
+    macAddress: '',
+    bandwidthPolicy: 'Băng thông Khách',
+    sessionPolicy: 'AUTHZ_Khách_Portal',
+    auditPolicy: 'Accounting Policy - Khách 2H',
+    securityPolicy: 'SEC_Khách_Restricted',
+  },
+  {
+    id: 6,
+    email: '10014@student.hcmus.edu.vn',
+    name: 'Võ Minh Tâm',
+    unit: 'Khoa Vật lý',
+    created: '2024-01-09',
+    role: 'Sinh viên',
+    status: 'Active',
+    macAddress: 'AA:BB:CC:DD:EE:06',
+    bandwidthPolicy: 'Băng thông Sinh viên',
+    sessionPolicy: 'Sinh viên - AUTHZ_Standard',
+    auditPolicy: 'Accounting Policy - Sinh viên 8H',
+    securityPolicy: 'SEC_Sinh_viên_Standard',
+  },
+];
 
 // Buildings
 export const initialBuildings: Building[] = [
@@ -590,6 +692,15 @@ export const initialPolicies: WifiPolicy[] = [
     applyToRoles: ["Cán bộ"],
   },
   {
+    id: 13,
+    name: "Băng thông Khách",
+    description: "Giới hạn băng thông cho khách",
+    type: "bandwidth",
+    downloadLimit: 5,
+    uploadLimit: 2,
+    applyToRoles: ["Khách"],
+  },
+  {
     id: 3,
     name: "Phiên Sinh viên",
     description: "Thời gian phiên cho sinh viên",
@@ -684,7 +795,7 @@ export const initialPolicies: WifiPolicy[] = [
   },
   {
     id: 10,
-    name: "AUTHZ_Sinh_viên_Default",
+    name: "Sinh viên - AUTHZ_Standard",
     description: "Chính sách cấp quyền mặc định cho sinh viên",
     type: "authorization",
     applyToRoles: ["Sinh viên"],
@@ -715,6 +826,23 @@ export const initialPolicies: WifiPolicy[] = [
     bindMacAddress: false,
     isActive: true,
     maxConcurrentDevices: 5,
+  },
+  {
+    id: 12,
+    name: "AUTHZ_Khách_Portal",
+    description: "Chính sách cấp quyền cho khách qua Portal",
+    type: "authorization",
+    applyToRoles: ["Khách"],
+    vlanId: 30,
+    downloadLimit: 5,
+    uploadLimit: 2,
+    maxSessionTime: 2, // 2 hours
+    maxDailyData: 1, // 1 GB
+    idleTimeout: 15, // 15 mins
+    autoReLogin: false,
+    bindMacAddress: false,
+    isActive: true,
+    maxConcurrentDevices: 1,
   },
 ];
 

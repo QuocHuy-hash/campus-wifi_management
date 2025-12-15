@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, LogOut, User } from 'lucide-react';
+import { Menu, X, LogOut, User, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface DashboardLayoutProps {
@@ -13,12 +13,31 @@ interface UserInfo {
   name: string;
 }
 
-const menuItems = [
+interface MenuItem {
+  label: string;
+  path: string;
+  subItems?: { label: string; path: string }[];
+}
+
+const menuItems: MenuItem[] = [
   { label: 'Tổng quan', path: '/' },
   { label: 'Quản lý Điểm phát WIFI', path: '/access-points' },
   { label: 'Quản lý Người dùng', path: '/users' },
   { label: 'Chính sách', path: '/policies' },
-  { label: 'Báo cáo', path: '/reports' },
+  { 
+    label: 'Báo cáo', 
+    path: '/reports',
+    subItems: [
+      { label: 'Người dùng', path: '/reports?tab=users' },
+      { label: 'Băng thông', path: '/reports?tab=bandwidth' },
+      { label: 'Điểm phát', path: '/reports?tab=ap' },
+      { label: 'Bộ điều khiển', path: '/reports?tab=controllers' },
+      { label: 'Vi phạm', path: '/reports?tab=violations' },
+      { label: 'Nhật ký Phiên', path: '/reports?tab=sessions' },
+      { label: 'Sự cố', path: '/reports?tab=incidents' },
+      { label: 'Nhật ký', path: '/reports?tab=logs' },
+    ]
+  },
   { label: 'Cài đặt', path: '/settings' },
 ];
 
@@ -27,6 +46,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['/reports']); // Default expand reports
+
+  const toggleSubmenu = (path: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
+    );
+  };
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -99,20 +125,70 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         >
           <nav className="p-4 space-y-2">
             {menuItems.map((item) => {
-              const isActive = location === item.path;
+              const isActive = location === item.path || (item.subItems && location.startsWith(item.path));
+              const isExpanded = expandedMenus.includes(item.path);
+              const hasSubItems = item.subItems && item.subItems.length > 0;
+
               return (
-                <a
-                  key={item.path}
-                  href={item.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {item.label}
-                </a>
+                <div key={item.path}>
+                  <div
+                    onClick={() => {
+                      if (hasSubItems) {
+                        toggleSubmenu(item.path);
+                      } else {
+                        setLocation(item.path);
+                         setMobileMenuOpen(false);
+                      }
+                    }}
+                    className={`flex items-center justify-between px-4 py-3 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
+                      isActive && !hasSubItems
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    } ${isActive && hasSubItems ? 'bg-blue-50 text-blue-700' : ''}`}
+                  >
+                    <span>{item.label}</span>
+                    {hasSubItems && (
+                      isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />
+                    )}
+                  </div>
+                  
+                  {/* Sub-menu */}
+                  {hasSubItems && isExpanded && (
+                    <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-100 pl-2">
+                       {item.subItems!.map(subItem => {
+                         // Check if this subItem is active. 
+                         // For query params, we need to handle exact match or simple includes.
+                         // But useLocation returns /path, not query. Wrapper might be needed.
+                         // wouter's useLocation only returns pathname.
+                         // So we check window.location.search or we rely on 'isActive' logic above?
+                         // We can't easily check query param with just 'location' from wouter.
+                         // We will implement a visual check using window.location for now or just generic highlighting.
+                         
+                         // Better: check if the full href matches current href
+                         const isSubActive = window.location.pathname + window.location.search === subItem.path;
+                         
+                         return (
+                           <a
+                             key={subItem.path}
+                             href={subItem.path}
+                             onClick={(e) => {
+                               e.preventDefault();
+                               window.location.href = subItem.path;
+                               setMobileMenuOpen(false);
+                             }}
+                            className={`block px-3 py-2 rounded-md text-sm transition-colors ${
+                              isSubActive 
+                                ? 'text-blue-600 font-semibold bg-blue-50' 
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                           >
+                             {subItem.label}
+                           </a>
+                         );
+                       })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>

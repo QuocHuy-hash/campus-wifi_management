@@ -29,134 +29,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Search, Edit, Trash2, Eye, Plus, Shield } from 'lucide-react';
+import { initialPolicies, initialUsers, User } from '../data/mockData';
 
 const userRoles = ['Sinh viên', 'Cán bộ', 'Khách'];
 const accountStatuses = ['Active', 'Disabled'];
 
-// Sample policies for applying to users
-const bandwidthPolicies = [
-  { id: 1, name: 'Sinh viên - Cơ bản (10 Mbps)' },
-  { id: 2, name: 'Cán bộ - Cao cấp (50 Mbps)' },
-  { id: 3, name: 'Khách - Giới hạn (5 Mbps)' },
-];
+// Filter policies by type from mock data
+const bandwidthPolicies = initialPolicies.filter(p => p.type === 'bandwidth');
+const sessionPolicies = initialPolicies.filter(p => p.type === 'authorization'); // Mapping "Cấp quyền (Phiên)" to authorization
+const auditPolicies = initialPolicies.filter(p => p.type === 'audit');
+const securityPolicies = initialPolicies.filter(p => p.type === 'security');
 
-const sessionPolicies = [
-  { id: 1, name: 'Phiên 8 giờ - Sinh viên' },
-  { id: 2, name: 'Phiên 24 giờ - Cán bộ' },
-  { id: 3, name: 'Phiên 2 giờ - Khách' },
-];
 
-const auditPolicies = [
-  { id: 1, name: 'Ghi log cơ bản' },
-  { id: 2, name: 'Ghi log chi tiết' },
-];
-
-const securityPolicies = [
-  { id: 1, name: 'Bảo mật tiêu chuẩn' },
-  { id: 2, name: 'Bảo mật cao' },
-];
-
-interface User {
-  id: number;
-  email: string;
-  name: string;
-  unit: string;
-  created: string;
-  role: string;
-  status: string;
-  macAddress: string;
-  bandwidthPolicy: string;
-  sessionPolicy: string;
-  auditPolicy: string;
-  securityPolicy: string;
-}
-
-const initialUsers: User[] = [
-  {
-    id: 1,
-    email: '10011@student.hcmus.edu.vn',
-    name: 'Nguyễn Văn Minh',
-    unit: 'Khoa CNTT',
-    created: '2024-01-15',
-    role: 'Sinh viên',
-    status: 'Active',
-    macAddress: 'AA:BB:CC:DD:EE:01',
-    bandwidthPolicy: 'Sinh viên - Cơ bản (10 Mbps)',
-    sessionPolicy: 'Phiên 8 giờ - Sinh viên',
-    auditPolicy: 'Ghi log cơ bản',
-    securityPolicy: 'Bảo mật tiêu chuẩn',
-  },
-  {
-    id: 2,
-    email: '10012@student.hcmus.edu.vn',
-    name: 'Trần Thị Hương',
-    unit: 'Khoa Toán',
-    created: '2024-01-14',
-    role: 'Sinh viên',
-    status: 'Active',
-    macAddress: 'AA:BB:CC:DD:EE:02',
-    bandwidthPolicy: 'Sinh viên - Cơ bản (10 Mbps)',
-    sessionPolicy: 'Phiên 8 giờ - Sinh viên',
-    auditPolicy: 'Ghi log cơ bản',
-    securityPolicy: 'Bảo mật tiêu chuẩn',
-  },
-  {
-    id: 3,
-    email: 'admin@hcmus.edu.vn',
-    name: 'Phạm Văn Tuấn',
-    unit: 'Phòng Công nghệ Thông tin',
-    created: '2024-01-10',
-    role: 'Cán bộ',
-    status: 'Active',
-    macAddress: 'AA:BB:CC:DD:EE:03',
-    bandwidthPolicy: 'Cán bộ - Cao cấp (50 Mbps)',
-    sessionPolicy: 'Phiên 24 giờ - Cán bộ',
-    auditPolicy: 'Ghi log chi tiết',
-    securityPolicy: 'Bảo mật cao',
-  },
-  {
-    id: 4,
-    email: '10013@student.hcmus.edu.vn',
-    name: 'Lê Quốc Huy',
-    unit: 'Khoa Hóa',
-    created: '2024-01-12',
-    role: 'Sinh viên',
-    status: 'Disabled',
-    macAddress: 'AA:BB:CC:DD:EE:04',
-    bandwidthPolicy: 'Sinh viên - Cơ bản (10 Mbps)',
-    sessionPolicy: 'Phiên 8 giờ - Sinh viên',
-    auditPolicy: 'Ghi log cơ bản',
-    securityPolicy: 'Bảo mật tiêu chuẩn',
-  },
-  {
-    id: 5,
-    email: 'guest@example.com',
-    name: 'Khách Vãng lai',
-    unit: 'Ngoài',
-    created: '2024-01-11',
-    role: 'Khách',
-    status: 'Active',
-    macAddress: '',
-    bandwidthPolicy: 'Khách - Giới hạn (5 Mbps)',
-    sessionPolicy: 'Phiên 2 giờ - Khách',
-    auditPolicy: 'Ghi log chi tiết',
-    securityPolicy: 'Bảo mật cao',
-  },
-  {
-    id: 6,
-    email: '10014@student.hcmus.edu.vn',
-    name: 'Võ Minh Tâm',
-    unit: 'Khoa Vật lý',
-    created: '2024-01-09',
-    role: 'Sinh viên',
-    status: 'Active',
-    macAddress: 'AA:BB:CC:DD:EE:06',
-    bandwidthPolicy: 'Sinh viên - Cơ bản (10 Mbps)',
-    sessionPolicy: 'Phiên 8 giờ - Sinh viên',
-    auditPolicy: 'Ghi log cơ bản',
-    securityPolicy: 'Bảo mật tiêu chuẩn',
-  },
-];
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>(initialUsers);
@@ -176,6 +60,10 @@ export default function Users() {
   const [addForm, setAddForm] = useState<Partial<User>>({
     role: 'Sinh viên',
     status: 'Active',
+    bandwidthPolicy: bandwidthPolicies[0]?.name,
+    sessionPolicy: sessionPolicies[0]?.name,
+    auditPolicy: auditPolicies[0]?.name,
+    securityPolicy: securityPolicies[0]?.name,
   });
 
   const filteredUsers = users.filter((user) => {
@@ -246,14 +134,21 @@ export default function Users() {
       role: addForm.role || 'Sinh viên',
       status: addForm.status || 'Active',
       macAddress: addForm.macAddress || '',
-      bandwidthPolicy: bandwidthPolicies[0].name,
-      sessionPolicy: sessionPolicies[0].name,
-      auditPolicy: auditPolicies[0].name,
-      securityPolicy: securityPolicies[0].name,
+      bandwidthPolicy: addForm.bandwidthPolicy || bandwidthPolicies[0]?.name || '',
+      sessionPolicy: addForm.sessionPolicy || sessionPolicies[0]?.name || '',
+      auditPolicy: addForm.auditPolicy || auditPolicies[0]?.name || '',
+      securityPolicy: addForm.securityPolicy || securityPolicies[0]?.name || '',
     };
     setUsers([...users, newUser]);
     setAddDialogOpen(false);
-    setAddForm({ role: 'Sinh viên', status: 'Active' });
+    setAddForm({ 
+      role: 'Sinh viên', 
+      status: 'Active',
+      bandwidthPolicy: bandwidthPolicies[0]?.name,
+      sessionPolicy: sessionPolicies[0]?.name,
+      auditPolicy: auditPolicies[0]?.name,
+      securityPolicy: securityPolicies[0]?.name,
+    });
   };
 
   return (
@@ -543,13 +438,13 @@ export default function Users() {
                 </SelectTrigger>
                 <SelectContent>
                   {bandwidthPolicies.map((policy) => (
-                    <SelectItem key={policy.id} value={policy.name}>{policy.name}</SelectItem>
+                    <SelectItem key={policy.id} value={policy.name}>{policy.name }</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="policy-session">Chính sách Cấp quyền truy cập (Phiên)</Label>
+              <Label htmlFor="policy-session mb-5">Chính sách Cấp quyền truy cập (Phiên)</Label>
               <Select 
                 value={editForm.sessionPolicy} 
                 onValueChange={(value) => setEditForm({ ...editForm, sessionPolicy: value })}

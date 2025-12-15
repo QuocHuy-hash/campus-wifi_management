@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -33,7 +34,7 @@ import {
 } from 'lucide-react';
 
 // Import mock data
-import { initialCampuses, initialBuildings } from '@/data/mockData';
+import { initialCampuses, initialBuildings, initialControllers } from '@/data/mockData';
 
 // Mock data
 const mockUserReportData = [
@@ -58,6 +59,12 @@ const mockAPAccessData = [
   { apName: 'AP-B1-01', location: 'Tòa B, Tầng 1', totalAccess: 987, avgClients: 38, usage: 62 },
   { apName: 'AP-B2-01', location: 'Tòa B, Tầng 2', totalAccess: 1102, avgClients: 41, usage: 68 },
   { apName: 'AP-C1-01', location: 'Tòa C, Tầng 1', totalAccess: 1567, avgClients: 58, usage: 92 },
+];
+
+const mockControllerReportData = [
+  { name: 'WLC-Core-01', ip: '192.168.10.10', model: 'Cisco 9800', firmware: '17.6.4', location: 'Server Room A', apCount: 150, clients: 2500, cpu: 45, memory: 60 },
+  { name: 'WLC-Core-02', ip: '192.168.10.11', model: 'Cisco 9800', firmware: '17.6.4', location: 'Server Room B', apCount: 140, clients: 2100, cpu: 42, memory: 58 },
+  { name: 'WLC-Dist-01', ip: '192.168.20.10', model: 'Aruba 7210', firmware: '8.10.0', location: 'Cơ sở 2', apCount: 80, clients: 1200, cpu: 35, memory: 45 },
 ];
 
 const mockViolationData = [
@@ -181,10 +188,29 @@ const mockIncidentData = [
 ];
 
 export default function Reports() {
-  const [activeTab, setActiveTab] = useState('users');
+  const [location, setLocation] = useLocation();
+  
+  // Helper to parse tab from URL
+  const getTab = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'users';
+  };
+
+  const [activeTab, setActiveTab] = useState(getTab());
   const [dateRange, setDateRange] = useState('week');
+
+  // Sync tab with URL
+  useEffect(() => {
+    setActiveTab(getTab());
+  }, [location]);
+
+  const handleTabChange = (value: string) => {
+    setLocation(`/reports?tab=${value}`);
+  };
   const [startDate, setStartDate] = useState('2024-01-11');
   const [endDate, setEndDate] = useState('2024-01-15');
+  const [controllerFilter, setControllerFilter] = useState('all');
+  const [campusFilter, setCampusFilter] = useState('all');
 
   // Session Logs Filter States
   const [sessionStartDate, setSessionStartDate] = useState('2024-01-15');
@@ -335,65 +361,98 @@ export default function Reports() {
       {/* Filter Bar */}
       {/* <FilterBar /> */}
 
-      {/* Report Tabs */}
+      {/* Filter Bar */}
+      <Card className="p-4 mb-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Calendar size={18} className="text-gray-500" />
+            <Label className="text-sm text-gray-600">Từ ngày:</Label>
+            <Input 
+              type="date" 
+              value={startDate} 
+              onChange={(e) => setStartDate(e.target.value)} 
+              className="w-40" 
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm text-gray-600">Đến ngày:</Label>
+            <Input 
+              type="date" 
+              value={endDate} 
+              onChange={(e) => setEndDate(e.target.value)} 
+              className="w-40" 
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Server size={18} className="text-gray-500" />
+            <Select value={controllerFilter} onValueChange={setControllerFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Chọn Controller" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả Controller</SelectItem>
+                {initialControllers.map((ctrl) => (
+                  <SelectItem key={ctrl.id} value={ctrl.id.toString()}>
+                    {ctrl.name} ({ctrl.ipAddress})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={campusFilter} onValueChange={setCampusFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Chọn Cơ sở" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả Cơ sở</SelectItem>
+                {initialCampuses.map((campus) => (
+                  <SelectItem key={campus.id} value={campus.id.toString()}>
+                    {campus.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" size="sm">
+            <RefreshCw size={16} className="mr-2" />
+            Làm mới
+          </Button>
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => handleExport('excel', activeTab)}>
+              <FileSpreadsheet size={16} className="mr-2" />
+              Xuất Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('pdf', activeTab)}>
+              <Download size={16} className="mr-2" />
+              Xuất PDF
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Report Content */}
       <Card className="overflow-hidden">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full justify-start rounded-none border-b bg-gray-50 p-0 h-auto flex-wrap">
-            <TabsTrigger 
-              value="users" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-white px-6 py-3"
-            >
-              <Users size={16} className="mr-2" />
-              Người dùng
-            </TabsTrigger>
-            <TabsTrigger 
-              value="bandwidth"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-white px-6 py-3"
-            >
-              <Activity size={16} className="mr-2" />
-              Băng thông
-            </TabsTrigger>
-            <TabsTrigger 
-              value="ap"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-white px-6 py-3"
-            >
-              <Wifi size={16} className="mr-2" />
-              Điểm phát
-            </TabsTrigger>
-            <TabsTrigger 
-              value="violations"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-white px-6 py-3"
-            >
-              <Shield size={16} className="mr-2" />
-              Vi phạm
-            </TabsTrigger>
-            <TabsTrigger 
-              value="sessions"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#1e3a5f] data-[state=active]:bg-white px-6 py-3"
-            >
-              <Clock size={16} className="mr-2" />
-              Nhật ký Phiên
-            </TabsTrigger>
-            <TabsTrigger 
-              value="incidents"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-white px-6 py-3"
-            >
-              <AlertTriangle size={16} className="mr-2" />
-              Sự cố
-            </TabsTrigger>
-            <TabsTrigger 
-              value="logs"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-white px-6 py-3"
-            >
-              <FileText size={16} className="mr-2" />
-              Nhật ký
-            </TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
 
           {/* Tab: Users Report */}
           <TabsContent value="users" className="p-6 m-0">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Báo cáo người dùng theo thời gian</h3>
+              <div className="flex justify-between items-center">
+                 <h3 className="text-lg font-semibold text-gray-900">Báo cáo người dùng theo thời gian</h3>
+                 <div className="flex gap-2">
+                    <Select>
+                      <SelectTrigger className="w-[180px] h-8 text-xs">
+                        <SelectValue placeholder="Lọc theo Authentication" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả Auth Policy</SelectItem>
+                        <SelectItem value="sinhvien">Sinh viên - LDAP</SelectItem>
+                        <SelectItem value="guest">Khách - Portal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                 </div>
+              </div>
               
               {/* Summary */}
               <div className="grid grid-cols-3 gap-4">
@@ -539,6 +598,50 @@ export default function Reports() {
             </div>
           </TabsContent>
 
+          {/* Tab: Controller Report */}
+          <TabsContent value="controllers" className="p-6 m-0">
+             <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Báo cáo Bộ điều khiển WIFI (Controllers)</h3>
+              
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Tên Controller</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Model/Firmware</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vị trí</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Số lượng AP</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Clients</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Tải (CPU/Mem)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {mockControllerReportData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                           <div className="font-medium text-sm">{row.name}</div>
+                           <div className="text-xs text-gray-500">{row.ip}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                           <div className="text-gray-900">{row.model}</div>
+                           <div className="text-xs text-gray-500">v{row.firmware}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{row.location}</td>
+                        <td className="px-4 py-3 text-sm text-right">{row.apCount}</td>
+                        <td className="px-4 py-3 text-sm text-right">{row.clients.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm text-right">
+                           <span className={row.cpu > 80 ? "text-red-600 font-bold" : "text-gray-600"}>CPU: {row.cpu}%</span>
+                           <span className="mx-1">|</span>
+                           <span className={row.memory > 80 ? "text-red-600 font-bold" : "text-gray-600"}>Mem: {row.memory}%</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+
           {/* Tab: Violations */}
           <TabsContent value="violations" className="p-6 m-0">
             <div className="space-y-4">
@@ -605,10 +708,9 @@ export default function Reports() {
                 <p className="text-sm text-gray-500 mt-1">Theo dõi và kiểm toán chi tiết các phiên kết nối của người dùng</p>
               </div>
               
-              {/* B. Khu vực Bộ lọc (Filter Bar) - Compact */}
-              <Card className="p-3 bg-gray-50 border-[#1e3a5f]/20">
+              {/* B. Khu vực Bộ lọc (Filter Bar) - Đã chuyển lên filter chung */}
+              {/* <Card className="p-3 bg-gray-50 border-[#1e3a5f]/20">
                 <div className="flex flex-wrap items-end gap-3">
-                  {/* Thời gian */}
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
                       <Label className="text-xs text-gray-500 whitespace-nowrap">Từ</Label>
@@ -630,7 +732,6 @@ export default function Reports() {
                     </div>
                   </div>
                   
-                  {/* Vai trò */}
                   <Select value={sessionRoleFilter} onValueChange={setSessionRoleFilter}>
                     <SelectTrigger className="w-[120px] h-9">
                       <SelectValue placeholder="Vai trò" />
@@ -643,7 +744,6 @@ export default function Reports() {
                     </SelectContent>
                   </Select>
                   
-                  {/* Cơ sở */}
                   <Select value={sessionCampusFilter} onValueChange={setSessionCampusFilter}>
                     <SelectTrigger className="w-[140px] h-9">
                       <SelectValue placeholder="Cơ sở" />
@@ -658,7 +758,6 @@ export default function Reports() {
                     </SelectContent>
                   </Select>
                   
-                  {/* Tòa nhà */}
                   <Select value={sessionBuildingFilter} onValueChange={setSessionBuildingFilter}>
                     <SelectTrigger className="w-[130px] h-9">
                       <SelectValue placeholder="Tòa nhà" />
@@ -673,7 +772,6 @@ export default function Reports() {
                     </SelectContent>
                   </Select>
                   
-                  {/* AP/Controller */}
                   <div className="relative">
                     <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
                     <Input 
@@ -684,7 +782,6 @@ export default function Reports() {
                     />
                   </div>
                   
-                  {/* Username/MAC/IP */}
                   <div className="relative">
                     <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
                     <Input 
@@ -695,7 +792,6 @@ export default function Reports() {
                     />
                   </div>
                   
-                  {/* Buttons */}
                   <Button size="sm" className="bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 h-9">
                     <Search size={14} className="mr-1" />
                     Lọc
@@ -721,7 +817,7 @@ export default function Reports() {
                     </Button>
                   </div>
                 </div>
-              </Card>
+              </Card> */}
               
               {/* D. Tóm tắt Biểu đồ - Summary Stats */}
               {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -773,7 +869,7 @@ export default function Reports() {
               <Card className="overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-[#1e3a5f] text-white">
+                    <thead className="text-lg font-semibold text-gray-700 bg-gray-50">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-semibold">Username</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold">Vai trò</th>
