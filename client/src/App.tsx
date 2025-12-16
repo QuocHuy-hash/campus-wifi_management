@@ -17,20 +17,21 @@ function isAuthenticated() {
   return localStorage.getItem('isLoggedIn') === 'true';
 }
 
-// Protected Route wrapper
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  if (!isAuthenticated()) {
-    return <Redirect to="/login" />;
-  }
-  return <Component />;
-}
-
 function Router() {
+  const [location] = useLocation();
+  // Re-check auth on every location change
+  const authenticated = isAuthenticated();
+  
+  // Redirect to dashboard if already logged in and on login page
+  if (location === '/login' && authenticated) {
+    return <Redirect to="/" />;
+  }
+  
   return (
     <Switch>
       <Route path="/login" component={Login} />
       <Route>
-        {isAuthenticated() ? (
+        {authenticated ? (
           <DashboardLayout>
             <Switch>
               <Route path={"/"} component={Dashboard} />
