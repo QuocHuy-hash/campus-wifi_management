@@ -42,12 +42,12 @@ const menuItems: MenuItem[] = [
     label: 'Cài đặt', 
     path: '/settings',
     subItems: [
+      { label: 'Phân quyền & Nhóm', path: '/settings?tab=access' },
       { label: 'Quản trị viên', path: '/settings?tab=users' },
       { label: 'Khu vực & Tòa nhà', path: '/settings?tab=areas' },
       { label: 'Thiết bị', path: '/settings?tab=devices' },
       { label: 'Tích hợp hệ thống', path: '/settings?tab=technical' },
       { label: 'Bảo mật & SSID', path: '/settings?tab=security' },
-      { label: 'Phân quyền', path: '/settings?tab=access' },
       { label: 'Nhật ký hệ thống', path: '/settings?tab=logs' },
     ]
   },

@@ -31,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Lock, Database, Mail, Shield, Clock, Eye, Plus, Edit, Trash2, Users, Search, FileText, MapPin, Building2, Map, Server, Wifi, Globe, Key, Network, Cloud, Radio, Check, ChevronsUpDown } from 'lucide-react';
+import { Lock, Database, Mail, Shield, Clock, Eye, Plus, Edit, Trash2, Users, Search, FileText, MapPin, Building2, Map, Server, Wifi, Globe, Key, Network, Cloud, Radio, Check, ChevronsUpDown, ShieldCheck, X } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import {
   Command,
@@ -251,8 +251,38 @@ export default function Settings() {
   const [selectedPortal, setSelectedPortal] = useState<CaptivePortalConfig | null>(null);
   const [portalForm, setPortalForm] = useState<Partial<CaptivePortalConfig>>({});
   
-  const filteredLogs = logFilter === 'all' ? logs : logs.filter(log => log.type === logFilter);
+  // Data states - User Groups & Resources
+  const [resources, setResources] = useState<string[]>(resourceList);
+  const [groups, setGroups] = useState<UserGroup[]>(() => 
+    userGroups.map((name, index) => ({
+      id: index + 1,
+      name,
+      permissions: resourceList.map(r => ({ resource: r, canView: index < 2, canEdit: index === 0 }))
+    }))
+  );
+
+  // Dialog states - Resources
+  const [managePermissionsOpen, setManagePermissionsOpen] = useState(false);
+  const [editingResource, setEditingResource] = useState<string | null>(null);
+  const [deleteResourceDialogOpen, setDeleteResourceDialogOpen] = useState(false);
+  const [selectedResource, setSelectedResource] = useState<string | null>(null);
+  const [resourceForm, setResourceForm] = useState<{name: string}>({ name: '' });
+  const [editResourceForm, setEditResourceForm] = useState<{name: string}>({ name: '' });
+
+  // IP Restriction State
+  const [allowedIps, setAllowedIps] = useState<string[]>(['192.168.1.0/24', '10.0.0.10']);
+  const [newIp, setNewIp] = useState('');
+
+
+
+  // Dialog states - User Groups
+  const [addGroupDialogOpen, setAddGroupDialogOpen] = useState(false);
+  const [editGroupDialogOpen, setEditGroupDialogOpen] = useState(false);
+  const [deleteGroupDialogOpen, setDeleteGroupDialogOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null);
+  const [groupForm, setGroupForm] = useState<Partial<UserGroup>>({});
   
+  const filteredLogs = logs.filter(log => logFilter === 'all' || log.type === logFilter);
   const filteredBuildings = selectedCampusFilter === 'all' 
     ? buildings 
     : buildings.filter(b => b.campusId === selectedCampusFilter);
@@ -606,7 +636,139 @@ export default function Settings() {
     }
     setDeleteRadiusDialogOpen(false);
     setSelectedRadius(null);
+    setDeleteRadiusDialogOpen(false);
+    setSelectedRadius(null);
   };
+
+  // User Group Handlers
+  const handleAddGroup = () => {
+    setGroupForm({ 
+      permissions: resources.map(r => ({ resource: r, canView: false, canEdit: false })) 
+    });
+    setAddGroupDialogOpen(true);
+  };
+
+  const handleEditGroup = (group: UserGroup) => {
+    setSelectedGroup(group);
+    setGroupForm(JSON.parse(JSON.stringify(group))); // Deep copy for permissions array
+    setEditGroupDialogOpen(true);
+  };
+
+  const handleDeleteGroup = (group: UserGroup) => {
+    setSelectedGroup(group);
+    setDeleteGroupDialogOpen(true);
+  };
+
+  const saveNewGroup = () => {
+    const newGroup: UserGroup = {
+      id: Math.max(...groups.map(g => g.id), 0) + 1,
+      name: groupForm.name || 'New Group',
+      permissions: groupForm.permissions || [],
+    };
+    setGroups([...groups, newGroup]);
+    setAddGroupDialogOpen(false);
+    setGroupForm({});
+  };
+
+  const saveEditGroup = () => {
+    if (selectedGroup) {
+      setGroups(groups.map(g => g.id === selectedGroup.id ? { ...g, ...groupForm } as UserGroup : g));
+    }
+    setEditGroupDialogOpen(false);
+    setSelectedGroup(null);
+    setGroupForm({});
+  };
+
+  const confirmDeleteGroup = () => {
+    if (selectedGroup) {
+      setGroups(groups.filter(g => g.id !== selectedGroup.id));
+    }
+    setDeleteGroupDialogOpen(false);
+    setSelectedGroup(null);
+  };
+
+  const handlePermissionChange = (resource: string, type: 'canView' | 'canEdit') => {
+    if (!groupForm.permissions) return;
+    
+    const updatedPermissions = groupForm.permissions.map(p => {
+      if (p.resource === resource) {
+        return { ...p, [type]: !p[type] };
+      }
+      return p;
+    });
+    
+    setGroupForm({ ...groupForm, permissions: updatedPermissions });
+  };
+
+  // Resource Handlers
+  const handleAddResource = () => {
+    if (resourceForm.name && !resources.includes(resourceForm.name)) {
+      const newResources = [...resources, resourceForm.name];
+      setResources(newResources);
+      // Update existing groups
+      setGroups(groups.map(g => ({
+        ...g,
+        permissions: [...g.permissions, { resource: resourceForm.name, canView: false, canEdit: false }]
+      })));
+      setResourceForm({ name: '' });
+    }
+  };
+
+  const startEditResource = (resource: string) => {
+    setEditingResource(resource);
+    setEditResourceForm({ name: resource });
+  };
+
+  const cancelEditResource = () => {
+    setEditingResource(null);
+    setEditResourceForm({ name: '' });
+  };
+
+  const saveEditResource = () => {
+    if (editingResource && editResourceForm.name && !resources.includes(editResourceForm.name)) {
+      const newResources = resources.map(r => r === editingResource ? editResourceForm.name : r);
+      setResources(newResources);
+      // Update existing groups
+      setGroups(groups.map(g => ({
+        ...g,
+        permissions: g.permissions.map(p => p.resource === editingResource ? { ...p, resource: editResourceForm.name } : p)
+      })));
+      setEditingResource(null);
+      setEditResourceForm({ name: '' });
+    }
+  };
+
+  const handleDeleteResource = (resource: string) => {
+    setSelectedResource(resource);
+    setDeleteResourceDialogOpen(true);
+  };
+
+  const confirmDeleteResource = () => {
+    if (selectedResource) {
+      const newResources = resources.filter(r => r !== selectedResource);
+      setResources(newResources);
+       // Update existing groups
+      setGroups(groups.map(g => ({
+        ...g,
+        permissions: g.permissions.filter(p => p.resource !== selectedResource)
+      })));
+    }
+    setDeleteResourceDialogOpen(false);
+    setSelectedResource(null);
+  };
+
+  // IP Handlers
+  const handleAddIp = () => {
+    if (newIp && !allowedIps.includes(newIp)) {
+      setAllowedIps([...allowedIps, newIp]);
+      setNewIp('');
+    }
+  };
+
+  const handleDeleteIp = (ip: string) => {
+    setAllowedIps(allowedIps.filter(item => item !== ip));
+  };
+
 
   // Portal Handlers
   const handleAddPortal = () => {
@@ -754,15 +916,7 @@ export default function Settings() {
                 </table>
               </div>
               
-              {/* Permission Config */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-sm font-medium text-gray-900 mb-3">Phân quyền Cập nhật</p>
-                <p className="text-sm text-gray-600 mb-3">Thiết lập quyền xem và cập nhật dữ liệu trên tài nguyên theo người dùng và theo nhóm</p>
-                <Button variant="outline" size="sm" onClick={() => setPermissionDialogOpen(true)}>
-                  <Shield size={16} className="mr-2" />
-                  Cấu hình phân quyền
-                </Button>
-              </div>
+
             </div>
           </TabsContent>
 
@@ -926,83 +1080,110 @@ export default function Settings() {
           </TabsContent>
 
           {/* Tab 3: Security */}
-          <TabsContent value="security" className="p-6 space-y-6">
+          <TabsContent value="security" className="p-4 space-y-4">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Lock size={24} />
+                <Lock size={20} />
                 Thiết lập Bảo mật
               </h3>
-              <div className="space-y-4">
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-sm font-medium text-gray-900 mb-3">Chính sách Mật khẩu</p>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Password Policy */}
+                <div className="p-4 bg-white rounded-lg border border-gray-200">
+                  <p className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <Key size={16} className="text-gray-500" /> Chính sách Mật khẩu
+                  </p>
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs text-gray-600 font-medium">Yêu cầu mật khẩu mạnh</label>
-                      <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        <option>Bắt buộc (tối thiểu 8 ký tự, chữ hoa, số, ký tự đặc biệt)</option>
-                        <option>Tùy chọn</option>
+                      <label className="text-xs text-gray-600 font-medium">Yêu cầu</label>
+                      <select className="w-full mt-1 px-3 py-1.5 border border-gray-300 rounded text-sm bg-gray-50">
+                        <option>Mạnh (8+ ký tự, A-Za-z0-9, đặc biệt)</option>
+                        <option>Trung bình</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-600 font-medium">Thời gian thay đổi mật khẩu</label>
-                      <Input type="number" placeholder="90 (ngày)" className="mt-1" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-600 font-medium">Thời gian hợp lệ</label>
-                      <Input type="number" placeholder="365 (ngày)" className="mt-1" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                        <label className="text-xs text-gray-600 font-medium">Đổi sau (ngày)</label>
+                        <Input type="number" placeholder="90" className="mt-1 h-8" />
+                        </div>
+                        <div>
+                        <label className="text-xs text-gray-600 font-medium">Hết hạn (ngày)</label>
+                        <Input type="number" placeholder="365" className="mt-1 h-8" />
+                        </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-sm font-medium text-gray-900 mb-3">Chính sách Hạn chế Đăng nhập</p>
+
+                {/* Login Restrictions */}
+                <div className="p-4 bg-white rounded-lg border border-gray-200">
+                  <p className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <Shield size={16} className="text-gray-500" /> Hạn chế Đăng nhập
+                  </p>
                   <div className="space-y-3">
-                    <div>
-                      <label className="text-xs text-gray-600 font-medium">Giới hạn số lần đăng nhập sai</label>
-                      <Input type="number" placeholder="5 lần" className="mt-1" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                        <label className="text-xs text-gray-600 font-medium">Sai tối đa</label>
+                        <Input type="number" placeholder="5 lần" className="mt-1 h-8" />
+                        </div>
+                        <div>
+                        <label className="text-xs text-gray-600 font-medium">Khóa (phút)</label>
+                        <Input type="number" placeholder="30" className="mt-1 h-8" />
+                        </div>
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-600 font-medium">Tự động vô hiệu hóa tài khoản sau</label>
-                      <Input type="number" placeholder="30 phút" className="mt-1" />
-                    </div>
+                     <div className="pt-2">
+                        <label className="flex items-center gap-2 text-sm text-gray-700">
+                             <input type="checkbox" className="rounded border-gray-300" defaultChecked /> Tự động gửi cảnh báo qua Email
+                        </label>
+                     </div>
                   </div>
                 </div>
 
+                {/* Admin Network Restriction - Compact */}
+                <div className="p-4 bg-white rounded-lg border border-gray-200 col-span-1 lg:col-span-2">
+                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck size={16} className="text-green-600" />
+                            <h4 className="text-sm font-semibold text-gray-900">Giới hạn IP Quản trị</h4>
+                            <span className="text-xs text-gray-500 hidden sm:inline">(Chỉ cho phép truy cập từ các IP bên dưới)</span>
+                        </div>
+                         <div className="flex gap-2">
+                            <Input 
+                            placeholder="IP/CIDR (VD: 192.168.1.10)" 
+                            value={newIp}
+                            onChange={(e) => setNewIp(e.target.value)}
+                            className="h-8 w-48 text-sm"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddIp()}
+                            />
+                            <Button onClick={handleAddIp} disabled={!newIp} size="sm" className="h-8 bg-green-600 hover:bg-green-700">
+                            <Plus size={14} className="mr-1" /> Thêm
+                            </Button>
+                        </div>
+                   </div>
+
+                   <div className="flex flex-wrap gap-2">
+                        {allowedIps.map((ip) => (
+                          <div key={ip} className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded-full text-sm font-mono transition-colors">
+                             <span>{ip}</span>
+                             <button onClick={() => handleDeleteIp(ip)} className="text-gray-400 hover:text-red-600">
+                                <X size={14} />
+                             </button>
+                          </div>
+                        ))}
+                        {allowedIps.length === 0 && (
+                             <span className="text-sm text-gray-500 italic py-1">Chưa có giới hạn nào. Truy cập công khai.</span>
+                        )}
+                   </div>
+                </div>
+              </div>
+
+               <div className="mt-4 flex justify-end">
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white">Lưu cài đặt bảo mật</Button>
               </div>
             </div>
           </TabsContent>
 
-          {/* Tab 4: Access Control */}
-          <TabsContent value="access" className="p-6 space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Eye size={24} />
-                Kiểm soát Truy cập
-              </h3>
-              <div className="space-y-4">
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-sm font-medium text-gray-900 mb-3">Thiết lập Timeout</p>
-                  <div>
-                    <label className="text-xs text-gray-600 font-medium">Thời gian chờ (phút)</label>
-                    <Input type="number" placeholder="30" className="mt-1" />
-                    <p className="text-xs text-gray-500 mt-1">Đóng phiên kết nối khi không hoạt động</p>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-sm font-medium text-gray-900 mb-3">Giới hạn Địa chỉ Mạng Quản trị</p>
-                  <div>
-                    <label className="text-xs text-gray-600 font-medium">IP/Subnet được phép</label>
-                    <Input placeholder="192.168.1.0/24" className="mt-1" />
-                    <p className="text-xs text-gray-500 mt-1">Danh sách IP được phép truy cập từ xa</p>
-                  </div>
-                </div>
-
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">Lưu cài đặt truy cập</Button>
-              </div>
-            </div>
-          </TabsContent>
+          
 
           {/* Tab 5: System Integration (Renamed from Technical) */}
           <TabsContent value="technical" className="p-6 space-y-8">
@@ -1236,7 +1417,86 @@ export default function Settings() {
             </div>
           </TabsContent>
 
-          {/* Tab 6: Logs */}
+          {/* Tab 5: Access (Resources & User Groups) */}
+          <TabsContent value="access" className="p-6 space-y-8">
+            
+
+            {/* User Groups Section (Moved from Users tab) */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Users size={20} className="text-blue-600" />
+                    Quản lý Nhóm (Groups)
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Tạo nhóm và phân quyền truy cập cho từng nhóm.
+                  </p>
+                </div>
+<div>
+ <Button onClick={() => setManagePermissionsOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                  <Database size={18} className="mr-2" />
+                  Quản lý Danh sách Quyền
+                </Button>
+                 <Button onClick={handleAddGroup} className="bg-blue-600 hover:bg-blue-700 ml-5">
+                  <Plus size={18} className="mr-2" />
+                  Thêm nhóm
+                </Button>
+</ div>
+              </div>
+              
+              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 w-16">ID</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên nhóm</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Quyền hạn (Permissions)</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900 w-32">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {groups.map((group) => (
+                      <tr key={group.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-500 text-center">{group.id}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{group.name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <div className="flex flex-wrap gap-1">
+                            {group.permissions.filter(p => p.canView || p.canEdit).length > 0 ? (
+                              group.permissions.filter(p => p.canView || p.canEdit).slice(0, 3).map((p, idx) => (
+                                <span key={idx} className="bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full border border-gray-200">
+                                  {p.resource} ({p.canEdit ? 'Edit' : 'View'})
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-gray-400 italic">Chưa phân quyền</span>
+                            )}
+                            {group.permissions.filter(p => p.canView || p.canEdit).length > 3 && (
+                              <span className="text-gray-500 text-xs self-center">
+                                +{group.permissions.filter(p => p.canView || p.canEdit).length - 3} more...
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditGroup(group)}>
+                              <Edit size={16} className="text-amber-600" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group)}>
+                              <Trash2 size={16} className="text-red-600" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Tab 6: System Logs */}
           <TabsContent value="logs" className="p-6 space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quản lý Nhật ký (Logs)</h3>
@@ -2566,6 +2826,259 @@ export default function Settings() {
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteRadius} className="bg-red-600 hover:bg-red-700">Xóa</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add User Group Dialog */}
+      <Dialog open={addGroupDialogOpen} onOpenChange={setAddGroupDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Thêm Nhóm người dùng mới</DialogTitle>
+            <DialogDescription>
+              Tạo nhóm mới và thiết lập quyền hạn truy cập tài nguyên.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="group-name" className="text-right">
+                Tên nhóm <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="group-name"
+                value={groupForm.name || ''}
+                onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                className="col-span-3"
+                placeholder="Ví dụ: Kỹ thuật viên"
+              />
+            </div>
+            
+            <div className="col-span-4 mt-2">
+              <Label className="mb-2 block font-medium">Phân quyền Tài nguyên System</Label>
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Tài nguyên</th>
+                      <th className="px-4 py-2 text-center w-24">Xem (View)</th>
+                      <th className="px-4 py-2 text-center w-24">Sửa (Edit)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {groupForm.permissions?.map((perm) => (
+                      <tr key={perm.resource}>
+                        <td className="px-4 py-2 text-gray-700">{perm.resource}</td>
+                        <td className="px-4 py-2 text-center">
+                          <Checkbox 
+                            checked={perm.canView} 
+                            onCheckedChange={() => handlePermissionChange(perm.resource, 'canView')}
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                           <Checkbox 
+                            checked={perm.canEdit} 
+                            onCheckedChange={() => handlePermissionChange(perm.resource, 'canEdit')}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddGroupDialogOpen(false)}>Hủy</Button>
+            <Button onClick={saveNewGroup} className="bg-blue-600 hover:bg-blue-700" disabled={!groupForm.name}>
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit User Group Dialog */}
+      <Dialog open={editGroupDialogOpen} onOpenChange={setEditGroupDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa Nhóm người dùng</DialogTitle>
+            <DialogDescription>
+              Cập nhật thông tin và quyền hạn cho nhóm: {selectedGroup?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-group-name" className="text-right">
+                Tên nhóm <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="edit-group-name"
+                value={groupForm.name || ''}
+                onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+             <div className="col-span-4 mt-2">
+              <Label className="mb-2 block font-medium">Phân quyền Tài nguyên System</Label>
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Tài nguyên</th>
+                      <th className="px-4 py-2 text-center w-24">Xem (View)</th>
+                      <th className="px-4 py-2 text-center w-24">Sửa (Edit)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {groupForm.permissions?.map((perm) => (
+                      <tr key={perm.resource}>
+                        <td className="px-4 py-2 text-gray-700">{perm.resource}</td>
+                        <td className="px-4 py-2 text-center">
+                          <Checkbox 
+                            checked={perm.canView} 
+                            onCheckedChange={() => handlePermissionChange(perm.resource, 'canView')}
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                           <Checkbox 
+                            checked={perm.canEdit} 
+                            onCheckedChange={() => handlePermissionChange(perm.resource, 'canEdit')}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditGroupDialogOpen(false)}>Hủy</Button>
+            <Button onClick={saveEditGroup} className="bg-blue-600 hover:bg-blue-700" disabled={!groupForm.name}>
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete User Group Alert */}
+      <AlertDialog open={deleteGroupDialogOpen} onOpenChange={setDeleteGroupDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa Nhóm người dùng?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hành động này sẽ xóa nhóm <strong>{selectedGroup?.name}</strong> khỏi hệ thống. Những người dùng thuộc nhóm này sẽ cần được gán lại nhóm khác. Bạn có chắc chắn không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteGroup} className="bg-red-600 hover:bg-red-700">
+              Xóa nhóm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Manage Permissions Dialog */}
+      <Dialog open={managePermissionsOpen} onOpenChange={setManagePermissionsOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+         
+          
+          <div className="flex-1 overflow-y-auto py-4 pr-1">
+             {/* Add New Section */}
+             <div className="bg-purple-50 p-4 rounded-lg mb-6 border border-purple-100">
+                <h4 className="text-sm font-semibold text-purple-900 mb-3">Thêm Quyền mới</h4>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Input
+                      value={resourceForm.name}
+                      onChange={(e) => setResourceForm({ name: e.target.value })}
+                      placeholder="Nhập tên quyền (ví dụ: QuanLyLog)..."
+                      className="bg-white"
+                       onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAddResource();
+                        }}
+                    />
+                  </div>
+                  <Button onClick={handleAddResource} className="bg-purple-600 hover:bg-purple-700 text-white shrink-0" disabled={!resourceForm.name}>
+                    <Plus size={18} className="mr-2" />
+                    Thêm
+                  </Button>
+                </div>
+             </div>
+
+             {/* Permissions List */}
+             <div className="space-y-1">
+                <h4 className="text-sm font-semibold text-gray-900 mb-2 px-1">Danh sách quyền hiện có ({resources.length})</h4>
+                <div className="bg-white border rounded-lg divide-y">
+                   {resources.map((resource, index) => (
+                      <div key={resource} className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                         {editingResource === resource ? (
+                            <div className="flex items-center gap-2 flex-1 mr-2">
+                               <Input 
+                                  value={editResourceForm.name}
+                                  onChange={(e) => setEditResourceForm({ name: e.target.value })}
+                                  className="h-8 text-sm"
+                                  autoFocus
+                                   onKeyDown={(e) => {
+                                      if (e.key === 'Enter') saveEditResource();
+                                      if (e.key === 'Escape') cancelEditResource();
+                                    }}
+                               />
+                               <Button size="sm" onClick={saveEditResource} className="bg-green-600 hover:bg-green-700 h-8">
+                                  Lưu
+                               </Button>
+                               <Button size="sm" variant="ghost" onClick={cancelEditResource} className="h-8">
+                                  Hủy
+                               </Button>
+                            </div>
+                         ) : (
+                            <>
+                               <div className="flex items-center gap-3">
+                                  <span className="text-gray-400 text-xs w-6">{index + 1}</span>
+                                  <span className="text-sm font-medium text-gray-700">{resource}</span>
+                               </div>
+                               <div className="flex items-center gap-1">
+                                  <Button variant="ghost" size="sm" onClick={() => startEditResource(resource)} className="h-8 w-8 p-0">
+                                     <Edit size={14} className="text-amber-600" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => handleDeleteResource(resource)} className="h-8 w-8 p-0">
+                                     <Trash2 size={14} className="text-red-600" />
+                                  </Button>
+                               </div>
+                            </>
+                         )}
+                      </div>
+                   ))}
+                   {resources.length === 0 && (
+                      <div className="p-8 text-center text-gray-500">
+                         Chưa có quyền nào được định nghĩa.
+                      </div>
+                   )}
+                </div>
+             </div>
+          </div>
+          <DialogFooter>
+             <Button variant="outline" onClick={() => setManagePermissionsOpen(false)}>Đóng</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+       {/* Delete Resource Alert */}
+      <AlertDialog open={deleteResourceDialogOpen} onOpenChange={setDeleteResourceDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa Quyền hệ thống?</AlertDialogTitle>
+             <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa quyền <strong>{selectedResource}</strong>? 
+              <br/>
+              <span className="text-red-600">Cảnh báo:</span> Hành động này sẽ xóa quyền này khỏi TẤT CẢ các nhóm người dùng hiện tại.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteResource} className="bg-red-600 hover:bg-red-700">
+              Xóa quyền
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -167,6 +167,7 @@ export interface LogEntry {
   timestamp: string;
   user: string;
   action: string;
+  ip: String;
   details: string;
   type: "access" | "error" | "config" | "account";
 }
@@ -854,6 +855,7 @@ export const initialLogs: LogEntry[] = [
     timestamp: "2024-01-15 10:30:00",
     user: "superadmin",
     action: "Đăng nhập",
+    ip: "192.168.1.100",
     details: "Đăng nhập thành công từ IP 192.168.1.100",
     type: "access",
   },
@@ -862,6 +864,7 @@ export const initialLogs: LogEntry[] = [
     timestamp: "2024-01-15 10:35:00",
     user: "superadmin",
     action: "Thêm AP",
+    ip: "192.168.1.100",
     details: "Thêm mới AP-A1-07 tại Tòa A Tầng 1",
     type: "config",
   },
@@ -870,6 +873,7 @@ export const initialLogs: LogEntry[] = [
     timestamp: "2024-01-15 11:00:00",
     user: "admin_it",
     action: "Sửa Policy",
+    ip: "192.168.1.100",
     details: "Cập nhật chính sách băng thông Sinh viên",
     type: "config",
   },
@@ -878,6 +882,7 @@ export const initialLogs: LogEntry[] = [
     timestamp: "2024-01-15 11:30:00",
     user: "system",
     action: "Lỗi kết nối",
+    ip: "192.168.1.100",
     details: "Mất kết nối đến Controller UniFi 2",
     type: "error",
   },
@@ -886,6 +891,7 @@ export const initialLogs: LogEntry[] = [
     timestamp: "2024-01-15 12:00:00",
     user: "superadmin",
     action: "Khóa tài khoản",
+    ip: "192.168.1.100",
     details: "Khóa tài khoản monitor_user",
     type: "account",
   },
