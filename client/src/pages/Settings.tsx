@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useSearch } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -31,7 +31,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Lock, Database, Mail, Shield, Clock, Eye, Plus, Edit, Trash2, Users, Search, FileText, MapPin, Building2, Map } from 'lucide-react';
+import { Lock, Database, Mail, Shield, Clock, Eye, Plus, Edit, Trash2, Users, Search, FileText, MapPin, Building2, Map, Server, Wifi, Globe, Key, Network, Cloud, Radio, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from "@/lib/utils";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 // Import types and mock data from centralized file
 import {
@@ -45,10 +59,92 @@ import {
   initialLogs,
   initialCampuses,
   initialBuildings,
+  initialAPs,
+  initialControllers,
+  AP,
+  Controller,
   systemRoles,
   userGroups,
   resourceList,
 } from "@/data/mockData";
+
+// New Interfaces for System Integration
+interface IamConnection {
+  id: number;
+  name: string;
+  type: 'Google Workspace' | 'Microsoft Azure AD' | 'IAM Broker';
+  endpointUrl: string;
+  clientId: string;
+  clientSecret: string;
+  appliedAPs: string[];
+  status: 'Active' | 'Error' | 'Inactive';
+}
+
+interface RadiusConnection {
+  id: number;
+  switchName: string;
+  radiusServer: string;
+  secretKey: string;
+  port: number;
+  protocol: 'RADIUS' | 'TACACS';
+}
+
+interface CaptivePortalConfig {
+  id: number;
+  deviceName: string;
+  portalUrl: string;
+  isEnabled: boolean;
+}
+
+// Initial Mock Data for System Integration
+const initialIamConnections: IamConnection[] = [
+  {
+    id: 1,
+    name: 'HCMUS Workspace',
+    type: 'Google Workspace',
+    endpointUrl: 'https://accounts.google.com/o/oauth2/auth',
+    clientId: '789...apps.googleusercontent.com',
+    clientSecret: '*******',
+    appliedAPs: ['AP-B1-01', 'AP-B1-02'],
+    status: 'Active',
+  },
+  {
+    id: 2,
+    name: 'Azure AD Staff',
+    type: 'Microsoft Azure AD',
+    endpointUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    clientId: 'abc-123-xyz',
+    clientSecret: '*******',
+    appliedAPs: ['All'],
+    status: 'Error',
+  },
+];
+
+const initialRadiusConnections: RadiusConnection[] = [
+  {
+    id: 1,
+    switchName: 'Core-Switch-I',
+    radiusServer: '10.0.1.50',
+    secretKey: '*******',
+    port: 1812,
+    protocol: 'RADIUS',
+  },
+];
+
+const initialCaptivePortals: CaptivePortalConfig[] = [
+  {
+    id: 1,
+    deviceName: 'WLC-Main-01',
+    portalUrl: 'https://wifi-portal.hcmus.edu.vn/guest',
+    isEnabled: true,
+  },
+  {
+    id: 2,
+    deviceName: 'AP-Guest-Zone',
+    portalUrl: 'https://wifi-portal.hcmus.edu.vn/event',
+    isEnabled: false,
+  },
+];
 
 export default function Settings() {
   const searchString = useSearch();
@@ -58,7 +154,7 @@ export default function Settings() {
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const tab = params.get('tab');
-    if (tab && ['users', 'areas', 'security', 'access', 'technical', 'logs'].includes(tab)) {
+    if (tab && ['users', 'areas', 'security', 'access', 'technical', 'logs', 'devices'].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchString]);
@@ -105,11 +201,55 @@ export default function Settings() {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [buildingForm, setBuildingForm] = useState<Partial<Building>>({});
 
+  // Data states - Devices
+  const [controllers, setControllers] = useState<Controller[]>(initialControllers);
+  const [aps, setAPs] = useState<AP[]>(initialAPs);
+
+  // Dialog states - Controller
+  const [addControllerDialogOpen, setAddControllerDialogOpen] = useState(false);
+  const [editControllerDialogOpen, setEditControllerDialogOpen] = useState(false);
+  const [deleteControllerDialogOpen, setDeleteControllerDialogOpen] = useState(false);
+  const [selectedController, setSelectedController] = useState<Controller | null>(null);
+  const [controllerForm, setControllerForm] = useState<Partial<Controller>>({});
+
+  // Dialog states - AP
+  const [addAPDialogOpen, setAddAPDialogOpen] = useState(false);
+  const [editAPDialogOpen, setEditAPDialogOpen] = useState(false);
+  const [deleteAPDialogOpen, setDeleteAPDialogOpen] = useState(false);
+  const [selectedAP, setSelectedAP] = useState<AP | null>(null);
+  const [apForm, setAPForm] = useState<Partial<AP>>({});
+
   // Filtered data
   const filteredAdminUsers = adminUsers.filter(user =>
     user.username.toLowerCase().includes(adminSearchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(adminSearchTerm.toLowerCase())
   );
+  
+  // Data states - System Integration
+  const [iamConnections, setIamConnections] = useState<IamConnection[]>(initialIamConnections);
+  const [radiusConnections, setRadiusConnections] = useState<RadiusConnection[]>(initialRadiusConnections);
+  const [captivePortals, setCaptivePortals] = useState<CaptivePortalConfig[]>(initialCaptivePortals);
+
+  // Dialog states - IAM
+  const [addIamDialogOpen, setAddIamDialogOpen] = useState(false);
+  const [editIamDialogOpen, setEditIamDialogOpen] = useState(false);
+  const [deleteIamDialogOpen, setDeleteIamDialogOpen] = useState(false);
+  const [selectedIam, setSelectedIam] = useState<IamConnection | null>(null);
+  const [iamForm, setIamForm] = useState<Partial<IamConnection>>({});
+
+  // Dialog states - RADIUS
+  const [addRadiusDialogOpen, setAddRadiusDialogOpen] = useState(false);
+  const [editRadiusDialogOpen, setEditRadiusDialogOpen] = useState(false);
+  const [deleteRadiusDialogOpen, setDeleteRadiusDialogOpen] = useState(false);
+  const [selectedRadius, setSelectedRadius] = useState<RadiusConnection | null>(null);
+  const [radiusForm, setRadiusForm] = useState<Partial<RadiusConnection>>({});
+  
+  // Dialog states - Captive Portal
+  const [addPortalDialogOpen, setAddPortalDialogOpen] = useState(false);
+  const [editPortalDialogOpen, setEditPortalDialogOpen] = useState(false);
+  const [deletePortalDialogOpen, setDeletePortalDialogOpen] = useState(false);
+  const [selectedPortal, setSelectedPortal] = useState<CaptivePortalConfig | null>(null);
+  const [portalForm, setPortalForm] = useState<Partial<CaptivePortalConfig>>({});
   
   const filteredLogs = logFilter === 'all' ? logs : logs.filter(log => log.type === logFilter);
   
@@ -222,6 +362,109 @@ export default function Settings() {
     return buildings.filter(b => b.campusId === campusId).length;
   };
 
+  // Controller Handlers
+  const handleAddController = () => {
+    setControllerForm({ status: 'Online', apCount: 0, totalClients: 0 });
+    setAddControllerDialogOpen(true);
+  };
+
+  const handleEditController = (controller: Controller) => {
+    setSelectedController(controller);
+    setControllerForm({ ...controller });
+    setEditControllerDialogOpen(true);
+  };
+
+  const handleDeleteController = (controller: Controller) => {
+    setSelectedController(controller);
+    setDeleteControllerDialogOpen(true);
+  };
+
+  const saveNewController = () => {
+    const newController: Controller = {
+      id: Math.max(...controllers.map(c => c.id), 0) + 1,
+      name: controllerForm.name || '',
+      ipAddress: controllerForm.ipAddress || '',
+      version: controllerForm.version || '',
+      location: controllerForm.location || '',
+      status: 'Online',
+      apCount: 0,
+      totalClients: 0,
+    };
+    setControllers([...controllers, newController]);
+    setAddControllerDialogOpen(false);
+    setControllerForm({});
+  };
+
+  const saveEditController = () => {
+    if (selectedController) {
+      setControllers(controllers.map(c => c.id === selectedController.id ? { ...c, ...controllerForm } as Controller : c));
+    }
+    setEditControllerDialogOpen(false);
+    setSelectedController(null);
+    setControllerForm({});
+  };
+
+  const confirmDeleteController = () => {
+    if (selectedController) {
+      setControllers(controllers.filter(c => c.id !== selectedController.id));
+    }
+    setDeleteControllerDialogOpen(false);
+    setSelectedController(null);
+  };
+
+  // AP Handlers
+  const handleAddAP = () => {
+    setAPForm({ status: 'Online', usage: 0, clients: 0, usagePercent: 0 });
+    setAddAPDialogOpen(true);
+  };
+
+  const handleEditAP = (ap: AP) => {
+    setSelectedAP(ap);
+    setAPForm({ ...ap });
+    setEditAPDialogOpen(true);
+  };
+
+  const handleDeleteAP = (ap: AP) => {
+    setSelectedAP(ap);
+    setDeleteAPDialogOpen(true);
+  };
+
+  const saveNewAP = () => {
+    const newAP: AP = {
+      id: Math.max(...aps.map(a => a.id), 0) + 1,
+      name: apForm.name || '',
+      location: apForm.location || '',
+      building: apForm.building || '',
+      uptime: '0h',
+      ipModel: apForm.ipModel || '',
+      controller: apForm.controller || '',
+      clients: 0,
+      usage: 0,
+      status: 'Online',
+      usagePercent: 0,
+    };
+    setAPs([...aps, newAP]);
+    setAddAPDialogOpen(false);
+    setAPForm({});
+  };
+
+  const saveEditAP = () => {
+    if (selectedAP) {
+      setAPs(aps.map(a => a.id === selectedAP.id ? { ...a, ...apForm } as AP : a));
+    }
+    setEditAPDialogOpen(false);
+    setSelectedAP(null);
+    setAPForm({});
+  };
+
+  const confirmDeleteAP = () => {
+    if (selectedAP) {
+      setAPs(aps.filter(a => a.id !== selectedAP.id));
+    }
+    setDeleteAPDialogOpen(false);
+    setSelectedAP(null);
+  };
+
   // Admin User Handlers
   const handleAddAdmin = () => {
     setAdminForm({ status: 'Active', role: systemRoles[0], group: userGroups[0] });
@@ -277,6 +520,155 @@ export default function Settings() {
     setSelectedAdmin(null);
   };
 
+  // IAM Handlers
+  const handleAddIam = () => {
+    setIamForm({ status: 'Active', appliedAPs: [] });
+    setAddIamDialogOpen(true);
+  };
+  const handleEditIam = (item: IamConnection) => {
+    setSelectedIam(item);
+    setIamForm({ ...item });
+    setEditIamDialogOpen(true);
+  };
+  const handleDeleteIam = (item: IamConnection) => {
+    setSelectedIam(item);
+    setDeleteIamDialogOpen(true);
+  };
+  const saveNewIam = () => {
+    const newItem: IamConnection = {
+      id: Math.max(...iamConnections.map(i => i.id), 0) + 1,
+      name: iamForm.name || '',
+      type: iamForm.type || 'Google Workspace',
+      endpointUrl: iamForm.endpointUrl || '',
+      clientId: iamForm.clientId || '',
+      clientSecret: iamForm.clientSecret || '',
+      appliedAPs: iamForm.appliedAPs || [],
+      status: iamForm.status || 'Active',
+    };
+    setIamConnections([...iamConnections, newItem]);
+    setAddIamDialogOpen(false);
+    setIamForm({});
+  };
+  const saveEditIam = () => {
+    if (selectedIam) {
+      setIamConnections(iamConnections.map(i => i.id === selectedIam.id ? { ...i, ...iamForm } as IamConnection : i));
+    }
+    setEditIamDialogOpen(false);
+    setSelectedIam(null);
+    setIamForm({});
+  };
+  const confirmDeleteIam = () => {
+    if (selectedIam) {
+      setIamConnections(iamConnections.filter(i => i.id !== selectedIam.id));
+    }
+    setDeleteIamDialogOpen(false);
+    setSelectedIam(null);
+  };
+
+  // RADIUS Handlers
+  const handleAddRadius = () => {
+    setRadiusForm({ protocol: 'RADIUS', port: 1812 });
+    setAddRadiusDialogOpen(true);
+  };
+  const handleEditRadius = (item: RadiusConnection) => {
+    setSelectedRadius(item);
+    setRadiusForm({ ...item });
+    setEditRadiusDialogOpen(true);
+  };
+  const handleDeleteRadius = (item: RadiusConnection) => {
+    setSelectedRadius(item);
+    setDeleteRadiusDialogOpen(true);
+  };
+  const saveNewRadius = () => {
+    const newItem: RadiusConnection = {
+      id: Math.max(...radiusConnections.map(i => i.id), 0) + 1,
+      switchName: radiusForm.switchName || '',
+      radiusServer: radiusForm.radiusServer || '',
+      secretKey: radiusForm.secretKey || '',
+      port: radiusForm.port || 1812,
+      protocol: radiusForm.protocol || 'RADIUS',
+    };
+    setRadiusConnections([...radiusConnections, newItem]);
+    setAddRadiusDialogOpen(false);
+    setRadiusForm({});
+  };
+  const saveEditRadius = () => {
+    if (selectedRadius) {
+      setRadiusConnections(radiusConnections.map(i => i.id === selectedRadius.id ? { ...i, ...radiusForm } as RadiusConnection : i));
+    }
+    setEditRadiusDialogOpen(false);
+    setSelectedRadius(null);
+    setRadiusForm({});
+  };
+  const confirmDeleteRadius = () => {
+    if (selectedRadius) {
+      setRadiusConnections(radiusConnections.filter(i => i.id !== selectedRadius.id));
+    }
+    setDeleteRadiusDialogOpen(false);
+    setSelectedRadius(null);
+  };
+
+  // Portal Handlers
+  const handleAddPortal = () => {
+    setPortalForm({ isEnabled: true });
+    setAddPortalDialogOpen(true);
+  };
+  const handleEditPortal = (item: CaptivePortalConfig) => {
+    setSelectedPortal(item);
+    setPortalForm({ ...item });
+    setEditPortalDialogOpen(true);
+  };
+  const handleDeletePortal = (item: CaptivePortalConfig) => {
+    setSelectedPortal(item);
+    setDeletePortalDialogOpen(true);
+  };
+  const togglePortalStatus = (item: CaptivePortalConfig) => {
+     setCaptivePortals(captivePortals.map(p => p.id === item.id ? { ...p, isEnabled: !p.isEnabled } : p));
+  };
+  const saveNewPortal = () => {
+    const newItem: CaptivePortalConfig = {
+      id: Math.max(...captivePortals.map(i => i.id), 0) + 1,
+      deviceName: portalForm.deviceName || '',
+      portalUrl: portalForm.portalUrl || '',
+      isEnabled: portalForm.isEnabled ?? true,
+    };
+    setCaptivePortals([...captivePortals, newItem]);
+    setAddPortalDialogOpen(false);
+    setPortalForm({});
+  };
+  const saveEditPortal = () => {
+    if (selectedPortal) {
+      setCaptivePortals(captivePortals.map(i => i.id === selectedPortal.id ? { ...i, ...portalForm } as CaptivePortalConfig : i));
+    }
+    setEditPortalDialogOpen(false);
+    setSelectedPortal(null);
+    setPortalForm({});
+  };
+  const confirmDeletePortal = () => {
+    if (selectedPortal) {
+      setCaptivePortals(captivePortals.filter(i => i.id !== selectedPortal.id));
+    }
+    setDeletePortalDialogOpen(false);
+    setSelectedPortal(null);
+  };
+
+  // State for Controller Selection Filtering
+  const [selectedControllerFilter, setSelectedControllerFilter] = useState<string | null>(null);
+
+  // Filter APs based on selected controller
+  const filteredAPs = useMemo(() => {
+    if (!selectedControllerFilter) return aps;
+    return aps.filter(ap => ap.controller === selectedControllerFilter);
+  }, [aps, selectedControllerFilter]);
+
+  const handleControllerClick = (controllerName: string) => {
+    if (selectedControllerFilter === controllerName) {
+      setSelectedControllerFilter(null); // Deselect if already selected
+    } else {
+      setSelectedControllerFilter(controllerName);
+    }
+  };
+
   const handleViewLog = (log: LogEntry) => {
     setSelectedLog(log);
     setLogDetailDialogOpen(true);
@@ -284,35 +676,10 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Cài đặt</h1>
-        <p className="text-gray-600 mt-1">Cấu hình hệ thống và chính sách</p>
-      </div>
-
       {/* Tabs */}
       <Card className="bg-white shadow-sm">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 border-b border-gray-200 rounded-none">
-            <TabsTrigger value="users" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
-              Quản trị viên
-            </TabsTrigger>
-            <TabsTrigger value="areas" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
-              Khu vực
-            </TabsTrigger>
-            <TabsTrigger value="security" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
-              Bảo mật
-            </TabsTrigger>
-            <TabsTrigger value="access" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
-              Truy cập
-            </TabsTrigger>
-            <TabsTrigger value="technical" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
-              Kỹ thuật
-            </TabsTrigger>
-            <TabsTrigger value="logs" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600">
-              Logs
-            </TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} className="space-y-6">
+
 
           {/* Tab 1: Users */}
           <TabsContent value="users" className="p-6 space-y-6">
@@ -637,47 +1004,235 @@ export default function Settings() {
             </div>
           </TabsContent>
 
-          {/* Tab 5: Technical */}
-          <TabsContent value="technical" className="p-6 space-y-6">
+          {/* Tab 5: System Integration (Renamed from Technical) */}
+          <TabsContent value="technical" className="p-6 space-y-8">
+            
+            {/* Area 1: IAM Integration */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Database size={24} />
-                Cấu hình Kỹ thuật
-              </h3>
-              <div className="space-y-4">
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-sm font-medium text-gray-900 mb-3">Kết nối Cơ sở Dữ liệu</p>
-                  <div className="space-y-3">
-                    <Input placeholder="Host" defaultValue="db.hcmus.edu.vn" />
-                    <Input placeholder="Port" defaultValue="5432" />
-                    <Input placeholder="Database" defaultValue="wifi_management" />
-                    <Input placeholder="Username" defaultValue="admin" />
-                  </div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Globe size={24} className="text-blue-600" />
+                    Kết nối Hệ thống Định danh (IAM Integration)
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">Quản lý liên kết Federation với các IdP</p>
                 </div>
-
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-                    <Mail size={18} />
-                    Email Hệ thống
-                  </p>
-                  <div className="space-y-3">
-                    <Input placeholder="SMTP Server" defaultValue="mail.hcmus.edu.vn" />
-                    <Input placeholder="SMTP Port" defaultValue="587" />
-                    <Input placeholder="Email" defaultValue="noreply@hcmus.edu.vn" />
-                  </div>
-                </div>
-
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-sm font-medium text-gray-900 mb-3">Kết nối Zalo OA & ZNS</p>
-                  <div className="space-y-3">
-                    <Input placeholder="Zalo OA ID" />
-                    <Input placeholder="Zalo ZNS Token" />
-                    <p className="text-xs text-gray-500">Hỗ trợ đăng ký Khách qua Zalo</p>
-                  </div>
-                </div>
-
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">Lưu cài đặt kỹ thuật</Button>
+                <Button onClick={handleAddIam} className="bg-blue-600 hover:bg-blue-700">
+                  <Plus size={18} className="mr-2" />
+                  Thêm kết nối IAM
+                </Button>
               </div>
+
+              <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên kết nối</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại IdP</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endpoint URL</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {iamConnections.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.type}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{item.endpointUrl}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            item.status === 'Active' ? 'bg-green-100 text-green-800' : 
+                            item.status === 'Error' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {item.status === 'Active' ? 'Hoạt động' : item.status === 'Error' ? 'Lỗi' : 'Không hoạt động'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                          <div className="flex justify-center gap-2">
+                             <Button variant="ghost" size="sm" onClick={() => handleEditIam(item)}><Edit size={16} className="text-amber-600" /></Button>
+                             <Button variant="ghost" size="sm" onClick={() => handleDeleteIam(item)}><Trash2 size={16} className="text-red-600" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {iamConnections.length === 0 && (
+                      <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500">Chưa có kết nối IAM nào</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Area 2: Network Infrastructure */}
+            {/* <div>
+               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Network size={24} className="text-green-600" />
+                  Kết nối Hạ tầng Mạng
+               </h3>
+               
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-md font-medium text-gray-800 flex items-center gap-2"><Key size={18}/> RADIUS trên Switch</h4>
+                      <Button variant="outline" size="sm" onClick={handleAddRadius}><Plus size={16} className="mr-1"/> Thêm</Button>
+                    </div>
+                    <div className="bg-white border rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Thiết bị</th>
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Server IP</th>
+                            <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">Hành động</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {radiusConnections.map((item) => (
+                            <tr key={item.id}>
+                              <td className="px-4 py-3 text-sm font-medium">{item.switchName}</td>
+                              <td className="px-4 py-3 text-sm text-gray-500">{item.radiusServer}:{item.port}</td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex justify-center gap-1">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditRadius(item)}><Edit size={14} className="text-amber-600"/></Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteRadius(item)}><Trash2 size={14} className="text-red-600"/></Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                 </div>
+
+                 Captive Portal Table
+                 <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-md font-medium text-gray-800 flex items-center gap-2"><Radio size={18}/> Captive Portal trên AP</h4>
+                      <Button variant="outline" size="sm" onClick={handleAddPortal}><Plus size={16} className="mr-1"/> Thêm</Button>
+                    </div>
+                    <div className="bg-white border rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Thiết bị</th>
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Portal URL</th>
+                            <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">Kích hoạt</th>
+                            <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">Hành động</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {captivePortals.map((item) => (
+                            <tr key={item.id}>
+                              <td className="px-4 py-3 text-sm font-medium">{item.deviceName}</td>
+                              <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[150px]">{item.portalUrl}</td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex justify-center">
+                                  <Checkbox 
+                                    checked={item.isEnabled} 
+                                    onCheckedChange={() => togglePortalStatus(item)}
+                                  />
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex justify-center gap-1">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditPortal(item)}><Edit size={14} className="text-amber-600"/></Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeletePortal(item)}><Trash2 size={14} className="text-red-600"/></Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                 </div>
+               </div> 
+            </div> */}
+
+            {/* Area 3: External Services */}
+            <div>
+               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Cloud size={24} className="text-purple-600" />
+                  Cấu hình Hệ thống Khác
+               </h3>
+               
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {/* Database Card */}
+                 <div className="bg-white p-5 rounded-lg border shadow-sm">
+                    <div className="flex items-center gap-2 mb-4 text-blue-800">
+                      <Database size={20} />
+                      <h4 className="font-semibold">Cơ sở Dữ liệu</h4>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">Database Host</label>
+                        <Input className="mt-1 h-8 text-sm" defaultValue="db.hcmus.edu.vn" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">Port</label>
+                        <Input className="mt-1 h-8 text-sm" defaultValue="5432" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">Username</label>
+                        <Input className="mt-1 h-8 text-sm" defaultValue="admin" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">Password</label>
+                        <Input type="password" className="mt-1 h-8 text-sm" defaultValue="******" />
+                      </div>
+                      <Button size="sm" className="w-full mt-2" variant="outline">Kiểm tra kết nối</Button>
+                    </div>
+                 </div>
+
+                 {/* Email Card */}
+                 <div className="bg-white p-5 rounded-lg border shadow-sm">
+                    <div className="flex items-center gap-2 mb-4 text-orange-800">
+                      <Mail size={20} />
+                      <h4 className="font-semibold">Email Hệ thống</h4>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">SMTP Server</label>
+                        <Input className="mt-1 h-8 text-sm" defaultValue="mail.hcmus.edu.vn" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">Port</label>
+                        <Input className="mt-1 h-8 text-sm" defaultValue="587" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">Sender Email</label>
+                        <Input className="mt-1 h-8 text-sm" defaultValue="noreply@hcmus.edu.vn" />
+                      </div>
+                      <Button size="sm" className="w-full mt-2" variant="outline">Gửi mail test</Button>
+                    </div>
+                 </div>
+
+                 {/* Zalo Card */}
+                 <div className="bg-white p-5 rounded-lg border shadow-sm">
+                    <div className="flex items-center gap-2 mb-4 text-blue-600">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" alt="Zalo" className="w-5 h-5" />
+                      <h4 className="font-semibold">Zalo Integration</h4>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                         <label className="text-xs font-medium text-gray-700">Kích hoạt ZNS</label>
+                         <Checkbox defaultChecked />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">Zalo OA ID</label>
+                        <Input className="mt-1 h-8 text-sm" placeholder="Nhập OA ID" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">ZNS API Key</label>
+                        <Input type="password" className="mt-1 h-8 text-sm" placeholder="Nhập API Key" />
+                      </div>
+                       <Button size="sm" className="w-full mt-2" variant="outline">Đồng bộ OA</Button>
+                    </div>
+                 </div>
+               </div>
+               
+               <div className="mt-6 flex justify-end">
+                  <Button className="bg-blue-600 hover:bg-blue-700">Lưu cấu hình hệ thống</Button>
+               </div>
             </div>
           </TabsContent>
 
@@ -769,6 +1324,162 @@ export default function Settings() {
                           <Button variant="ghost" size="sm" onClick={() => handleViewLog(log)}>
                             <Eye size={18} className="text-blue-600" />
                           </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Tab 7: Devices */}
+          <TabsContent value="devices" className="p-6 space-y-8">
+            {/* Controller Management */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Server size={20} className="text-blue-600" />
+                    Quản lý Controller
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">Danh sách các bộ điều khiển WiFi (UniFi Controllers)</p>
+                </div>
+                <Button onClick={handleAddController} className="bg-blue-600 hover:bg-blue-700">
+                  <Plus size={18} className="mr-2" />
+                  Thêm Controller
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-sm">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên Controller</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Địa chỉ IP</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Phiên bản</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Vị trí</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Trạng thái</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {controllers.map((controller) => (
+                      <tr 
+                        key={controller.id} 
+                        className={`cursor-pointer transition-colors ${
+                          selectedControllerFilter === controller.name 
+                            ? 'bg-blue-50 border-l-4 border-blue-500' 
+                            : 'hover:bg-gray-50'
+                        }`}
+                        onClick={() => handleControllerClick(controller.name)}
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          {controller.name}
+                          {selectedControllerFilter === controller.name && (
+                            <span className="ml-2 text-xs text-blue-600 font-normal">(Đang xem AP)</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 font-mono">{controller.ipAddress}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{controller.version}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{controller.location}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            controller.status === 'Online' ? 'bg-green-100 text-green-800' : 
+                            controller.status === 'Warning' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {controller.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditController(controller)}>
+                              <Edit size={16} className="text-amber-600" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteController(controller)}>
+                              <Trash2 size={16} className="text-red-600" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* AP Management */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Wifi size={20} className="text-green-600" />
+                    Quản lý Điểm phát (AP)
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedControllerFilter 
+                      ? `Danh sách các thiết bị phát sóng WiFi thuộc Controller: ${selectedControllerFilter}`
+                      : "Danh sách tất cả các thiết bị phát sóng WiFi"}
+                    {selectedControllerFilter && (
+                      <span className="ml-2">
+                         <Button variant="link" className="h-auto p-0 text-xs" onClick={() => setSelectedControllerFilter(null)}>
+                           (Xem tất cả)
+                         </Button>
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <Button onClick={handleAddAP} className="bg-green-600 hover:bg-green-700">
+                  <Plus size={18} className="mr-2" />
+                  Thêm AP
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-sm">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên AP</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Vị trí</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">IP / Model</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Điều khiển bởi</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Trạng thái</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredAPs.length === 0 ? (
+                       <tr>
+                         <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                           Không tìm thấy AP nào thuộc {selectedControllerFilter || 'hệ thống'}.
+                         </td>
+                       </tr>
+                    ) : filteredAPs.map((ap) => (
+                      <tr key={ap.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{ap.name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <div>{ap.location}</div>
+                          <div className="text-xs text-gray-400">{ap.building}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 font-mono">{ap.ipModel}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{ap.controller}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            ap.status === 'Online' ? 'bg-green-100 text-green-800' : 
+                            ap.status === 'Warning' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {ap.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditAP(ap)}>
+                              <Edit size={16} className="text-amber-600" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteAP(ap)}>
+                              <Trash2 size={16} className="text-red-600" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1007,7 +1718,7 @@ export default function Settings() {
               Cấu hình Phân quyền
             </DialogTitle>
             <DialogDescription>
-              Thiết lập ma trận phân quyền cho các nhóm người dùng
+              Thiết lập phân quyền cho các nhóm người dùng
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1401,6 +2112,511 @@ export default function Settings() {
             <AlertDialogAction onClick={confirmDeleteBuilding} className="bg-red-600 hover:bg-red-700">
               Xóa tòa nhà
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add Controller Dialog */}
+      <Dialog open={addControllerDialogOpen} onOpenChange={setAddControllerDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Thêm Controller Mới</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Tên Controller</Label>
+              <Input value={controllerForm.name || ''} onChange={e => setControllerForm({...controllerForm, name: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Địa chỉ IP</Label>
+              <Input value={controllerForm.ipAddress || ''} onChange={e => setControllerForm({...controllerForm, ipAddress: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Phiên bản (Version)</Label>
+              <Input value={controllerForm.version || ''} onChange={e => setControllerForm({...controllerForm, version: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Vị trí đặt máy chủ</Label>
+              <Input value={controllerForm.location || ''} onChange={e => setControllerForm({...controllerForm, location: e.target.value})} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={saveNewController}>Lưu Controller</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Controller Dialog */}
+      <Dialog open={editControllerDialogOpen} onOpenChange={setEditControllerDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa Controller</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Tên Controller</Label>
+              <Input value={controllerForm.name || ''} onChange={e => setControllerForm({...controllerForm, name: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Địa chỉ IP</Label>
+              <Input value={controllerForm.ipAddress || ''} onChange={e => setControllerForm({...controllerForm, ipAddress: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Phiên bản</Label>
+              <Input value={controllerForm.version || ''} onChange={e => setControllerForm({...controllerForm, version: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Vị trí</Label>
+              <Input value={controllerForm.location || ''} onChange={e => setControllerForm({...controllerForm, location: e.target.value})} />
+            </div>
+             <div className="grid gap-2">
+              <Label>Trạng thái</Label>
+              <Select value={controllerForm.status} onValueChange={(v: any) => setControllerForm({...controllerForm, status: v})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Online">Online</SelectItem>
+                  <SelectItem value="Offline">Offline</SelectItem>
+                  <SelectItem value="Warning">Warning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={saveEditController}>Lưu thay đổi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Controller Dialog */}
+      <AlertDialog open={deleteControllerDialogOpen} onOpenChange={setDeleteControllerDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa Controller?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hành động này sẽ xóa controller "{selectedController?.name}" khỏi hệ thống.
+              Các AP được quản lý bởi controller này sẽ bị mất kết nối quản lý.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteController} className="bg-red-600 hover:bg-red-700">
+              Xóa Controller
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add AP Dialog */}
+      <Dialog open={addAPDialogOpen} onOpenChange={setAddAPDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Thêm AP Mới</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+             <div className="grid gap-2">
+              <Label>Tên AP</Label>
+              <Input value={apForm.name || ''} onChange={e => setAPForm({...apForm, name: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Địa chỉ IP / Model</Label>
+              <Input value={apForm.ipModel || ''} onChange={e => setAPForm({...apForm, ipModel: e.target.value})} />
+            </div>
+             <div className="grid gap-2">
+              <Label>Vị trí chi tiết</Label>
+              <Input value={apForm.location || ''} onChange={e => setAPForm({...apForm, location: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Tòa nhà</Label>
+               <Select value={apForm.building} onValueChange={(v) => setAPForm({...apForm, building: v})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn tòa nhà" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="227NVC">227 NVC</SelectItem>
+                  <SelectItem value="Dĩ An">Dĩ An</SelectItem>
+                  <SelectItem value="Thủ Đức">Thủ Đức</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+             <div className="grid gap-2">
+              <Label>Controller quản lý</Label>
+               <Select value={apForm.controller} onValueChange={(v) => setAPForm({...apForm, controller: v})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn Controller" />
+                </SelectTrigger>
+                <SelectContent>
+                  {controllers.map(c => (
+                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={saveNewAP}>Lưu AP</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+       {/* Edit AP Dialog */}
+      <Dialog open={editAPDialogOpen} onOpenChange={setEditAPDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa AP</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+             <div className="grid gap-2">
+              <Label>Tên AP</Label>
+              <Input value={apForm.name || ''} onChange={e => setAPForm({...apForm, name: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Địa chỉ IP / Model</Label>
+              <Input value={apForm.ipModel || ''} onChange={e => setAPForm({...apForm, ipModel: e.target.value})} />
+            </div>
+             <div className="grid gap-2">
+              <Label>Vị trí chi tiết</Label>
+              <Input value={apForm.location || ''} onChange={e => setAPForm({...apForm, location: e.target.value})} />
+            </div>
+             <div className="grid gap-2">
+              <Label>Controller quản lý</Label>
+               <Select value={apForm.controller} onValueChange={(v) => setAPForm({...apForm, controller: v})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {controllers.map(c => (
+                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+             <div className="grid gap-2">
+              <Label>Trạng thái</Label>
+              <Select value={apForm.status} onValueChange={(v: any) => setAPForm({...apForm, status: v})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Online">Online</SelectItem>
+                  <SelectItem value="Offline">Offline</SelectItem>
+                  <SelectItem value="Warning">Warning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={saveEditAP}>Lưu thay đổi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete AP Dialog */}
+      <AlertDialog open={deleteAPDialogOpen} onOpenChange={setDeleteAPDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa AP?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hành động này sẽ xóa AP "{selectedAP?.name}" khỏi hệ thống.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteAP} className="bg-red-600 hover:bg-red-700">
+              Xóa AP
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* IAM Connection Dialog */}
+      <Dialog open={addIamDialogOpen || editIamDialogOpen} onOpenChange={(open) => !open && (addIamDialogOpen ? setAddIamDialogOpen(false) : setEditIamDialogOpen(false))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{addIamDialogOpen ? 'Thêm kết nối IAM' : 'Chỉnh sửa kết nối IAM'}</DialogTitle>
+            <DialogDescription>Cấu hình thông tin tích hợp Identity Provider</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Tên kết nối</Label>
+              <Input 
+                value={iamForm.name || ''} 
+                onChange={(e) => setIamForm({ ...iamForm, name: e.target.value })} 
+                placeholder="VD: Google Workspace Staff" 
+              />
+            </div>
+            <div>
+              <Label>Loại IdP</Label>
+              <Select 
+                value={iamForm.type || 'Google Workspace'} 
+                onValueChange={(val: any) => setIamForm({ ...iamForm, type: val })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Google Workspace">Google Workspace</SelectItem>
+                  <SelectItem value="Microsoft Azure AD">Microsoft Azure AD</SelectItem>
+                  <SelectItem value="IAM Broker">IAM Broker</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Endpoint URL</Label>
+              <Input 
+                value={iamForm.endpointUrl || ''} 
+                onChange={(e) => setIamForm({ ...iamForm, endpointUrl: e.target.value })} 
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Client ID</Label>
+                <Input 
+                   value={iamForm.clientId || ''} 
+                   onChange={(e) => setIamForm({ ...iamForm, clientId: e.target.value })} 
+                />
+              </div>
+              <div>
+                <Label>Client Secret</Label>
+                <Input 
+                   type="password"
+                   value={iamForm.clientSecret || ''} 
+                   onChange={(e) => setIamForm({ ...iamForm, clientSecret: e.target.value })} 
+                />
+              </div>
+            </div>
+             <div>
+              <Label>AP List (Áp dụng cho)</Label>
+               <Popover>
+                 <PopoverTrigger asChild>
+                   <Button
+                     variant="outline"
+                     role="combobox"
+                     className="w-full justify-between mt-1 font-normal"
+                   >
+                     {iamForm.appliedAPs && iamForm.appliedAPs.length > 0
+                       ? `${iamForm.appliedAPs.length} AP đã chọn`
+                       : "Chọn APs..."}
+                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                   </Button>
+                 </PopoverTrigger>
+                 <PopoverContent className="w-[400px] p-0" align="start">
+                   <Command>
+                     <CommandInput placeholder="Tìm kiếm AP..." />
+                     <CommandList>
+                       <CommandEmpty>Không tìm thấy AP.</CommandEmpty>
+                       <CommandGroup>
+                        <CommandItem
+                           value="all"
+                           onSelect={() => {
+                             if (iamForm.appliedAPs?.includes('All')) {
+                               setIamForm({ ...iamForm, appliedAPs: [] });
+                             } else {
+                               setIamForm({ ...iamForm, appliedAPs: ['All'] });
+                             }
+                           }}
+                         >
+                           <Check
+                             className={cn(
+                               "mr-2 h-4 w-4",
+                               iamForm.appliedAPs?.includes('All') ? "opacity-100" : "opacity-0"
+                             )}
+                           />
+                           All APs
+                         </CommandItem>
+                         {aps.map((ap) => (
+                           <CommandItem
+                             key={ap.id}
+                             value={ap.name}
+                             onSelect={() => {
+                               const currentValue = ap.name;
+                               const currentApplied = iamForm.appliedAPs || [];
+                               let newApplied;
+                               
+                               // If 'All' is selected, clear it when selecting specific items
+                               const cleanApplied = currentApplied.filter(i => i !== 'All');
+
+                               if (cleanApplied.includes(currentValue)) {
+                                 newApplied = cleanApplied.filter((value) => value !== currentValue);
+                               } else {
+                                 newApplied = [...cleanApplied, currentValue];
+                               }
+                               setIamForm({ ...iamForm, appliedAPs: newApplied });
+                             }}
+                           >
+                             <Check
+                               className={cn(
+                                 "mr-2 h-4 w-4",
+                                 iamForm.appliedAPs?.includes(ap.name) ? "opacity-100" : "opacity-0"
+                               )}
+                             />
+                             {ap.name}
+                             <span className="ml-2 text-xs text-gray-500">
+                               ({ap.ipModel} - {ap.location})
+                             </span>
+                           </CommandItem>
+                         ))}
+                       </CommandGroup>
+                     </CommandList>
+                   </Command>
+                 </PopoverContent>
+               </Popover>
+               <div className="flex flex-wrap gap-1 mt-2">
+                  {iamForm.appliedAPs?.map((apName) => (
+                    <span key={apName} className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full flex items-center">
+                      {apName}
+                      <button 
+                        className="ml-1 hover:text-blue-900"
+                        onClick={() => setIamForm({
+                          ...iamForm, 
+                          appliedAPs: iamForm.appliedAPs?.filter(a => a !== apName)
+                        })}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+               </div>
+            </div>
+          </div>
+          <DialogFooter>
+             <Button variant="outline" onClick={() => { setAddIamDialogOpen(false); setEditIamDialogOpen(false); }}>Hủy</Button>
+             <Button onClick={addIamDialogOpen ? saveNewIam : saveEditIam}>{addIamDialogOpen ? 'Thêm mới' : 'Lưu thay đổi'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete IAM Dialog */}
+      <AlertDialog open={deleteIamDialogOpen} onOpenChange={setDeleteIamDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa kết nối IAM?</AlertDialogTitle>
+            <AlertDialogDescription>Bạn có chắc muốn xóa kết nối "{selectedIam?.name}"?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteIam} className="bg-red-600 hover:bg-red-700">Xóa</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* RADIUS Dialog */}
+      <Dialog open={addRadiusDialogOpen || editRadiusDialogOpen} onOpenChange={(open) => !open && (addRadiusDialogOpen ? setAddRadiusDialogOpen(false) : setEditRadiusDialogOpen(false))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{addRadiusDialogOpen ? 'Thêm RADIUS Server' : 'Sửa RADIUS Server'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Tên Switch/Thiết bị</Label>
+              <Input 
+                value={radiusForm.switchName || ''} 
+                onChange={(e) => setRadiusForm({ ...radiusForm, switchName: e.target.value })} 
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Server IP</Label>
+                <Input 
+                   value={radiusForm.radiusServer || ''} 
+                   onChange={(e) => setRadiusForm({ ...radiusForm, radiusServer: e.target.value })} 
+                />
+              </div>
+              <div>
+                <Label>Port</Label>
+                <Input 
+                   type="number"
+                   value={radiusForm.port || 1812}
+                   onChange={(e) => setRadiusForm({ ...radiusForm, port: parseInt(e.target.value) })} 
+                />
+              </div>
+            </div>
+            <div>
+               <Label>Shared Secret</Label>
+               <Input 
+                  type="password"
+                  value={radiusForm.secretKey || ''} 
+                  onChange={(e) => setRadiusForm({ ...radiusForm, secretKey: e.target.value })} 
+               />
+            </div>
+            <div>
+               <Label>Giao thức</Label>
+               <Select value={radiusForm.protocol || 'RADIUS'} onValueChange={(v:any) => setRadiusForm({...radiusForm, protocol: v})}>
+                 <SelectTrigger><SelectValue/></SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="RADIUS">RADIUS</SelectItem>
+                   <SelectItem value="TACACS">TACACS+</SelectItem>
+                 </SelectContent>
+               </Select>
+            </div>
+          </div>
+          <DialogFooter>
+             <Button variant="outline" onClick={() => { setAddRadiusDialogOpen(false); setEditRadiusDialogOpen(false); }}>Hủy</Button>
+             <Button onClick={addRadiusDialogOpen ? saveNewRadius : saveEditRadius}>Lưu</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete RADIUS Dialog */}
+       <AlertDialog open={deleteRadiusDialogOpen} onOpenChange={setDeleteRadiusDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa cấu hình RADIUS?</AlertDialogTitle>
+            <AlertDialogDescription>Bạn có chắc muốn xóa cấu hình cho thiết bị "{selectedRadius?.switchName}"?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteRadius} className="bg-red-600 hover:bg-red-700">Xóa</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Captive Portal Dialog */}
+      <Dialog open={addPortalDialogOpen || editPortalDialogOpen} onOpenChange={(open) => !open && (addPortalDialogOpen ? setAddPortalDialogOpen(false) : setEditPortalDialogOpen(false))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{addPortalDialogOpen ? 'Thêm Portal' : 'Sửa Portal'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+             <div>
+              <Label>Thiết bị Gán (AP/Controller)</Label>
+              <Input 
+                value={portalForm.deviceName || ''} 
+                onChange={(e) => setPortalForm({ ...portalForm, deviceName: e.target.value })} 
+              />
+            </div>
+             <div>
+              <Label>Portal URL</Label>
+              <Input 
+                value={portalForm.portalUrl || ''} 
+                onChange={(e) => setPortalForm({ ...portalForm, portalUrl: e.target.value })} 
+                placeholder="https://..."
+              />
+            </div>
+            <div className="flex items-center gap-2">
+               <Checkbox 
+                 checked={portalForm.isEnabled ?? true} 
+                 onCheckedChange={(c) => setPortalForm({ ...portalForm, isEnabled: c as boolean })}
+               />
+               <Label>Kích hoạt ngay</Label>
+            </div>
+          </div>
+          <DialogFooter>
+             <Button variant="outline" onClick={() => { setAddPortalDialogOpen(false); setEditPortalDialogOpen(false); }}>Hủy</Button>
+             <Button onClick={addPortalDialogOpen ? saveNewPortal : saveEditPortal}>Lưu</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+       {/* Delete Portal Dialog */}
+       <AlertDialog open={deletePortalDialogOpen} onOpenChange={setDeletePortalDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa Portal?</AlertDialogTitle>
+            <AlertDialogDescription>Bạn có chắc muốn xóa cấu hình Portal cho "{selectedPortal?.deviceName}"?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+             <AlertDialogCancel>Hủy</AlertDialogCancel>
+             <AlertDialogAction onClick={confirmDeletePortal} className="bg-red-600 hover:bg-red-700">Xóa</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

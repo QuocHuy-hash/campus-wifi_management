@@ -38,7 +38,19 @@ const menuItems: MenuItem[] = [
       { label: 'Nhật ký', path: '/reports?tab=logs' },
     ]
   },
-  { label: 'Cài đặt', path: '/settings' },
+  { 
+    label: 'Cài đặt', 
+    path: '/settings',
+    subItems: [
+      { label: 'Quản trị viên', path: '/settings?tab=users' },
+      { label: 'Khu vực & Tòa nhà', path: '/settings?tab=areas' },
+      { label: 'Thiết bị', path: '/settings?tab=devices' },
+      { label: 'Tích hợp hệ thống', path: '/settings?tab=technical' },
+      { label: 'Bảo mật & SSID', path: '/settings?tab=security' },
+      { label: 'Phân quyền', path: '/settings?tab=access' },
+      { label: 'Nhật ký hệ thống', path: '/settings?tab=logs' },
+    ]
+  },
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -46,7 +58,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['/reports']); // Default expand reports
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['/reports', '/settings']); // Default expand reports and settings
 
   const toggleSubmenu = (path: string) => {
     setExpandedMenus(prev => 
