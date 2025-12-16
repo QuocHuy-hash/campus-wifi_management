@@ -991,7 +991,7 @@ export default function Settings() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <Building2 size={20} className="text-green-600" />
+                    <Building2 size={20} className="text-blue-600" />
                     Quản lý Tòa nhà
                   </h3>
                   <p className="text-sm text-gray-500 mt-1">Quản lý các tòa nhà trong từng cơ sở</p>
@@ -1011,7 +1011,7 @@ export default function Settings() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button onClick={handleAddBuilding} className="bg-green-600 hover:bg-green-700">
+                  <Button onClick={handleAddBuilding} className="bg-blue-600 hover:bg-green-700">
                     <Plus size={18} className="mr-2" />
                     Thêm tòa nhà
                   </Button>
@@ -1594,157 +1594,141 @@ export default function Settings() {
           </TabsContent>
 
           {/* Tab 7: Devices */}
-          <TabsContent value="devices" className="p-6 space-y-8">
-            {/* Controller Management */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <Server size={20} className="text-blue-600" />
-                    Quản lý Controller
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">Danh sách các bộ điều khiển WiFi (UniFi Controllers)</p>
+          <TabsContent value="devices" className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Controller Management - Left */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <Server size={20} className="text-blue-600" />
+                      Quản lý Controller
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">Danh sách bộ điều khiển WiFi</p>
+                  </div>
+                  <Button onClick={handleAddController} size="sm" className="bg-blue-600 hover:bg-blue-700">
+                    <Plus size={16} className="mr-1" />
+                    Thêm
+                  </Button>
                 </div>
-                <Button onClick={handleAddController} className="bg-blue-600 hover:bg-blue-700">
-                  <Plus size={18} className="mr-2" />
-                  Thêm Controller
-                </Button>
-              </div>
 
-              <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-sm">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên Controller</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Địa chỉ IP</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Phiên bản</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Vị trí</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Trạng thái</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hành động</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {controllers.map((controller) => (
-                      <tr 
-                        key={controller.id} 
-                        className={`cursor-pointer transition-colors ${
-                          selectedControllerFilter === controller.name 
-                            ? 'bg-blue-50 border-l-4 border-blue-500' 
-                            : 'hover:bg-gray-50'
-                        }`}
-                        onClick={() => handleControllerClick(controller.name)}
-                      >
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          {controller.name}
-                          {selectedControllerFilter === controller.name && (
-                            <span className="ml-2 text-xs text-blue-600 font-normal">(Đang xem AP)</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 font-mono">{controller.ipAddress}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{controller.version}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{controller.location}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                            controller.status === 'Online' ? 'bg-green-100 text-green-800' : 
-                            controller.status === 'Warning' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {controller.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEditController(controller)}>
-                              <Edit size={16} className="text-amber-600" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeleteController(controller)}>
-                              <Trash2 size={16} className="text-red-600" />
-                            </Button>
-                          </div>
-                        </td>
+                <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900">Tên</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900">IP</th>
+                        <th className="px-3 py-2 text-center text-xs font-semibold text-gray-900">Trạng thái</th>
+                        <th className="px-3 py-2 text-center text-xs font-semibold text-gray-900 w-20"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* AP Management */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <Wifi size={20} className="text-green-600" />
-                    Quản lý Điểm phát (AP)
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {selectedControllerFilter 
-                      ? `Danh sách các thiết bị phát sóng WiFi thuộc Controller: ${selectedControllerFilter}`
-                      : "Danh sách tất cả các thiết bị phát sóng WiFi"}
-                    {selectedControllerFilter && (
-                      <span className="ml-2">
-                         <Button variant="link" className="h-auto p-0 text-xs" onClick={() => setSelectedControllerFilter(null)}>
-                           (Xem tất cả)
-                         </Button>
-                      </span>
-                    )}
-                  </p>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {controllers.map((controller) => (
+                        <tr 
+                          key={controller.id} 
+                          className={`cursor-pointer transition-colors ${
+                            selectedControllerFilter === controller.name 
+                              ? 'bg-blue-50 border-l-4 border-blue-500' 
+                              : 'hover:bg-gray-50'
+                          }`}
+                          onClick={() => handleControllerClick(controller.name)}
+                        >
+                          <td className="px-3 py-2 text-sm font-medium text-gray-900">
+                            {controller.name}
+                            {selectedControllerFilter === controller.name && (
+                              <span className="ml-1 text-xs text-blue-600 font-normal">(Xem)</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-600 font-mono text-xs">{controller.ipAddress}</td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                              controller.status === 'Online' ? 'bg-green-100 text-green-800' : 
+                              controller.status === 'Warning' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {controller.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleEditController(controller)}>
+                                <Edit size={14} className="text-amber-600" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDeleteController(controller)}>
+                                <Trash2 size={14} className="text-red-600" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <Button onClick={handleAddAP} className="bg-green-600 hover:bg-green-700">
-                  <Plus size={18} className="mr-2" />
-                  Thêm AP
-                </Button>
               </div>
 
-              <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-sm">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên AP</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Vị trí</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">IP / Model</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Điều khiển bởi</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Trạng thái</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hành động</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredAPs.length === 0 ? (
-                       <tr>
-                         <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                           Không tìm thấy AP nào thuộc {selectedControllerFilter || 'hệ thống'}.
-                         </td>
-                       </tr>
-                    ) : filteredAPs.map((ap) => (
-                      <tr key={ap.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{ap.name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          <div>{ap.location}</div>
-                          <div className="text-xs text-gray-400">{ap.building}</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 font-mono">{ap.ipModel}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{ap.controller}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                            ap.status === 'Online' ? 'bg-green-100 text-green-800' : 
-                            ap.status === 'Warning' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {ap.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEditAP(ap)}>
-                              <Edit size={16} className="text-amber-600" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeleteAP(ap)}>
-                              <Trash2 size={16} className="text-red-600" />
-                            </Button>
-                          </div>
-                        </td>
+              {/* AP Management - Right */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <Wifi size={20} className="text-green-600" />
+                      Quản lý AP
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {selectedControllerFilter 
+                        ? <span>Controller: <strong>{selectedControllerFilter}</strong> <Button variant="link" className="h-auto p-0 text-xs" onClick={() => setSelectedControllerFilter(null)}>(Xem tất cả)</Button></span>
+                        : "Tất cả thiết bị phát sóng"}
+                    </p>
+                  </div>
+                  <Button onClick={handleAddAP} size="sm" className="bg-green-600 hover:bg-green-700">
+                    <Plus size={16} className="mr-1" />
+                    Thêm
+                  </Button>
+                </div>
+
+                <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900">Tên AP</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900">Vị trí</th>
+                        <th className="px-3 py-2 text-center text-xs font-semibold text-gray-900">Trạng thái</th>
+                        <th className="px-3 py-2 text-center text-xs font-semibold text-gray-900 w-20"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredAPs.length === 0 ? (
+                         <tr>
+                           <td colSpan={4} className="px-3 py-6 text-center text-gray-500 text-sm">
+                             Không tìm thấy AP nào.
+                           </td>
+                         </tr>
+                      ) : filteredAPs.map((ap) => (
+                        <tr key={ap.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm font-medium text-gray-900">{ap.name}</td>
+                          <td className="px-3 py-2 text-sm text-gray-600">{ap.building}</td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                              ap.status === 'Online' ? 'bg-green-100 text-green-800' : 
+                              ap.status === 'Warning' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {ap.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleEditAP(ap)}>
+                                <Edit size={14} className="text-amber-600" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDeleteAP(ap)}>
+                                <Trash2 size={14} className="text-red-600" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </TabsContent>

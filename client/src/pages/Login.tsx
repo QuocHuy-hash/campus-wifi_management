@@ -46,26 +46,19 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center p-4">
-      {/* Background pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-blue-400/5 rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2"></div>
-      </div>
-
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="relative w-full max-w-md">
         {/* Logo & Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-50 rounded-2xl shadow-lg mb-4 border border-blue-100">
             <Wifi size={40} className="text-blue-600" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">HCMUS WiFi</h1>
-          <p className="text-blue-200">Hệ thống quản lý mạng không dây</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">HCMUS WiFi</h1>
+          <p className="text-gray-500">Hệ thống quản lý mạng không dây</p>
         </div>
 
         {/* Login Card */}
-        <Card className="p-8 shadow-2xl border-0 bg-white/95 backdrop-blur">
+        <Card className="p-8 shadow-lg border border-gray-200 bg-white">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Đăng nhập</h2>
             <p className="text-gray-600 mt-1">Nhập thông tin để truy cập hệ thống</p>
@@ -160,18 +153,16 @@ export default function Login() {
           </form>
 
           {/* Demo credentials */}
-          <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <p className="text-xs text-blue-700 font-medium mb-1">Thông tin demo:</p>
-            <p className="text-xs text-blue-600">
-              Tên đăng nhập: <span className="font-mono font-semibold">admin</span> | 
-              Mật khẩu: <span className="font-mono font-semibold">admin123</span>
+          <div className="mt-6 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="text-xs text-gray-600">
+              Tên đăng nhập: <span className="font-mono font-semibold">admin</span> | Mật khẩu: <span className="font-mono font-semibold">admin123</span>
             </p>
           </div>
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-blue-200 text-sm mt-6">
-          © 2024 HCMUS - Trường Đại học Khoa học Tự nhiên
+        <p className="text-center text-gray-400 text-sm mt-6">
+          © 2026 HCMUS - Trường Đại học Khoa học Tự nhiên
         </p>
       </div>
     </div>
