@@ -39,7 +39,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { label: 'Tổng quan', path: '/' },
-  { label: 'Quản lý Điểm phát WIFI', path: '/access-points' },
+  { label: 'Giám sát Điểm phát Wifi', path: '/access-points' },
   { label: 'Quản lý Người dùng', path: '/users' },
   { label: 'Chính sách', path: '/policies' },
   { 
@@ -65,7 +65,7 @@ const menuItems: MenuItem[] = [
       { label: 'Khu vực & Tòa nhà', path: '/settings?tab=areas' },
       { label: 'Thiết bị Điểm phát', path: '/settings?tab=devices' },
       { label: 'Tích hợp hệ thống', path: '/settings?tab=technical' },
-      { label: 'Bảo mật & SSID', path: '/settings?tab=security' },
+      { label: 'Bảo mật & Truy cập', path: '/settings?tab=security' },
       { label: 'Nhật ký hệ thống', path: '/settings?tab=logs' },
     ]
   },

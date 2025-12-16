@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -30,7 +30,14 @@ import {
   Search,
   Filter,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Eye,
+  Ban,
+  Tag,
+  Power,
+  Monitor,
+  Smartphone,
+  Laptop
 } from 'lucide-react';
 
 // Import mock data
@@ -187,6 +194,264 @@ const mockIncidentData = [
   { ap: 'AP-A1-02', type: 'Nhiệt độ cao', status: 'resolved', priority: 'medium' },
 ];
 
+// Mock data for WiFi Users Management
+const mockWifiUsers = [
+  { 
+    id: 1, 
+    username: '21120001', 
+    fullName: 'Nguyễn Văn An', 
+    email: '21120001@student.hcmus.edu.vn',
+    mssv: '21120001',
+    group: 'Sinh viên',
+    role: 'User',
+    devicesOnline: 2,
+    sessionsToday: 3,
+    sessionsWeek: 15,
+    sessionsMonth: 45,
+    trafficIn: '2.5 GB',
+    trafficOut: '0.8 GB',
+    status: 'active'
+  },
+  { 
+    id: 2, 
+    username: '21120045', 
+    fullName: 'Trần Thị Bình', 
+    email: '21120045@student.hcmus.edu.vn',
+    mssv: '21120045',
+    group: 'Sinh viên',
+    role: 'User',
+    devicesOnline: 1,
+    sessionsToday: 2,
+    sessionsWeek: 12,
+    sessionsMonth: 38,
+    trafficIn: '1.8 GB',
+    trafficOut: '0.5 GB',
+    status: 'active'
+  },
+  { 
+    id: 3, 
+    username: 'nv.nguyen', 
+    fullName: 'Nguyễn Văn Nam', 
+    email: 'nv.nguyen@hcmus.edu.vn',
+    mssv: '-',
+    group: 'Giảng viên',
+    role: 'Staff',
+    devicesOnline: 3,
+    sessionsToday: 5,
+    sessionsWeek: 25,
+    sessionsMonth: 80,
+    trafficIn: '8.2 GB',
+    trafficOut: '2.1 GB',
+    status: 'active'
+  },
+  { 
+    id: 4, 
+    username: 'guest_event_001', 
+    fullName: 'Khách Hội nghị', 
+    email: 'guest@external.com',
+    mssv: '-',
+    group: 'Khách',
+    role: 'Guest',
+    devicesOnline: 1,
+    sessionsToday: 1,
+    sessionsWeek: 2,
+    sessionsMonth: 2,
+    trafficIn: '0.3 GB',
+    trafficOut: '0.1 GB',
+    status: 'active'
+  },
+  { 
+    id: 5, 
+    username: '20120156', 
+    fullName: 'Lê Hoàng Cường', 
+    email: '20120156@student.hcmus.edu.vn',
+    mssv: '20120156',
+    group: 'Sinh viên',
+    role: 'User',
+    devicesOnline: 0,
+    sessionsToday: 0,
+    sessionsWeek: 8,
+    sessionsMonth: 32,
+    trafficIn: '1.2 GB',
+    trafficOut: '0.4 GB',
+    status: 'blocked'
+  },
+  { 
+    id: 6, 
+    username: 'pv.tran', 
+    fullName: 'Trần Phương Vy', 
+    email: 'pv.tran@hcmus.edu.vn',
+    mssv: '-',
+    group: 'Giảng viên',
+    role: 'Staff',
+    devicesOnline: 2,
+    sessionsToday: 4,
+    sessionsWeek: 20,
+    sessionsMonth: 65,
+    trafficIn: '5.5 GB',
+    trafficOut: '1.8 GB',
+    status: 'active'
+  },
+];
+
+// Mock data for Sessions
+const mockUserSessions = [
+  { 
+    sessionId: 'SES-2024011501234',
+    username: '21120001',
+    fullName: 'Nguyễn Văn An',
+    deviceType: 'Laptop',
+    deviceName: 'MacBook Pro',
+    mac: 'AA:BB:CC:DD:EE:01',
+    ip: '10.0.1.101',
+    ssid: 'HCMUS-Student',
+    vlan: 'VLAN 100',
+    ap: 'AP-DA-A-01',
+    site: 'Cơ sở Dĩ An - Tòa A',
+    startTime: '2024-01-15 08:30:00',
+    stopTime: '2024-01-15 12:45:00',
+    duration: '4h 15m',
+    download: '1.24 GB',
+    upload: '0.32 GB',
+    total: '1.56 GB',
+    terminateCause: 'normal',
+    status: 'completed',
+    tags: []
+  },
+  { 
+    sessionId: 'SES-2024011501235',
+    username: '21120045',
+    fullName: 'Trần Thị Bình',
+    deviceType: 'Smartphone',
+    deviceName: 'iPhone 14',
+    mac: 'AA:BB:CC:DD:EE:02',
+    ip: '10.0.1.102',
+    ssid: 'HCMUS-Student',
+    vlan: 'VLAN 100',
+    ap: 'AP-DA-B-02',
+    site: 'Cơ sở Dĩ An - Tòa B',
+    startTime: '2024-01-15 09:00:00',
+    stopTime: '-',
+    duration: '3h 25m',
+    download: '0.85 GB',
+    upload: '0.15 GB',
+    total: '1.00 GB',
+    terminateCause: '-',
+    status: 'active',
+    tags: []
+  },
+  { 
+    sessionId: 'SES-2024011501236',
+    username: 'nv.nguyen',
+    fullName: 'Nguyễn Văn Nam',
+    deviceType: 'Laptop',
+    deviceName: 'Dell XPS 15',
+    mac: 'AA:BB:CC:DD:EE:03',
+    ip: '10.0.2.50',
+    ssid: 'HCMUS-Staff',
+    vlan: 'VLAN 200',
+    ap: 'AP-TD-E-01',
+    site: 'Cơ sở Thủ Đức - Tòa E',
+    startTime: '2024-01-15 07:45:00',
+    stopTime: '2024-01-15 18:00:00',
+    duration: '10h 15m',
+    download: '5.52 GB',
+    upload: '1.25 GB',
+    total: '6.77 GB',
+    terminateCause: 'user-request',
+    status: 'completed',
+    tags: []
+  },
+  { 
+    sessionId: 'SES-2024011501237',
+    username: 'guest_event_001',
+    fullName: 'Khách Hội nghị',
+    deviceType: 'Laptop',
+    deviceName: 'Windows Laptop',
+    mac: 'AA:BB:CC:DD:EE:04',
+    ip: '10.0.3.15',
+    ssid: 'HCMUS-Guest',
+    vlan: 'VLAN 300',
+    ap: 'AP-227-G-01',
+    site: 'Cơ sở 227 NVC - Hội trường',
+    startTime: '2024-01-15 14:00:00',
+    stopTime: '2024-01-15 16:00:00',
+    duration: '2h 00m',
+    download: '0.32 GB',
+    upload: '0.05 GB',
+    total: '0.37 GB',
+    terminateCause: 'idle-timeout',
+    status: 'completed',
+    tags: []
+  },
+  { 
+    sessionId: 'SES-2024011501238',
+    username: '20120156',
+    fullName: 'Lê Hoàng Cường',
+    deviceType: 'Smartphone',
+    deviceName: 'Samsung Galaxy S23',
+    mac: 'AA:BB:CC:DD:EE:05',
+    ip: '10.0.1.156',
+    ssid: 'HCMUS-Student',
+    vlan: 'VLAN 100',
+    ap: 'AP-DA-C-03',
+    site: 'Cơ sở Dĩ An - Tòa C',
+    startTime: '2024-01-15 10:15:00',
+    stopTime: '2024-01-15 11:30:00',
+    duration: '1h 15m',
+    download: '2.89 GB',
+    upload: '0.45 GB',
+    total: '3.34 GB',
+    terminateCause: 'quota-exceeded',
+    status: 'completed',
+    tags: ['nghi-ngo-vi-pham']
+  },
+  { 
+    sessionId: 'SES-2024011501239',
+    username: 'pv.tran',
+    fullName: 'Trần Phương Vy',
+    deviceType: 'Monitor',
+    deviceName: 'Desktop PC',
+    mac: 'AA:BB:CC:DD:EE:06',
+    ip: '10.0.2.78',
+    ssid: 'HCMUS-Staff',
+    vlan: 'VLAN 200',
+    ap: 'AP-DA-B-01',
+    site: 'Cơ sở Dĩ An - Tòa B',
+    startTime: '2024-01-15 08:00:00',
+    stopTime: '-',
+    duration: '5h 30m',
+    download: '3.45 GB',
+    upload: '0.88 GB',
+    total: '4.33 GB',
+    terminateCause: '-',
+    status: 'active',
+    tags: []
+  },
+  { 
+    sessionId: 'SES-2024011501240',
+    username: '21120001',
+    fullName: 'Nguyễn Văn An',
+    deviceType: 'Smartphone',
+    deviceName: 'iPhone 13',
+    mac: 'AA:BB:CC:DD:EE:07',
+    ip: '10.0.1.201',
+    ssid: 'HCMUS-Student',
+    vlan: 'VLAN 100',
+    ap: 'AP-TD-F-02',
+    site: 'Cơ sở Thủ Đức - Tòa F',
+    startTime: '2024-01-15 13:00:00',
+    stopTime: '2024-01-15 14:30:00',
+    duration: '1h 30m',
+    download: '0.65 GB',
+    upload: '0.12 GB',
+    total: '0.77 GB',
+    terminateCause: 'hard-timeout',
+    status: 'completed',
+    tags: []
+  },
+];
+
 export default function Reports() {
   const [location, setLocation] = useLocation();
   
@@ -223,6 +488,26 @@ export default function Reports() {
   const [sessionCurrentPage, setSessionCurrentPage] = useState(1);
   const [filteredBuildings, setFilteredBuildings] = useState(initialBuildings);
   const sessionItemsPerPage = 5;
+
+  // User Management States
+  const [userManagementTab, setUserManagementTab] = useState('wifi-users');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userGroupFilter, setUserGroupFilter] = useState('all');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [userCurrentPage, setUserCurrentPage] = useState(1);
+  const userItemsPerPage = 5;
+
+  // Session Management States  
+  const [sessionTimeRange, setSessionTimeRange] = useState('today');
+  const [sessionUsernameFilter, setSessionUsernameFilter] = useState('');
+  const [sessionIpFilter, setSessionIpFilter] = useState('');
+  const [sessionMacFilter, setSessionMacFilter] = useState('');
+  const [sessionSsidFilter, setSessionSsidFilter] = useState('all');
+  const [sessionStatusFilter, setSessionStatusFilter] = useState('all');
+  const [sessionTerminateFilter, setSessionTerminateFilter] = useState('all');
+  const [sessionsCurrentPage, setSessionsCurrentPage] = useState(1);
+  const sessionsItemsPerPage = 5;
+  const [selectedUserForSessions, setSelectedUserForSessions] = useState<string | null>(null);
 
   // Update buildings when campus changes
   useEffect(() => {
@@ -361,140 +646,551 @@ export default function Reports() {
       {/* Filter Bar */}
       {/* <FilterBar /> */}
 
-      {/* Filter Bar */}
-      <Card className="p-4 mb-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Calendar size={18} className="text-gray-500" />
-            <Label className="text-sm text-gray-600">Từ ngày:</Label>
-            <Input 
-              type="date" 
-              value={startDate} 
-              onChange={(e) => setStartDate(e.target.value)} 
-              className="w-40" 
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-sm text-gray-600">Đến ngày:</Label>
-            <Input 
-              type="date" 
-              value={endDate} 
-              onChange={(e) => setEndDate(e.target.value)} 
-              className="w-40" 
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Server size={18} className="text-gray-500" />
-            <Select value={controllerFilter} onValueChange={setControllerFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Chọn Controller" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả Controller</SelectItem>
-                {initialControllers.map((ctrl) => (
-                  <SelectItem key={ctrl.id} value={ctrl.id.toString()}>
-                    {ctrl.name} ({ctrl.ipAddress})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={campusFilter} onValueChange={setCampusFilter}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Chọn Cơ sở" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả Cơ sở</SelectItem>
-                {initialCampuses.map((campus) => (
-                  <SelectItem key={campus.id} value={campus.id.toString()}>
-                    {campus.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button variant="outline" size="sm">
-            <RefreshCw size={16} className="mr-2" />
-            Làm mới
-          </Button>
-          <div className="ml-auto flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleExport('excel', activeTab)}>
-              <FileSpreadsheet size={16} className="mr-2" />
-              Xuất Excel
+      {/* Filter Bar - Ẩn khi ở tab Người dùng */}
+      {activeTab !== 'users' && (
+        <Card className="p-4 mb-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar size={18} className="text-gray-500" />
+              <Label className="text-sm text-gray-600">Từ ngày:</Label>
+              <Input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)} 
+                className="w-40" 
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-gray-600">Đến ngày:</Label>
+              <Input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)} 
+                className="w-40" 
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Server size={18} className="text-gray-500" />
+              <Select value={controllerFilter} onValueChange={setControllerFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Chọn Controller" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả Controller</SelectItem>
+                  {initialControllers.map((ctrl) => (
+                    <SelectItem key={ctrl.id} value={ctrl.id.toString()}>
+                      {ctrl.name} ({ctrl.ipAddress})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={campusFilter} onValueChange={setCampusFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Chọn Cơ sở" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả Cơ sở</SelectItem>
+                  {initialCampuses.map((campus) => (
+                    <SelectItem key={campus.id} value={campus.id.toString()}>
+                      {campus.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" size="sm">
+              <RefreshCw size={16} className="mr-2" />
+              Làm mới
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('pdf', activeTab)}>
-              <Download size={16} className="mr-2" />
-              Xuất PDF
-            </Button>
+            <div className="ml-auto flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => handleExport('excel', activeTab)}>
+                <FileSpreadsheet size={16} className="mr-2" />
+                Xuất Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleExport('pdf', activeTab)}>
+                <Download size={16} className="mr-2" />
+                Xuất PDF
+              </Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* Report Content */}
       <Card className="overflow-hidden">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
 
-          {/* Tab: Users Report */}
+          {/* Tab: Users Report - User Management & Sessions */}
           <TabsContent value="users" className="p-6 m-0">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                 <h3 className="text-lg font-semibold text-gray-900">Báo cáo người dùng theo thời gian</h3>
-                 <div className="flex gap-2">
-                    <Select>
-                      <SelectTrigger className="w-[180px] h-8 text-xs">
-                        <SelectValue placeholder="Lọc theo Authentication" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tất cả Auth Policy</SelectItem>
-                        <SelectItem value="sinhvien">Sinh viên - LDAP</SelectItem>
-                        <SelectItem value="guest">Khách - Portal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                 </div>
-              </div>
-              
-              {/* Summary */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 bg-blue-50 rounded-lg text-center">
-                  <p className="text-3xl font-bold text-blue-600">79%</p>
-                  <p className="text-sm text-gray-600">Sinh viên</p>
-                </div>
-                <div className="p-4 bg-green-50 rounded-lg text-center">
-                  <p className="text-3xl font-bold text-green-600">19%</p>
-                  <p className="text-sm text-gray-600">Cán bộ</p>
-                </div>
-                <div className="p-4 bg-gray-100 rounded-lg text-center">
-                  <p className="text-3xl font-bold text-gray-600">2%</p>
-                  <p className="text-sm text-gray-600">Khách</p>
-                </div>
-              </div>
-              
-              {/* Table */}
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Ngày</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Sinh viên</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Cán bộ</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Khách</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Tổng</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {mockUserReportData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm">{row.date}</td>
-                        <td className="px-4 py-3 text-sm text-right text-blue-600 font-medium">{row.students.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-right text-green-600 font-medium">{row.staff.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-500">{row.guests}</td>
-                        <td className="px-4 py-3 text-sm text-right font-bold">{row.total.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="space-y-6">
+             
+              {/* Sub-tabs */}
+              <Tabs value={userManagementTab} onValueChange={(val) => {
+                setUserManagementTab(val);
+                if (val === 'wifi-users') {
+                  setSelectedUserForSessions(null);
+                }
+              }}>
+                <TabsList className="bg-gray-100 p-1">
+                  <TabsTrigger value="wifi-users" className="data-[state=active]:bg-[#1e3a5f] data-[state=active]:text-white">
+                    <Users size={16} className="mr-2" />
+                    Người dùng WiFi
+                  </TabsTrigger>
+                  <TabsTrigger value="sessions" className="data-[state=active]:bg-[#1e3a5f] data-[state=active]:text-white">
+                    <Clock size={16} className="mr-2" />
+                    Phiên truy cập (Sessions)
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Tab 1: Người dùng WiFi */}
+                <TabsContent value="wifi-users" className="mt-4">
+                  <div className="space-y-4">
+                    {/* Search & Filter Bar */}
+                    <Card className="p-4 bg-gray-50">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="relative flex-1 min-w-[200px]">
+                          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <Input 
+                            placeholder="Tìm username, email, MSSV..."
+                            value={userSearchTerm}
+                            onChange={(e) => setUserSearchTerm(e.target.value)}
+                            className="pl-9"
+                          />
+                        </div>
+                        <Select value={userGroupFilter} onValueChange={setUserGroupFilter}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Nhóm" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tất cả nhóm</SelectItem>
+                            <SelectItem value="Sinh viên">Sinh viên</SelectItem>
+                            <SelectItem value="Giảng viên">Giảng viên</SelectItem>
+                            <SelectItem value="Khách">Khách</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                          <SelectTrigger className="w-[130px]">
+                            <SelectValue placeholder="Vai trò" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tất cả</SelectItem>
+                            <SelectItem value="User">User</SelectItem>
+                            <SelectItem value="Staff">Staff</SelectItem>
+                            <SelectItem value="Guest">Guest</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          setUserSearchTerm('');
+                          setUserGroupFilter('all');
+                          setUserRoleFilter('all');
+                        }}>
+                          <RefreshCw size={14} className="mr-1" />
+                          Reset
+                        </Button>
+                      </div>
+                    </Card>
+
+                    {/* Users Table */}
+                    <Card className="overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Username</th>
+                              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Họ tên</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Thiết bị online</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Phiên (Ngày/Tuần/Tháng)</th>
+                              <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Lưu lượng (In/Out)</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Trạng thái</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Hành động</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {mockWifiUsers
+                              .filter(user => {
+                                const matchSearch = userSearchTerm === '' || 
+                                  user.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                                  user.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                                  user.mssv.toLowerCase().includes(userSearchTerm.toLowerCase());
+                                const matchGroup = userGroupFilter === 'all' || user.group === userGroupFilter;
+                                const matchRole = userRoleFilter === 'all' || user.role === userRoleFilter;
+                                return matchSearch && matchGroup && matchRole;
+                              })
+                              .slice((userCurrentPage - 1) * userItemsPerPage, userCurrentPage * userItemsPerPage)
+                              .map((user) => (
+                              <tr key={user.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3">
+                                  <div>
+                                    <p className="text-small font-medium text-gray-900">{user.username}</p>
+                                    <p className="text-small text-gray-500">{user.email}</p>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div>
+                                    <p className="text-small text-gray-900">{user.fullName}</p>
+                                    <span className={`inline-block px-2 py-0.5 rounded-full text-small ${
+                                      user.group === 'Sinh viên' ? 'bg-blue-100 text-blue-700' :
+                                      user.group === 'Giảng viên' ? 'bg-green-100 text-green-700' :
+                                      'bg-gray-100 text-gray-700'
+                                    }`}>
+                                      {user.group}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-small font-medium ${
+                                    user.devicesOnline > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                                  }`}>
+                                    <Wifi size={14} />
+                                    {user.devicesOnline}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <div className="text-small">
+                                    <span className="text-blue-600 font-medium">{user.sessionsToday}</span>
+                                    <span className="text-gray-400 mx-1">/</span>
+                                    <span className="text-green-600">{user.sessionsWeek}</span>
+                                    <span className="text-gray-400 mx-1">/</span>
+                                    <span className="text-purple-600">{user.sessionsMonth}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="text-sm">
+                                    <span className="text-cyan-600">↓ {user.trafficIn}</span>
+                                    <span className="text-gray-400 mx-1">/</span>
+                                    <span className="text-orange-600">↑ {user.trafficOut}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                    user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                  }`}>
+                                    {user.status === 'active' ? 'Hoạt động' : 'Đã khóa'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      title="Xem chi tiết phiên"
+                                      onClick={() => {
+                                        setSelectedUserForSessions(user.username);
+                                        setUserManagementTab('sessions');
+                                      }}
+                                    >
+                                      <Eye size={16} className="text-blue-600" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      title={user.status === 'active' ? 'Tạm khóa truy cập' : 'Mở khóa truy cập'}
+                                    >
+                                      <Ban size={16} className={user.status === 'active' ? 'text-red-600' : 'text-green-600'} />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {/* Pagination */}
+                      <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between">
+                        <p className="text-sm text-gray-600">
+                          Hiển thị {Math.min((userCurrentPage - 1) * userItemsPerPage + 1, mockWifiUsers.length)} - {Math.min(userCurrentPage * userItemsPerPage, mockWifiUsers.length)} / {mockWifiUsers.length} người dùng
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            disabled={userCurrentPage === 1}
+                            onClick={() => setUserCurrentPage(p => p - 1)}
+                          >
+                            <ChevronLeft size={16} />
+                          </Button>
+                          <span className="px-3 py-1 bg-[#1e3a5f] text-white rounded text-sm font-medium">
+                            {userCurrentPage}
+                          </span>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            disabled={userCurrentPage * userItemsPerPage >= mockWifiUsers.length}
+                            onClick={() => setUserCurrentPage(p => p + 1)}
+                          >
+                            <ChevronRight size={16} />
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </TabsContent>
+
+                {/* Tab 2: Phiên truy cập (Sessions) */}
+                <TabsContent value="sessions" className="mt-4">
+                  <div className="space-y-4">
+                    {/* Filter Bar */}
+                    <Card className="p-4 bg-gray-50">
+                      <div className="space-y-3">
+                        {/* Row 1 */}
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Select value={sessionTimeRange} onValueChange={setSessionTimeRange}>
+                            <SelectTrigger className="w-[130px]">
+                              <SelectValue placeholder="Thời gian" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="today">Hôm nay</SelectItem>
+                              <SelectItem value="7days">7 ngày</SelectItem>
+                              <SelectItem value="30days">30 ngày</SelectItem>
+                              <SelectItem value="custom">Tùy chỉnh</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <div className="relative">
+                            <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Input 
+                              placeholder="Username"
+                              value={selectedUserForSessions || sessionUsernameFilter}
+                              onChange={(e) => {
+                                setSessionUsernameFilter(e.target.value);
+                                setSelectedUserForSessions(null);
+                              }}
+                              className="pl-7 w-[130px]"
+                            />
+                          </div>
+                          <Input 
+                            placeholder="IP Address"
+                            value={sessionIpFilter}
+                            onChange={(e) => setSessionIpFilter(e.target.value)}
+                            className="w-[130px]"
+                          />
+                          <Input 
+                            placeholder="MAC Address"
+                            value={sessionMacFilter}
+                            onChange={(e) => setSessionMacFilter(e.target.value)}
+                            className="w-[150px]"
+                          />
+                        </div>
+                        {/* Row 2 */}
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Select value={sessionSsidFilter} onValueChange={setSessionSsidFilter}>
+                            <SelectTrigger className="w-[150px]">
+                              <SelectValue placeholder="SSID" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tất cả SSID</SelectItem>
+                              <SelectItem value="HCMUS-Student">HCMUS-Student</SelectItem>
+                              <SelectItem value="HCMUS-Staff">HCMUS-Staff</SelectItem>
+                              <SelectItem value="HCMUS-Guest">HCMUS-Guest</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select value={sessionCampusFilter} onValueChange={setSessionCampusFilter}>
+                            <SelectTrigger className="w-[150px]">
+                              <SelectValue placeholder="Khu vực" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tất cả khu vực</SelectItem>
+                              {initialCampuses.map((campus) => (
+                                <SelectItem key={campus.id} value={campus.id.toString()}>
+                                  {campus.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={sessionStatusFilter} onValueChange={setSessionStatusFilter}>
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue placeholder="Trạng thái" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tất cả</SelectItem>
+                              <SelectItem value="active">Đang hoạt động</SelectItem>
+                              <SelectItem value="completed">Đã kết thúc</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select value={sessionTerminateFilter} onValueChange={setSessionTerminateFilter}>
+                            <SelectTrigger className="w-[160px]">
+                              <SelectValue placeholder="Nguyên nhân KT" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tất cả</SelectItem>
+                              <SelectItem value="normal">Normal</SelectItem>
+                              <SelectItem value="user-request">User Request</SelectItem>
+                              <SelectItem value="idle-timeout">Idle Timeout</SelectItem>
+                              <SelectItem value="hard-timeout">Hard Timeout</SelectItem>
+                              <SelectItem value="quota-exceeded">Quota Exceeded</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="outline" onClick={() => {
+                            setSessionUsernameFilter('');
+                            setSessionIpFilter('');
+                            setSessionMacFilter('');
+                            setSessionSsidFilter('all');
+                            setSessionStatusFilter('all');
+                            setSessionTerminateFilter('all');
+                            setSelectedUserForSessions(null);
+                          }}>
+                            <RefreshCw size={14} />
+                          </Button>
+                          <div className="ml-auto">
+                            <Button size="sm" variant="outline" onClick={() => handleExport('excel', 'sessions-csv')}>
+                              <Download size={14} className="mr-1" />
+                              Export CSV (SIEM/ELK)
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {selectedUserForSessions && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
+                        <span className="text-sm text-blue-700">
+                          Đang lọc phiên của user: <strong>{selectedUserForSessions}</strong>
+                        </span>
+                        <Button size="sm" variant="ghost" onClick={() => setSelectedUserForSessions(null)}>
+                          Xóa bộ lọc
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Sessions Table */}
+                    <Card className="overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-3 py-3 text-left font-semibold text-gray-700">Session ID</th>
+                              <th className="px-3 py-3 text-left font-semibold text-gray-700">User</th>
+                              <th className="px-3 py-3 text-left font-semibold text-gray-700">Thiết bị</th>
+                              <th className="px-3 py-3 text-left font-semibold text-gray-700">IP</th>
+                              <th className="px-3 py-3 text-left font-semibold text-gray-700">SSID/VLAN</th>
+                              <th className="px-3 py-3 text-left font-semibold text-gray-700">AP/Site</th>
+                              <th className="px-3 py-3 text-left font-semibold text-gray-700">Start/Stop</th>
+                              <th className="px-3 py-3 text-right font-semibold text-gray-700">Duration</th>
+                              <th className="px-3 py-3 text-right font-semibold text-gray-700">DL/UL/Total</th>
+                              <th className="px-3 py-3 text-center font-semibold text-gray-700">Terminate</th>
+                              <th className="px-3 py-3 text-center font-semibold text-gray-700">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {mockUserSessions
+                              .filter(session => {
+                                const matchUser = !selectedUserForSessions || session.username === selectedUserForSessions;
+                                const matchUsername = sessionUsernameFilter === '' || session.username.toLowerCase().includes(sessionUsernameFilter.toLowerCase());
+                                const matchIp = sessionIpFilter === '' || session.ip.includes(sessionIpFilter);
+                                const matchMac = sessionMacFilter === '' || session.mac.toLowerCase().includes(sessionMacFilter.toLowerCase());
+                                const matchSsid = sessionSsidFilter === 'all' || session.ssid === sessionSsidFilter;
+                                const matchStatus = sessionStatusFilter === 'all' || session.status === sessionStatusFilter;
+                                const matchTerminate = sessionTerminateFilter === 'all' || session.terminateCause === sessionTerminateFilter;
+                                return matchUser && matchUsername && matchIp && matchMac && matchSsid && matchStatus && matchTerminate;
+                              })
+                              .slice((sessionsCurrentPage - 1) * sessionsItemsPerPage, sessionsCurrentPage * sessionsItemsPerPage)
+                              .map((session) => (
+                              <tr key={session.sessionId} className="hover:bg-gray-50">
+                                <td className="px-3 py-2">
+                                  <p className="font-mono text-small text-gray-600">{session.sessionId}</p>
+                                  {session.tags.length > 0 && (
+                                    <div className="flex gap-1 mt-1">
+                                      {session.tags.map((tag, idx) => (
+                                        <span key={idx} className="px-1.5 py-0.5 bg-red-100 text-red-700 text-small rounded">
+                                          {tag}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <p className="font-medium text-gray-900">{session.username}</p>
+                                  <p className="text-small text-gray-500">{session.fullName}</p>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center gap-1">
+                                    {session.deviceType === 'Laptop' && <Laptop size={14} className="text-gray-500" />}
+                                    {session.deviceType === 'Smartphone' && <Smartphone size={14} className="text-gray-500" />}
+                                    {session.deviceType === 'Monitor' && <Monitor size={14} className="text-gray-500" />}
+                                    <span className="text-small">{session.deviceName}</span>
+                                  </div>
+                                  <p className="font-mono text-small text-gray-400">{session.mac}</p>
+                                </td>
+                                <td className="px-3 py-2 font-mono text-small text-gray-600">{session.ip}</td>
+                                <td className="px-3 py-2">
+                                  <p className="text-small font-medium">{session.ssid}</p>
+                                  <p className="text-small text-gray-500">{session.vlan}</p>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <p className="text-small font-medium">{session.ap}</p>
+                                  <p className="text-small text-gray-500">{session.site}</p>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <p className="text-small">{session.startTime}</p>
+                                  <p className="text-small text-gray-500">{session.stopTime}</p>
+                                </td>
+                                <td className="px-3 py-2 text-right font-medium">{session.duration}</td>
+                                <td className="px-3 py-2 text-right">
+                                  <p className="text-small"><span className="text-cyan-600">↓{session.download}</span></p>
+                                  <p className="text-small"><span className="text-orange-600">↑{session.upload}</span></p>
+                                  <p className="text-small font-bold">{session.total}</p>
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={`inline-block px-2 py-0.5 rounded text-small ${
+                                    session.terminateCause === 'normal' ? 'bg-green-100 text-green-700' :
+                                    session.terminateCause === 'user-request' ? 'bg-blue-100 text-blue-700' :
+                                    session.terminateCause === 'idle-timeout' ? 'bg-yellow-100 text-yellow-700' :
+                                    session.terminateCause === 'hard-timeout' ? 'bg-orange-100 text-orange-700' :
+                                    session.terminateCause === 'quota-exceeded' ? 'bg-red-100 text-red-700' :
+                                    'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {session.terminateCause}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center justify-center gap-1">
+                                      <Button variant="ghost" size="sm" title="Force Disconnect">
+                                        <Power size={14} className="text-red-600" />
+                                      </Button>
+                                    <Button variant="ghost" size="sm" title="Gắn tag">
+                                      <Tag size={14} className="text-amber-600" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {/* Pagination */}
+                      <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between">
+                        <p className="text-sm text-gray-600">
+                          Hiển thị {Math.min((sessionsCurrentPage - 1) * sessionsItemsPerPage + 1, mockUserSessions.length)} - {Math.min(sessionsCurrentPage * sessionsItemsPerPage, mockUserSessions.length)} / {mockUserSessions.length} phiên
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            disabled={sessionsCurrentPage === 1}
+                            onClick={() => setSessionsCurrentPage(p => p - 1)}
+                          >
+                            <ChevronLeft size={16} />
+                          </Button>
+                          <span className="px-3 py-1 bg-[#1e3a5f] text-white rounded text-sm font-medium">
+                            {sessionsCurrentPage}
+                          </span>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            disabled={sessionsCurrentPage * sessionsItemsPerPage >= mockUserSessions.length}
+                            onClick={() => setSessionsCurrentPage(p => p + 1)}
+                          >
+                            <ChevronRight size={16} />
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </TabsContent>
 
