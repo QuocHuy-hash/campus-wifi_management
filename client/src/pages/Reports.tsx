@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -453,21 +453,22 @@ const mockUserSessions = [
 ];
 
 export default function Reports() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
+  const searchString = useSearch();
   
   // Helper to parse tab from URL
   const getTab = () => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(searchString);
     return params.get('tab') || 'users';
   };
 
   const [activeTab, setActiveTab] = useState(getTab());
   const [dateRange, setDateRange] = useState('week');
 
-  // Sync tab with URL
+  // Sync tab with URL when search params change
   useEffect(() => {
     setActiveTab(getTab());
-  }, [location]);
+  }, [searchString]);
 
   const handleTabChange = (value: string) => {
     setLocation(`/reports?tab=${value}`);
@@ -802,7 +803,7 @@ export default function Reports() {
                               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Họ tên</th>
                               <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Thiết bị online</th>
                               <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Phiên (Ngày/Tuần/Tháng)</th>
-                              <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Lưu lượng (In/Out)</th>
+                              <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Upload/Download (Gb)</th>
                               <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Trạng thái</th>
                               <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Hành động</th>
                             </tr>

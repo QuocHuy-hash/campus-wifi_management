@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { Menu, X, LogOut, User, ChevronDown, ChevronRight, Settings, Key, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,7 +51,6 @@ const menuItems: MenuItem[] = [
       { label: 'Điểm phát', path: '/reports?tab=ap' },
       { label: 'Bộ điều khiển', path: '/reports?tab=controllers' },
       { label: 'Vi phạm', path: '/reports?tab=violations' },
-      { label: 'Nhật ký Phiên', path: '/reports?tab=sessions' },
       { label: 'Sự cố', path: '/reports?tab=incidents' },
       { label: 'Nhật ký', path: '/reports?tab=logs' },
     ]
@@ -73,10 +72,11 @@ const menuItems: MenuItem[] = [
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [location, setLocation] = useLocation();
+  const searchString = useSearch();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(['/reports', '/settings']);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
   // Account management dialogs
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
@@ -244,34 +244,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   {hasSubItems && isExpanded && (
                     <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-100 pl-2">
                        {item.subItems!.map(subItem => {
-                         // Check if this subItem is active. 
-                         // For query params, we need to handle exact match or simple includes.
-                         // But useLocation returns /path, not query. Wrapper might be needed.
-                         // wouter's useLocation only returns pathname.
-                         // So we check window.location.search or we rely on 'isActive' logic above?
-                         // We can't easily check query param with just 'location' from wouter.
-                         // We will implement a visual check using window.location for now or just generic highlighting.
-                         
-                         // Better: check if the full href matches current href
-                         const isSubActive = window.location.pathname + window.location.search === subItem.path;
+                         const currentFullPath = location + (searchString ? `?${searchString}` : '');
+                         const isSubActive = currentFullPath === subItem.path;
                          
                          return (
-                           <a
+                           <div
                              key={subItem.path}
-                             href={subItem.path}
-                             onClick={(e) => {
-                               e.preventDefault();
-                               window.location.href = subItem.path;
+                             onClick={() => {
+                               setLocation(subItem.path);
                                setMobileMenuOpen(false);
                              }}
-                            className={`block px-3 py-2 rounded-md text-sm transition-colors ${
+                            className={`block px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
                               isSubActive 
                                 ? 'text-blue-600 font-semibold bg-blue-50' 
                                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }`}
                            >
                              {subItem.label}
-                           </a>
+                           </div>
                          );
                        })}
                     </div>
