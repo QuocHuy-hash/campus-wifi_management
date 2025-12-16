@@ -48,8 +48,7 @@ const menuItems: MenuItem[] = [
     subItems: [
       { label: 'Người dùng', path: '/reports?tab=users' },
       { label: 'Băng thông', path: '/reports?tab=bandwidth' },
-      { label: 'Điểm phát', path: '/reports?tab=ap' },
-      { label: 'Bộ điều khiển', path: '/reports?tab=controllers' },
+      { label: 'Hạ tầng WiFi', path: '/reports?tab=infrastructure' },
       { label: 'Vi phạm', path: '/reports?tab=violations' },
       { label: 'Sự cố', path: '/reports?tab=incidents' },
       { label: 'Nhật ký', path: '/reports?tab=logs' },
@@ -134,9 +133,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header - Fixed */}
+      <header className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-40">
         <div className="flex items-center justify-between px-4 md:px-6 py-4">
           {/* Logo and Title */}
           <div className="flex items-center gap-3">
@@ -203,13 +202,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </header>
 
-      <div className="flex flex-1">
-        {/* Sidebar */}
+      <div className="flex pt-[73px]">
+        {/* Sidebar - Fixed */}
         <aside
-          className={`fixed md:static inset-y-0 left-0 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out z-30 ${
+          className={`fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out z-30 overflow-y-auto ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
           }`}
-          style={{ top: '73px' }}
+          style={{ top: '73px', height: 'calc(100vh - 73px)' }}
         >
           <nav className="p-4 space-y-2">
             {menuItems.map((item) => {
@@ -273,7 +272,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 min-h-[calc(100vh-73px)] overflow-auto md:ml-64">
           {mobileMenuOpen && (
             <div
               className="fixed inset-0 bg-black/50 md:hidden z-20"

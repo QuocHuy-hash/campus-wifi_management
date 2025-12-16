@@ -28,6 +28,7 @@ export interface Controller {
   apCount: number;
   totalClients: number;
   location: string;
+  campusId?: number;
 }
 
 // Area/Location Types
@@ -415,6 +416,7 @@ export const initialControllers: Controller[] = [
     apCount: 4,
     totalClients: 438,
     location: "Cơ sở 227 NVC - Phòng Server",
+    campusId: 3,
   },
   {
     id: 2,
@@ -425,6 +427,7 @@ export const initialControllers: Controller[] = [
     apCount: 2,
     totalClients: 133,
     location: "Cơ sở 227 NVC - Phòng IT",
+    campusId: 3,
   },
   {
     id: 3,
@@ -435,6 +438,7 @@ export const initialControllers: Controller[] = [
     apCount: 2,
     totalClients: 173,
     location: "Cơ sở Dĩ An - Nhà điều hành",
+    campusId: 1,
   },
 ];
 

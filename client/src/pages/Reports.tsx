@@ -60,18 +60,23 @@ const mockBandwidthData = [
   { date: '11/01/2024', download: '41.6 GB', upload: '10.7 GB', peak: '15:15', avgSpeed: '115 Mbps' },
 ];
 
-const mockAPAccessData = [
-  { apName: 'AP-A1-01', location: 'Tòa A, Tầng 1', totalAccess: 1245, avgClients: 45, usage: 78 },
-  { apName: 'AP-A1-02', location: 'Tòa A, Tầng 2', totalAccess: 1389, avgClients: 52, usage: 85 },
-  { apName: 'AP-B1-01', location: 'Tòa B, Tầng 1', totalAccess: 987, avgClients: 38, usage: 62 },
-  { apName: 'AP-B2-01', location: 'Tòa B, Tầng 2', totalAccess: 1102, avgClients: 41, usage: 68 },
-  { apName: 'AP-C1-01', location: 'Tòa C, Tầng 1', totalAccess: 1567, avgClients: 58, usage: 92 },
+const mockControllerReportData = [
+  { id: 'WLC-Core-01', name: 'WLC-Core-01', ip: '192.168.10.10', model: 'Cisco 9800', firmware: '17.6.4', location: 'Server Room A', apCount: 150, clients: 2500, cpu: 45, memory: 60 },
+  { id: 'WLC-Core-02', name: 'WLC-Core-02', ip: '192.168.10.11', model: 'Cisco 9800', firmware: '17.6.4', location: 'Server Room B', apCount: 140, clients: 2100, cpu: 42, memory: 58 },
+  { id: 'WLC-Dist-01', name: 'WLC-Dist-01', ip: '192.168.20.10', model: 'Aruba 7210', firmware: '8.10.0', location: 'Cơ sở 2', apCount: 80, clients: 1200, cpu: 35, memory: 45 },
 ];
 
-const mockControllerReportData = [
-  { name: 'WLC-Core-01', ip: '192.168.10.10', model: 'Cisco 9800', firmware: '17.6.4', location: 'Server Room A', apCount: 150, clients: 2500, cpu: 45, memory: 60 },
-  { name: 'WLC-Core-02', ip: '192.168.10.11', model: 'Cisco 9800', firmware: '17.6.4', location: 'Server Room B', apCount: 140, clients: 2100, cpu: 42, memory: 58 },
-  { name: 'WLC-Dist-01', ip: '192.168.20.10', model: 'Aruba 7210', firmware: '8.10.0', location: 'Cơ sở 2', apCount: 80, clients: 1200, cpu: 35, memory: 45 },
+const mockAPAccessData = [
+  { apName: 'AP-A1-01', location: 'Tòa A, Tầng 1', totalAccess: 1245, avgClients: 45, usage: 78, controllerId: 'WLC-Core-01', status: 'online' },
+  { apName: 'AP-A1-02', location: 'Tòa A, Tầng 2', totalAccess: 1389, avgClients: 52, usage: 85, controllerId: 'WLC-Core-01', status: 'online' },
+  { apName: 'AP-A2-01', location: 'Tòa A, Tầng 3', totalAccess: 1156, avgClients: 48, usage: 72, controllerId: 'WLC-Core-01', status: 'online' },
+  { apName: 'AP-A2-02', location: 'Tòa A, Tầng 4', totalAccess: 998, avgClients: 42, usage: 65, controllerId: 'WLC-Core-01', status: 'warning' },
+  { apName: 'AP-B1-01', location: 'Tòa B, Tầng 1', totalAccess: 987, avgClients: 38, usage: 62, controllerId: 'WLC-Core-02', status: 'online' },
+  { apName: 'AP-B2-01', location: 'Tòa B, Tầng 2', totalAccess: 1102, avgClients: 41, usage: 68, controllerId: 'WLC-Core-02', status: 'online' },
+  { apName: 'AP-B2-02', location: 'Tòa B, Tầng 3', totalAccess: 876, avgClients: 35, usage: 55, controllerId: 'WLC-Core-02', status: 'offline' },
+  { apName: 'AP-C1-01', location: 'Cơ sở 2 - Tầng 1', totalAccess: 1567, avgClients: 58, usage: 92, controllerId: 'WLC-Dist-01', status: 'online' },
+  { apName: 'AP-C1-02', location: 'Cơ sở 2 - Tầng 2', totalAccess: 1234, avgClients: 50, usage: 78, controllerId: 'WLC-Dist-01', status: 'online' },
+  { apName: 'AP-C2-01', location: 'Cơ sở 2 - Thư viện', totalAccess: 2105, avgClients: 75, usage: 95, controllerId: 'WLC-Dist-01', status: 'warning' },
 ];
 
 const mockViolationData = [
@@ -509,6 +514,7 @@ export default function Reports() {
   const [sessionsCurrentPage, setSessionsCurrentPage] = useState(1);
   const sessionsItemsPerPage = 5;
   const [selectedUserForSessions, setSelectedUserForSessions] = useState<string | null>(null);
+  const [selectedController, setSelectedController] = useState<string | null>(null);
 
   // Update buildings when campus changes
   useEffect(() => {
@@ -724,7 +730,7 @@ export default function Reports() {
         <Tabs value={activeTab} onValueChange={handleTabChange}>
 
           {/* Tab: Users Report - User Management & Sessions */}
-          <TabsContent value="users" className="p-6 m-0">
+          <TabsContent value="users" className="p-2 m-0">
             <div className="space-y-6">
              
               {/* Sub-tabs */}
@@ -1248,93 +1254,202 @@ export default function Reports() {
             </div>
           </TabsContent>
 
-          {/* Tab: AP Report */}
-          <TabsContent value="ap" className="p-6 m-0">
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Lượt truy cập theo điểm phát WIFI</h3>
-              
-              {/* Table */}
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Tên AP</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vị trí</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Lượt truy cập</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Client TB</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">% Sử dụng</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {mockAPAccessData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium">{row.apName}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{row.location}</td>
-                        <td className="px-4 py-3 text-sm text-right">{row.totalAccess.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-right">{row.avgClients}</td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full rounded-full ${
-                                  row.usage > 80 ? 'bg-red-500' : row.usage > 60 ? 'bg-amber-500' : 'bg-green-500'
-                                }`}
-                                style={{ width: `${row.usage}%` }}
-                              />
-                            </div>
-                            <span className={`text-sm font-medium ${
-                              row.usage > 80 ? 'text-red-600' : row.usage > 60 ? 'text-amber-600' : 'text-green-600'
-                            }`}>{row.usage}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {/* Tab: Infrastructure Report (Controllers + APs) */}
+          <TabsContent value="infrastructure" className="p-2 m-0">
+            <div className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-100 text-sm">Tổng Controller</p>
+                      <p className="text-2xl font-bold">{mockControllerReportData.length}</p>
+                    </div>
+                    <Server size={28} className="text-blue-200" />
+                  </div>
+                </Card>
+                <Card className="p-4 bg-gradient-to-br from-green-500 to-green-600 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-100 text-sm">Tổng AP</p>
+                      <p className="text-2xl font-bold">{mockControllerReportData.reduce((sum, c) => sum + c.apCount, 0)}</p>
+                    </div>
+                    <Wifi size={28} className="text-green-200" />
+                  </div>
+                </Card>
+                <Card className="p-4 bg-gradient-to-br from-cyan-500 to-cyan-600 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-cyan-100 text-sm">Tổng Clients</p>
+                      <p className="text-2xl font-bold">{mockControllerReportData.reduce((sum, c) => sum + c.clients, 0).toLocaleString()}</p>
+                    </div>
+                    <Users size={28} className="text-cyan-200" />
+                  </div>
+                </Card>
+                <Card className="p-4 bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-amber-100 text-sm">CPU TB</p>
+                      <p className="text-2xl font-bold">{Math.round(mockControllerReportData.reduce((sum, c) => sum + c.cpu, 0) / mockControllerReportData.length)}%</p>
+                    </div>
+                    <Activity size={28} className="text-amber-200" />
+                  </div>
+                </Card>
               </div>
-            </div>
-          </TabsContent>
 
-          {/* Tab: Controller Report */}
-          <TabsContent value="controllers" className="p-6 m-0">
-             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Báo cáo Bộ điều khiển WIFI (Controllers)</h3>
-              
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Tên Controller</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Model/Firmware</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vị trí</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Số lượng AP</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Clients</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Tải (CPU/Mem)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {mockControllerReportData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                           <div className="font-medium text-sm">{row.name}</div>
-                           <div className="text-xs text-gray-500">{row.ip}</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                           <div className="text-gray-900">{row.model}</div>
-                           <div className="text-xs text-gray-500">v{row.firmware}</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{row.location}</td>
-                        <td className="px-4 py-3 text-sm text-right">{row.apCount}</td>
-                        <td className="px-4 py-3 text-sm text-right">{row.clients.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-right">
-                           <span className={row.cpu > 80 ? "text-red-600 font-bold" : "text-gray-600"}>CPU: {row.cpu}%</span>
-                           <span className="mx-1">|</span>
-                           <span className={row.memory > 80 ? "text-red-600 font-bold" : "text-gray-600"}>Mem: {row.memory}%</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {/* Controllers Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Server size={20} className="text-blue-600" />
+                    Bộ điều khiển WiFi (Controllers)
+                  </h3>
+                  <p className="text-sm text-gray-500">Click vào controller để xem danh sách AP</p>
+                </div>
+                <Card className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Tên Controller</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Model/Firmware</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vị trí</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Số AP</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Clients</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">CPU/Memory</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {mockControllerReportData.map((row, idx) => (
+                          <tr 
+                            key={idx} 
+                            className={`cursor-pointer transition-colors ${selectedController === row.id ? 'bg-blue-50 border-l-4 border-blue-500' : 'hover:bg-gray-50'}`}
+                            onClick={() => setSelectedController(selectedController === row.id ? null : row.id)}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${selectedController === row.id ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                                <div>
+                                  <div className="font-medium text-sm">{row.name}</div>
+                                  <div className="text-xs text-gray-500">{row.ip}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <div className="text-gray-900">{row.model}</div>
+                              <div className="text-xs text-gray-500">v{row.firmware}</div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{row.location}</td>
+                            <td className="px-4 py-3 text-sm text-right font-medium">{row.apCount}</td>
+                            <td className="px-4 py-3 text-sm text-right">{row.clients.toLocaleString()}</td>
+                            <td className="px-4 py-3 text-sm text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="text-right">
+                                  <div className={`text-xs ${row.cpu > 80 ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
+                                    CPU: {row.cpu}%
+                                  </div>
+                                  <div className={`text-xs ${row.memory > 80 ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
+                                    Mem: {row.memory}%
+                                  </div>
+                                </div>
+                                <div className="w-12 space-y-1">
+                                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full ${row.cpu > 80 ? 'bg-red-500' : row.cpu > 60 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${row.cpu}%` }} />
+                                  </div>
+                                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full ${row.memory > 80 ? 'bg-red-500' : row.memory > 60 ? 'bg-amber-500' : 'bg-blue-500'}`} style={{ width: `${row.memory}%` }} />
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Access Points Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Wifi size={20} className="text-green-600" />
+                    Điểm phát WiFi (Access Points)
+                    {selectedController && (
+                      <span className="text-sm font-normal text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                        của {selectedController}
+                      </span>
+                    )}
+                  </h3>
+                  {selectedController && (
+                    <Button size="sm" variant="outline" onClick={() => setSelectedController(null)}>
+                      Xem tất cả AP
+                    </Button>
+                  )}
+                </div>
+                <Card className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Tên AP</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vị trí</th>
+                          <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Trạng thái</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Lượt truy cập</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Client TB</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">% Sử dụng</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {mockAPAccessData
+                          .filter(ap => !selectedController || ap.controllerId === selectedController)
+                          .map((row, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <div className="text-sm font-medium">{row.apName}</div>
+                              {!selectedController && <div className="text-xs text-gray-400">{row.controllerId}</div>}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{row.location}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                row.status === 'online' ? 'bg-green-100 text-green-700' :
+                                row.status === 'warning' ? 'bg-amber-100 text-amber-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  row.status === 'online' ? 'bg-green-500' :
+                                  row.status === 'warning' ? 'bg-amber-500' : 'bg-red-500'
+                                }`} />
+                                {row.status === 'online' ? 'Online' : row.status === 'warning' ? 'Cảnh báo' : 'Offline'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-right">{row.totalAccess.toLocaleString()}</td>
+                            <td className="px-4 py-3 text-sm text-right">{row.avgClients}</td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full ${
+                                      row.usage > 80 ? 'bg-red-500' : row.usage > 60 ? 'bg-amber-500' : 'bg-green-500'
+                                    }`}
+                                    style={{ width: `${row.usage}%` }}
+                                  />
+                                </div>
+                                <span className={`text-sm font-medium ${
+                                  row.usage > 80 ? 'text-red-600' : row.usage > 60 ? 'text-amber-600' : 'text-green-600'
+                                }`}>{row.usage}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {selectedController && mockAPAccessData.filter(ap => ap.controllerId === selectedController).length === 0 && (
+                    <div className="p-8 text-center text-gray-500">Không có AP nào thuộc controller này</div>
+                  )}
+                </Card>
               </div>
             </div>
           </TabsContent>

@@ -419,6 +419,7 @@ export default function Settings() {
       status: 'Online',
       apCount: 0,
       totalClients: 0,
+      campusId: controllerForm.campusId,
     };
     setControllers([...controllers, newController]);
     setAddControllerDialogOpen(false);
@@ -816,6 +817,13 @@ export default function Settings() {
 
   // State for Controller Selection Filtering
   const [selectedControllerFilter, setSelectedControllerFilter] = useState<string | null>(null);
+  const [controllerCampusFilter, setControllerCampusFilter] = useState<string>('all');
+
+  // Filter Controllers based on campus
+  const filteredControllers = useMemo(() => {
+    if (controllerCampusFilter === 'all') return controllers;
+    return controllers.filter(c => c.campusId === parseInt(controllerCampusFilter));
+  }, [controllers, controllerCampusFilter]);
 
   // Filter APs based on selected controller
   const filteredAPs = useMemo(() => {
@@ -1606,10 +1614,25 @@ export default function Settings() {
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">Danh sách bộ điều khiển WiFi</p>
                   </div>
-                  <Button onClick={handleAddController} size="sm" className="bg-blue-600 hover:bg-blue-700">
-                    <Plus size={16} className="mr-1" />
-                    Thêm
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Select value={controllerCampusFilter} onValueChange={setControllerCampusFilter}>
+                      <SelectTrigger className="w-[150px] h-8 text-xs">
+                        <SelectValue placeholder="Lọc theo cơ sở" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả cơ sở</SelectItem>
+                        {campuses.map((campus) => (
+                          <SelectItem key={campus.id} value={campus.id.toString()}>
+                            {campus.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={handleAddController} size="sm" className="bg-blue-600 hover:bg-blue-700">
+                      <Plus size={16} className="mr-1" />
+                      Thêm
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-sm">
@@ -1623,7 +1646,13 @@ export default function Settings() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {controllers.map((controller) => (
+                      {filteredControllers.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-3 py-6 text-center text-gray-500 text-sm">
+                            Không có Controller nào trong cơ sở này.
+                          </td>
+                        </tr>
+                      ) : filteredControllers.map((controller) => (
                         <tr 
                           key={controller.id} 
                           className={`cursor-pointer transition-colors ${
@@ -2375,6 +2404,7 @@ export default function Settings() {
               <Label>Địa chỉ IP</Label>
               <Input value={controllerForm.ipAddress || ''} onChange={e => setControllerForm({...controllerForm, ipAddress: e.target.value})} />
             </div>
+            
             <div className="grid gap-2">
               <Label>Phiên bản (Version)</Label>
               <Input value={controllerForm.version || ''} onChange={e => setControllerForm({...controllerForm, version: e.target.value})} />
@@ -2382,6 +2412,24 @@ export default function Settings() {
             <div className="grid gap-2">
               <Label>Vị trí đặt máy chủ</Label>
               <Input value={controllerForm.location || ''} onChange={e => setControllerForm({...controllerForm, location: e.target.value})} />
+            </div>
+<div className="grid gap-2">
+              <Label>Cơ sở</Label>
+              <Select 
+                value={controllerForm.campusId?.toString() || ''} 
+                onValueChange={(v) => setControllerForm({...controllerForm, campusId: parseInt(v)})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn cơ sở" />
+                </SelectTrigger>
+                <SelectContent>
+                  {campuses.map((campus) => (
+                    <SelectItem key={campus.id} value={campus.id.toString()}>
+                      {campus.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -2404,6 +2452,24 @@ export default function Settings() {
             <div className="grid gap-2">
               <Label>Địa chỉ IP</Label>
               <Input value={controllerForm.ipAddress || ''} onChange={e => setControllerForm({...controllerForm, ipAddress: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Cơ sở</Label>
+              <Select 
+                value={controllerForm.campusId?.toString() || ''} 
+                onValueChange={(v) => setControllerForm({...controllerForm, campusId: parseInt(v)})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn cơ sở" />
+                </SelectTrigger>
+                <SelectContent>
+                  {campuses.map((campus) => (
+                    <SelectItem key={campus.id} value={campus.id.toString()}>
+                      {campus.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label>Phiên bản</Label>
