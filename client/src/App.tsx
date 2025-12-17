@@ -12,14 +12,13 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 
-// Check if user is logged in
+// Check if admin is logged in
 function isAuthenticated() {
   return localStorage.getItem('isLoggedIn') === 'true';
 }
 
 function Router() {
   const [location] = useLocation();
-  // Re-check auth on every location change
   const authenticated = isAuthenticated();
   
   // Redirect to dashboard if already logged in and on login page

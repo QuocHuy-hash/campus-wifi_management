@@ -461,8 +461,6 @@ export const authUserTypeOptions: AuthOption[] = [
 export const authMethodOptions: AuthOption[] = [
   { id: 1, value: "azure_ad", label: "Microsoft Azure AD", description: "Sử dụng tài khoản Office 365" },
   { id: 2, value: "google_workspace", label: "Google Workspace", description: "Sử dụng Gmail tổ chức" },
-  { id: 3, value: "email", label: "Email & Password", description: "Đăng nhập bằng Email cá nhân" },
-  { id: 4, value: "social", label: "Mạng xã hội", description: "Facebook, Google, Apple" },
   { id: 5, value: "zalo", label: "Zalo OA", description: "Xác thực qua Zalo" },
   { id: 6, value: "local_db", label: "Tài khoản nội bộ", description: "Database cục bộ" },
 ];

@@ -1043,7 +1043,7 @@ export default function Reports() {
                           <div className="ml-auto">
                             <Button size="sm" variant="outline" onClick={() => handleExport('excel', 'sessions-csv')}>
                               <Download size={14} className="mr-1" />
-                              Export CSV (SIEM/ELK)
+                              Export CSV 
                             </Button>
                           </div>
                         </div>
