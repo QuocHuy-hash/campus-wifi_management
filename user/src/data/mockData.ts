@@ -95,8 +95,8 @@ export const qosPolicies = {
   },
   Guest: {
     session_timeout: 3600, // 1 hour
-    bandwidth_limit: 5, // 5 Mbps
-    quota_daily: 1 * 1024 * 1024 * 1024, // 1 GB
+    bandwidth_limit: 20, // 20 Mbps
+    quota_daily: 2 * 1024 * 1024 * 1024, // 1 GB
   },
 };
 
