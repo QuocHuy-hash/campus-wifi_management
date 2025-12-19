@@ -394,102 +394,101 @@ export default function HistoryPage() {
 
       {/* Session Detail Modal */}
       <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
-        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-sm flex items-center gap-1.5">
-              {selectedSession && getDeviceIcon(selectedSession.device_type, 14)}
-              Chi tiết phiên
+            <DialogTitle className="text-base flex items-center gap-2">
+              {selectedSession && getDeviceIcon(selectedSession.device_type, 18)}
+              Chi tiết phiên đăng nhập
             </DialogTitle>
-           
           </DialogHeader>
           
           {selectedSession && (
-            <div className="space-y-3 py-2">
+            <div className="space-y-4 py-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-gray-500">Trạng thái</span>
+                <span className="text-xs text-gray-500">Trạng thái</span>
                 {getStatusBadge(selectedSession)}
               </div>
 
               {/* User Info */}
-              <div className="bg-gray-50 rounded p-2.5">
-                <p className="text-[10px] font-medium text-gray-700 mb-1.5 flex items-center gap-1"><User size={10} /> Người dùng</p>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div><p className="text-gray-400 text-[10px]">Username</p><p className="font-mono">{user?.username || selectedSession.username}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">Họ tên</p><p>{user?.fullname || '--'}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">Vai trò</p><p>{user?.role || 'Student'}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">Khoa/Phòng</p><p>{user?.department || 'Khoa CNTT'}</p></div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5"><User size={14} /> Người dùng</p>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><p className="text-gray-400 text-xs mb-0.5">Username</p><p className="font-mono">{user?.username || selectedSession.username}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">Họ tên</p><p>{user?.fullname || '--'}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">Vai trò</p><p>{user?.role || 'Student'}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">Khoa/Phòng</p><p>{user?.department || 'Khoa CNTT'}</p></div>
                 </div>
               </div>
 
               {/* Time Info */}
-              <div className="bg-gray-50 rounded p-2.5">
-                <p className="text-[10px] font-medium text-gray-700 mb-1.5 flex items-center gap-1"><Clock size={10} /> Thời gian</p>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div><p className="text-gray-400 text-[10px]">Bắt đầu</p><p>{formatDateTime(selectedSession.acctstarttime)}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">Kết thúc</p><p>{selectedSession.acctstoptime ? formatDateTime(selectedSession.acctstoptime) : <span className="text-gray-900">Đang online</span>}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">Thời lượng</p><p>{selectedSession.acctstoptime === null ? formatDuration(Math.floor((currentTime - new Date(selectedSession.acctstarttime).getTime()) / 1000)) : formatDuration(selectedSession.acctsessiontime)}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">Lý do kết thúc</p><p>{getTerminateCauseLabel(selectedSession.acctterminatecause)}</p></div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5"><Clock size={14} /> Thời gian</p>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><p className="text-gray-400 text-xs mb-0.5">Bắt đầu</p><p>{formatDateTime(selectedSession.acctstarttime)}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">Kết thúc</p><p>{selectedSession.acctstoptime ? formatDateTime(selectedSession.acctstoptime) : <span className="text-green-600 font-medium">Đang online</span>}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">Thời lượng</p><p>{selectedSession.acctstoptime === null ? formatDuration(Math.floor((currentTime - new Date(selectedSession.acctstarttime).getTime()) / 1000)) : formatDuration(selectedSession.acctsessiontime)}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">Lý do kết thúc</p><p>{getTerminateCauseLabel(selectedSession.acctterminatecause)}</p></div>
                 </div>
               </div>
 
               {/* Device Info */}
-              <div className="bg-gray-50 rounded p-2.5">
-                <p className="text-[10px] font-medium text-gray-700 mb-1.5 flex items-center gap-1"><Laptop size={10} /> Thiết bị</p>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div><p className="text-gray-400 text-[10px]">Tên</p><p>{selectedSession.device_name}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">Loại</p><p>{selectedSession.device_type}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">Vendor</p><p>{selectedSession.device_vendor || '--'}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">MAC</p><p className="font-mono text-[10px]">{selectedSession.mac_address}</p></div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5"><Laptop size={14} /> Thiết bị</p>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><p className="text-gray-400 text-xs mb-0.5">Tên</p><p>{selectedSession.device_name}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">Loại</p><p>{selectedSession.device_type}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">Vendor</p><p>{selectedSession.device_vendor || '--'}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">MAC</p><p className="font-mono text-xs">{selectedSession.mac_address}</p></div>
                 </div>
               </div>
 
               {/* Network Info */}
-              <div className="bg-gray-50 rounded p-2.5">
-                <p className="text-[10px] font-medium text-gray-700 mb-1.5 flex items-center gap-1"><Network size={10} /> Mạng</p>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div><p className="text-gray-400 text-[10px]">SSID</p><p>{selectedSession.ssid}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">IP</p><p className="font-mono text-[10px]">{selectedSession.ip_address}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">Gateway</p><p className="font-mono text-[10px]">{selectedSession.ip_address.replace(/\.\d+$/, '.1')}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">VLAN</p><p>{selectedSession.vlan_id}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">AP</p><p>{selectedSession.ap_name}</p></div>
-                  <div><p className="text-gray-400 text-[10px]">Vị trí</p><p>{selectedSession.ap_location}</p></div>
-                  <div className="col-span-2"><p className="text-gray-400 text-[10px]">NAS IP</p><p className="font-mono text-[10px]">{selectedSession.nas_ip}</p></div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5"><Network size={14} /> Mạng</p>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><p className="text-gray-400 text-xs mb-0.5">SSID</p><p>{selectedSession.ssid}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">IP</p><p className="font-mono text-xs">{selectedSession.ip_address}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">Gateway</p><p className="font-mono text-xs">{selectedSession.ip_address.replace(/\.\d+$/, '.1')}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">VLAN</p><p>{selectedSession.vlan_id}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">AP</p><p>{selectedSession.ap_name}</p></div>
+                  <div><p className="text-gray-400 text-xs mb-0.5">Vị trí</p><p>{selectedSession.ap_location}</p></div>
+                  <div className="col-span-2"><p className="text-gray-400 text-xs mb-0.5">NAS IP</p><p className="font-mono text-xs">{selectedSession.nas_ip}</p></div>
                 </div>
               </div>
 
               {/* Traffic Info */}
-              <div className="bg-gray-50 rounded p-2.5">
-                <p className="text-[10px] font-medium text-gray-700 mb-1.5 flex items-center gap-1"><Package size={10} /> Lưu lượng</p>
-                <div className="grid grid-cols-3 gap-2 mb-2">
-                  <div className="text-center p-2 bg-blue-50 rounded border border-blue-100">
-                    <Download size={12} className="mx-auto text-blue-500 mb-0.5" />
-                    <p className="text-[10px] text-gray-500">Download</p>
-                    <p className="text-xs font-semibold text-blue-600">{formatBytes(selectedSession.acctinputoctets)}</p>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5"><Package size={14} /> Lưu lượng</p>
+                <div className="grid grid-cols-3 gap-3 mb-3">
+                  <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <Download size={16} className="mx-auto text-blue-500 mb-1" />
+                    <p className="text-xs text-gray-500">Download</p>
+                    <p className="text-sm font-semibold text-blue-600">{formatBytes(selectedSession.acctinputoctets)}</p>
                   </div>
-                  <div className="text-center p-2 bg-green-50 rounded border border-green-100">
-                    <Upload size={12} className="mx-auto text-green-500 mb-0.5" />
-                    <p className="text-[10px] text-gray-500">Upload</p>
-                    <p className="text-xs font-semibold text-green-600">{formatBytes(selectedSession.acctoutputoctets)}</p>
+                  <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
+                    <Upload size={16} className="mx-auto text-green-500 mb-1" />
+                    <p className="text-xs text-gray-500">Upload</p>
+                    <p className="text-sm font-semibold text-green-600">{formatBytes(selectedSession.acctoutputoctets)}</p>
                   </div>
-                  <div className="text-center p-2 bg-violet-50 rounded border border-violet-100">
-                    <Activity size={12} className="mx-auto text-violet-500 mb-0.5" />
-                    <p className="text-[10px] text-gray-500">Tổng</p>
-                    <p className="text-xs font-semibold text-violet-600">{formatBytes(selectedSession.acctinputoctets + selectedSession.acctoutputoctets)}</p>
+                  <div className="text-center p-3 bg-violet-50 rounded-lg border border-violet-100">
+                    <Activity size={16} className="mx-auto text-violet-500 mb-1" />
+                    <p className="text-xs text-gray-500">Tổng</p>
+                    <p className="text-sm font-semibold text-violet-600">{formatBytes(selectedSession.acctinputoctets + selectedSession.acctoutputoctets)}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><span className="text-gray-400">Input packets:</span> <span className="font-mono">{selectedSession.acctinputpackets.toLocaleString()}</span></div>
                   <div><span className="text-gray-400">Output packets:</span> <span className="font-mono">{selectedSession.acctoutputpackets.toLocaleString()}</span></div>
                 </div>
               </div>
 
               {/* QoS Policy */}
-              <div className="bg-gray-50 rounded p-2.5">
-                <p className="text-[10px] font-medium text-gray-700 mb-1.5 flex items-center gap-1"><Server size={10} /> QoS Policy</p>
-                <div className="flex flex-wrap gap-3 text-[11px]">
-                  <span className="flex items-center gap-1"><Gauge size={10} className="text-gray-400" /> {selectedSession.bandwidth_limit} Mbps</span>
-                  <span className="flex items-center gap-1"><Timer size={10} className="text-gray-400" /> {selectedSession.session_timeout / 3600}h</span>
-                  <span className="flex items-center gap-1"><Package size={10} className="text-gray-400" /> {formatBytes(selectedSession.quota_daily)}/ngày</span>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5"><Server size={14} /> QoS Policy</p>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <span className="flex items-center gap-1.5"><Gauge size={14} className="text-gray-400" /> {selectedSession.bandwidth_limit} Mbps</span>
+                  <span className="flex items-center gap-1.5"><Timer size={14} className="text-gray-400" /> {selectedSession.session_timeout / 3600}h</span>
+                  <span className="flex items-center gap-1.5"><Package size={14} className="text-gray-400" /> {formatBytes(selectedSession.quota_daily)}/ngày</span>
                 </div>
               </div>
             </div>

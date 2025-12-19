@@ -14,7 +14,8 @@ import Login from "./pages/Login";
 
 // Check if admin is logged in
 function isAuthenticated() {
-  return localStorage.getItem('isLoggedIn') === 'true';
+  // return localStorage.getItem('isLoggedIn') === 'true';
+  return 'true';
 }
 
 function Router() {
@@ -28,7 +29,7 @@ function Router() {
   
   return (
     <Switch>
-      <Route path="/login" component={Login} />
+      {/* <Route path="/login" component={Login} /> */}
       <Route>
         {authenticated ? (
           <DashboardLayout>
