@@ -23,7 +23,8 @@ function Router() {
   const authenticated = isAuthenticated();
   
   // Redirect to dashboard if already logged in and on login page
-  if (location === '/login' && authenticated) {
+  if ( authenticated) {
+  // if (location === '/login' && authenticated) {
     return <Redirect to="/" />;
   }
   
