@@ -11,6 +11,7 @@ import Policies from "./pages/Policies";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
+import ModalShowcase from "./pages/ModalShowcase";
 
 // Check if admin is logged in
 function isAuthenticated() {
@@ -39,6 +40,7 @@ function Router() {
               <Route path={"/policies"} component={Policies} />
               <Route path={"/reports"} component={Reports} />
               <Route path={"/settings"} component={Settings} />
+              <Route path={"/modal-showcase"} component={ModalShowcase} />
             </Switch>
           </DashboardLayout>
         ) : (
