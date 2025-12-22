@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChevronDown, Check } from 'lucide-react';
-import { Shield, Plus, Edit, Fingerprint, UserPlus, Eye } from 'lucide-react';
+import { Shield, Plus, Edit, Fingerprint, UserPlus, Eye, List, Settings, Key, UserCircle, LogOut } from 'lucide-react';
 import {
   systemRoles,
   userGroups,
@@ -102,6 +103,40 @@ const StaticSection = ({ title, description, icon: Icon, headerBg = "bg-blue-600
       {children}
     </div>
   </Card>
+);
+
+// User Profile Menu Static Component
+const UserProfileMenuStatic = () => (
+  <div className="w-64 bg-white rounded-md border border-gray-200 shadow-md">
+    <div className="px-2 py-1.5 text-sm font-semibold">
+      <div className="flex flex-col">
+        <span className="font-medium text-gray-900">Quản trị viên</span>
+        <span className="text-xs text-gray-500 font-normal">Super Admin</span>
+      </div>
+    </div>
+    <div className="h-px bg-gray-200 my-1" />
+    <div className="p-1">
+      <div className="flex select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-gray-100 cursor-pointer text-gray-700">
+        <UserCircle size={16} className="mr-2" />
+        Xem thông tin tài khoản
+      </div>
+      <div className="flex select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-gray-100 cursor-pointer text-gray-700">
+        <Settings size={16} className="mr-2" />
+        Thay đổi thông tin
+      </div>
+      <div className="flex select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-gray-100 cursor-pointer text-gray-700">
+        <Key size={16} className="mr-2" />
+        Đổi mật khẩu
+      </div>
+    </div>
+    <div className="h-px bg-gray-200 my-1" />
+    <div className="p-1">
+      <div className="flex select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-red-50 text-red-600 cursor-pointer font-medium">
+        <LogOut size={16} className="mr-2" />
+        Đăng xuất
+      </div>
+    </div>
+  </div>
 );
 
 export default function UserManagementModals() {
@@ -273,7 +308,7 @@ export default function UserManagementModals() {
               </div>
             </StaticSection>
 
-            {/* 5. Modal Chi Tiết Người dùng (New) */}
+            {/* 5. Modal Chi Tiết Người dùng */}
             <StaticSection 
               title="Chi tiết Người dùng" 
               description="Xem thông tin chi tiết và chính sách"
@@ -334,6 +369,102 @@ export default function UserManagementModals() {
               </div>
             </StaticSection>
 
+            {/* 6. Modal Thông tin Tài khoản (MOVED FROM POPUP TO STATIC) */}
+            <StaticSection 
+              title="Thông tin Tài khoản" 
+              description="Modal xem chi tiết tài khoản Admin"
+              icon={UserCircle} 
+              headerBg="bg-gradient-to-r from-slate-500 to-slate-600"
+            >
+              <div className="space-y-4">
+                  <div className="flex justify-center mb-4">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+                      A
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-sm text-gray-500">Họ và tên</span>
+                      <span className="text-sm font-medium">Admin User</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-sm text-gray-500">Tên đăng nhập</span>
+                      <span className="text-sm font-medium">super_admin</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-sm text-gray-500">Email</span>
+                      <span className="text-sm font-medium">admin@hcmus.edu.vn</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-sm text-gray-500">Số điện thoại</span>
+                      <span className="text-sm font-medium">0123456789</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-sm text-gray-500">Vai trò</span>
+                      <span className="text-sm font-medium px-2 py-1 bg-blue-100 text-blue-700 rounded">Quản trị viên</span>
+                    </div>
+                  </div>
+                  <div className="border-t pt-4 flex justify-end gap-3 mt-4">
+                    <Button variant="outline">Đóng</Button>
+                    <Button>Chỉnh sửa</Button>
+                  </div>
+              </div>
+            </StaticSection>
+
+            {/* 7. Modal Thay đổi Thông tin (MOVED FROM POPUP TO STATIC) */}
+            <StaticSection 
+              title="Thay đổi Thông tin" 
+              description="Modal cập nhật thông tin cá nhân"
+              icon={Settings} 
+              headerBg="bg-gradient-to-r from-amber-600 to-amber-700"
+            >
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="p-name">Họ và tên</Label>
+                  <Input id="p-name" defaultValue="Admin User" placeholder="Nhập họ và tên" className="border-gray-200 mt-1.5" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="p-email">Email</Label>
+                  <Input id="p-email" type="email" defaultValue="admin@hcmus.edu.vn" placeholder="Nhập email" className="border-gray-200 mt-1.5" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="p-phone">Số điện thoại</Label>
+                  <Input id="p-phone" defaultValue="0123456789" placeholder="Nhập số điện thoại" className="border-gray-200 mt-1.5" />
+                </div>
+                <div className="border-t pt-4 flex justify-end gap-3 mt-6">
+                  <Button variant="outline">Hủy</Button>
+                  <Button className="bg-blue-600 hover:bg-blue-700">Lưu thay đổi</Button>
+                </div>
+              </div>
+            </StaticSection>
+
+            {/* 8. Modal Đổi Mật khẩu (MOVED FROM POPUP TO STATIC) */}
+            <StaticSection 
+              title="Đổi Mật khẩu" 
+              description="Modal thay đổi mật khẩu đăng nhập"
+              icon={Key} 
+              headerBg="bg-gradient-to-r from-green-600 to-green-700"
+            >
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
+                  <Input id="currentPassword" type="password" placeholder="Nhập mật khẩu hiện tại" className="border-gray-200 mt-1.5" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">Mật khẩu mới</Label>
+                  <Input id="newPassword" type="password" placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)" className="border-gray-200 mt-1.5" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
+                  <Input id="confirmPassword" type="password" placeholder="Nhập lại mật khẩu mới" className="border-gray-200 mt-1.5" />
+                </div>
+                <div className="border-t pt-4 flex justify-end gap-3 mt-6">
+                  <Button variant="outline">Hủy</Button>
+                  <Button className="bg-green-600 hover:bg-green-700">Đổi mật khẩu</Button>
+                </div>
+              </div>
+            </StaticSection>
+
           </div>
         </div>
 
@@ -370,9 +501,17 @@ export default function UserManagementModals() {
               <StaticSelect value={userGroups[0]} options={userGroups} expanded={true} />
             </div>
 
-             <div className="space-y-2 pt-6">
+            <div className="space-y-2 pt-6">
               <Label className="text-gray-500 text-xs uppercase tracking-wider font-bold">6. Select Session Policy</Label>
               <StaticSelect value={sessionPolicies[0]?.name} options={sessionPolicies.map(p => p.name)} expanded={true} />
+            </div>
+
+            {/* User Profile Menu Static Showcase */}
+             <div className="space-y-2 pt-6">
+              <Label className="text-gray-500 text-xs uppercase tracking-wider font-bold">7. User Profile Menu</Label>
+              <div className="relative h-[220px]">
+                 <UserProfileMenuStatic />
+              </div>
             </div>
 
           </div>
