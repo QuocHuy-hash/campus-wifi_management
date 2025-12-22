@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, Link } from 'wouter';
+import { Link } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -28,7 +28,6 @@ function getDeviceIcon(deviceType: string, size: number = 18) {
 }
 
 export default function Session() {
-  const [, setLocation] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [logoutAllDialogOpen, setLogoutAllDialogOpen] = useState(false);
@@ -44,7 +43,7 @@ export default function Session() {
     : 0;
 
   const todayUsage = getTodayUsage();
-  const policy = user ? qosPolicies[user.role as keyof typeof qosPolicies] || qosPolicies.Student : qosPolicies.Student;
+  const policy = user && user.role ? (qosPolicies[user.role as keyof typeof qosPolicies] || qosPolicies.Student) : qosPolicies.Student;
   const quotaPercentage = Math.min((todayUsage.total / policy.quota_daily) * 100, 100);
 
   useEffect(() => {
@@ -57,17 +56,12 @@ export default function Session() {
   const handleLogout = () => {
     localStorage.removeItem('portalLoggedIn');
     localStorage.removeItem('portalUser');
-    setLocation('/');
+    window.location.href = '/';
   };
 
   const handleSessionLogout = () => {
     setLogoutDialogOpen(false);
   };
-
-  if (!user) {
-    setLocation('/');
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -89,8 +83,8 @@ export default function Session() {
           
           <div className="flex items-center gap-3">
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-gray-900">{user.fullname}</p>
-              <p className="text-xs text-gray-500">{user.role}</p>
+              <p className="text-sm font-medium text-gray-900">{user?.fullname || 'Guest'}</p>
+              <p className="text-xs text-gray-500">{user?.role || 'Student'}</p>
             </div>
             <Button 
               variant="ghost" 

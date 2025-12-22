@@ -135,11 +135,6 @@ export default function HistoryPage() {
     setDetailModalOpen(true);
   };
 
-  if (!user) {
-    setLocation('/');
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -158,8 +153,8 @@ export default function HistoryPage() {
             </div>
           </div>
           <div className="hidden sm:block text-right">
-            <p className="text-xs font-medium text-gray-900">{user.fullname}</p>
-            <p className="text-[10px] text-gray-500">{user.role}</p>
+            <p className="text-xs font-medium text-gray-900">{user?.fullname || 'Guest'}</p>
+            <p className="text-[10px] text-gray-500">{user?.role || 'Student'}</p>
           </div>
         </div>
       </header>

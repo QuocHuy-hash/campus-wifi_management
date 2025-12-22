@@ -44,7 +44,7 @@ export default function Account() {
   const userStr = localStorage.getItem('portalUser');
   const user = userStr ? JSON.parse(userStr) : null;
 
-  const policy = user ? qosPolicies[user.role as keyof typeof qosPolicies] || qosPolicies.Student : qosPolicies.Student;
+  const policy = user && user.role ? (qosPolicies[user.role as keyof typeof qosPolicies] || qosPolicies.Student) : qosPolicies.Student;
   const todayUsage = getTodayUsage();
 
   const activeSessions = useMemo(() => {
@@ -105,11 +105,6 @@ export default function Account() {
     }, 1000);
   };
 
-  if (!user) {
-    setLocation('/');
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -129,8 +124,8 @@ export default function Account() {
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-right">
-              <p className="text-xs font-medium text-gray-900">{user.fullname}</p>
-              <p className="text-[10px] text-gray-500">{user.role}</p>
+              <p className="text-xs font-medium text-gray-900">{user?.fullname || 'Guest'}</p>
+              <p className="text-[10px] text-gray-500">{user?.role || 'Student'}</p>
             </div>
             <Button 
               variant="ghost" 
@@ -191,10 +186,10 @@ export default function Account() {
                   {user.fullname?.charAt(0) || 'U'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-400">@{user.username}</p>
+                  <p className="text-sm text-gray-400">@{user?.username || 'guest'}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-xs rounded-full">
-                      {user.role}
+                      {user?.role || 'Student'}
                     </span>
                     <span className="px-2 py-0.5 bg-green-500/20 text-green-300 text-xs rounded-full">
                       Active
@@ -215,28 +210,28 @@ export default function Account() {
                     <User size={16} className="text-gray-400" />
                     <div>
                       <p className="text-[10px] text-gray-500">MSSV / Mã NV</p>
-                      <p className="text-sm font-mono">{user.mssv || user.username}</p>
+                      <p className="text-sm font-mono">{user?.mssv || user?.username || 'N/A'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Mail size={16} className="text-gray-400" />
                     <div>
                       <p className="text-[10px] text-gray-500">Email</p>
-                      <p className="text-sm truncate">{user.email || `${user.username}@hcmus.edu.vn`}</p>
+                      <p className="text-sm truncate">{user?.email || `${user?.username || 'guest'}@hcmus.edu.vn`}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Building size={16} className="text-gray-400" />
                     <div>
                       <p className="text-[10px] text-gray-500">Khoa / Phòng ban</p>
-                      <p className="text-sm">{user.department || 'Khoa CNTT'}</p>
+                      <p className="text-sm">{user?.department || 'Khoa CNTT'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Shield size={16} className="text-gray-400" />
                     <div>
                       <p className="text-[10px] text-gray-500">Vai trò</p>
-                      <p className="text-sm">{user.role}</p>
+                      <p className="text-sm">{user?.role || 'Student'}</p>
                     </div>
                   </div>
                 </div>
@@ -259,7 +254,7 @@ export default function Account() {
           {/* QoS Policy */}
           <Card className="mb-4 p-4 border border-gray-200">
             <p className="text-xs font-medium text-gray-700 mb-3 flex items-center gap-1.5">
-              <Gauge size={12} /> Chính sách: {user.role}
+              <Gauge size={12} /> Chính sách: {user?.role || 'Student'}
             </p>
             <div className="grid grid-cols-3 gap-3">
               <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
