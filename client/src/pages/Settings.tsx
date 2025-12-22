@@ -195,6 +195,7 @@ export default function Settings() {
   const [selectedCampus, setSelectedCampus] = useState<Campus | null>(null);
   const [campusForm, setCampusForm] = useState<Partial<Campus>>({});
   const [selectedCampusFilter, setSelectedCampusFilter] = useState<number | 'all'>('all');
+  const [selectedBuildingFilter, setSelectedBuildingFilter] = useState<number | 'all'>('all');
 
   // Dialog states - Building
   const [addBuildingDialogOpen, setAddBuildingDialogOpen] = useState(false);
@@ -229,9 +230,18 @@ export default function Settings() {
       result = result.filter(l => campusBuildingIds.includes(l.buildingId));
     }
     
-    // Then can add building filter logic here if we had a specific building filter dropdown for locations
+    // Filter by Building (if selected)
+    if (selectedBuildingFilter !== 'all') {
+      result = result.filter(l => l.buildingId === selectedBuildingFilter);
+    }
+    
     return result;
-  }, [locations, buildings, selectedCampusFilter]);
+  }, [locations, buildings, selectedCampusFilter, selectedBuildingFilter]);
+
+  // Reset building filter when campus filter changes
+  useEffect(() => {
+    setSelectedBuildingFilter('all');
+  }, [selectedCampusFilter]);
 
   // Helper to get building name
   const getBuildingName = (buildingId: number) => {
@@ -1172,7 +1182,7 @@ export default function Settings() {
               </div>
               
               {/* Buildings Table */}
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[500px] overflow-y-auto border border-gray-200 rounded-lg">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
@@ -1187,8 +1197,11 @@ export default function Settings() {
                     {filteredBuildings.map((building, index) => (
                       <tr
                         key={building.id}
-                        className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        onClick={() => setSelectedBuildingFilter(selectedBuildingFilter === building.id ? 'all' : building.id)}
+                        className={`border-b border-gray-100 hover:bg-blue-50 transition-colors cursor-pointer ${
+                          selectedBuildingFilter === building.id 
+                            ? 'bg-blue-100 border-l-4 border-l-blue-600' 
+                            : index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                         }`}
                       >
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">
@@ -1204,7 +1217,7 @@ export default function Settings() {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{building.description}</td>
                         <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
+                          <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" size="sm" title="Chỉnh sửa" onClick={() => handleEditBuilding(building)}>
                               <Edit size={18} className="text-amber-600" />
                             </Button>
@@ -1235,13 +1248,30 @@ export default function Settings() {
                   <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <MapPin size={20} className="text-blue-600" />
                     Quản lý Địa điểm
+                    {selectedBuildingFilter !== 'all' && (
+                      <span className="text-sm font-normal text-blue-600">
+                        - {getBuildingName(selectedBuildingFilter)}
+                      </span>
+                    )}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">Quản lý các phòng/địa điểm trong tòa nhà</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedBuildingFilter !== 'all' 
+                      ? `Hiển thị địa điểm trong toà nhà "${getBuildingName(selectedBuildingFilter)}"` 
+                      : 'Quản lý địa điểm trong tòa nhà'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3">
-                   {/* Note: Reuse the same campus filter from Buildings section or add a new one if needed to be independent.
-                       For now, assuming the top filter applies to both Buildings and Locations view context. 
-                   */}
+                  {selectedBuildingFilter !== 'all' && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setSelectedBuildingFilter('all')}
+                      className="text-gray-600 hover:text-gray-900"
+                    >
+                      <X size={16} className="mr-1" />
+                      Hiển thị tất cả
+                    </Button>
+                  )}
                   <Button onClick={handleAddLocation} className="bg-blue-600 hover:bg-green-700">
                     <Plus size={18} className="mr-2" />
                     Thêm địa điểm
