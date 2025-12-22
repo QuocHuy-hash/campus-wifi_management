@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  Eye, EyeOff, Lock, User, AlertCircle, Clock, Shield, Gauge, 
+  Eye, EyeOff, Lock, User, AlertCircle, Clock, Gauge, 
   UserPlus, Mail, Phone, FileText, HardDrive, Globe, ChevronRight,
   MessageCircle, ArrowLeft, CheckCircle, Facebook
 } from 'lucide-react';
@@ -26,10 +26,10 @@ export default function Login() {
   const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [guestForm, setGuestForm] = useState({
-    fullName: '',
     email: '',
     phone: '',
-    duration: '1h'
+    password: '',
+    confirmPassword: ''
   });
   const [guestAuthMethod, setGuestAuthMethod] = useState<'email' | 'phone'>('email');
   const [guestStep, setGuestStep] = useState<'form' | 'otp' | 'newpass' | 'success'>('form');
@@ -119,7 +119,17 @@ export default function Login() {
 
   const handleSendOtp = () => {
     const contact = guestAuthMethod === 'email' ? guestForm.email : guestForm.phone;
-    if (!guestForm.fullName || !contact) return;
+    if (!contact || !guestForm.password) return;
+    
+    // Validate passwords
+    if (guestForm.password.length < 8) {
+      setOtpError('Mật khẩu phải có ít nhất 8 ký tự');
+      return;
+    }
+    if (guestForm.password !== guestForm.confirmPassword) {
+      setOtpError('Xác nhận mật khẩu không khớp');
+      return;
+    }
     
     setIsSendingOtp(true);
     setOtpError('');
@@ -161,10 +171,22 @@ export default function Login() {
     setIsVerifyingOtp(true);
     setOtpError('');
     
-    // Simulate OTP verification
+    // Simulate OTP verification + AUTO-LOGIN
     setTimeout(() => {
       setIsVerifyingOtp(false);
-      setGuestStep('newpass');
+      // Auto-login: Save credentials and redirect
+      const guestUsername = guestAuthMethod === 'email' ? guestForm.email : guestForm.phone;
+      localStorage.setItem('portalLoggedIn', 'true');
+      localStorage.setItem('portalUser', JSON.stringify({ 
+        ...currentUser,
+        id: Date.now(),
+        username: guestUsername,
+        fullname: `User ${guestUsername}`,
+        loginTime: new Date().toISOString()
+      }));
+      setGuestModalOpen(false);
+      resetGuestForm();
+      setLocation('/session');
     }, 1500);
   };
 
@@ -214,14 +236,11 @@ export default function Login() {
   };
 
   const resetGuestForm = () => {
-    setGuestForm({ fullName: '', email: '', phone: '', duration: '1h' });
+    setGuestForm({ email: '', phone: '', password: '', confirmPassword: '' });
     setGuestAuthMethod('email');
     setGuestStep('form');
     setOtpCode(['', '', '', '', '', '']);
     setOtpError('');
-    setGuestNewPassword('');
-    setGuestConfirmPassword('');
-    setShowGuestPassword(false);
   };
 
   const handleUseGuestCredentials = () => {
@@ -350,7 +369,7 @@ export default function Login() {
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="username" className="text-sm font-medium text-gray-700">
-                  MSSV / Email / Tài khoản AD
+                 Tài khoản
                 </Label>
                 <div className="relative">
                   <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -491,7 +510,7 @@ export default function Login() {
               onClick={() => setGuestModalOpen(true)}
             >
               <UserPlus size={16} className="text-blue-600" />
-              Đăng ký tài khoản Khách
+              Đăng ký tài khoản
             </button>
           </div>
         </div>
@@ -625,13 +644,13 @@ export default function Login() {
                 </button>
               )}
               <UserPlus size={18} className="text-blue-600" />
-              {guestStep === 'form' && 'Đăng ký tài khoản Khách'}
+              {guestStep === 'form' && 'Đăng ký tài khoản'}
               {guestStep === 'otp' && 'Xác thực OTP'}
               {guestStep === 'newpass' && 'Tạo mật khẩu'}
               {guestStep === 'success' && 'Đăng ký thành công'}
             </DialogTitle>
             <DialogDescription>
-              {guestStep === 'form' && 'Xác thực bằng Email hoặc Số điện thoại (Zalo)'}
+              {guestStep === 'form' && 'Tạo tài khoản WiFi bằng Email hoặc Zalo'}
               {guestStep === 'otp' && `Nhập mã OTP đã gửi đến ${guestAuthMethod === 'email' ? guestForm.email : guestForm.phone}`}
               {guestStep === 'newpass' && 'Tạo mật khẩu cho tài khoản của bạn'}
               {guestStep === 'success' && 'Tài khoản WiFi tạm thời đã sẵn sàng'}
@@ -671,19 +690,7 @@ export default function Login() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="guest-name" className="text-sm font-medium">
-                  Họ tên <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="guest-name"
-                  placeholder="Nguyễn Văn A"
-                  value={guestForm.fullName}
-                  onChange={(e) => setGuestForm({...guestForm, fullName: e.target.value})}
-                  className="h-11 rounded-xl"
-                />
-              </div>
-              
+
               {guestAuthMethod === 'email' ? (
                 <div className="space-y-1.5">
                   <Label htmlFor="guest-email" className="text-sm font-medium">
@@ -721,26 +728,55 @@ export default function Login() {
                 </div>
               )}
 
+              {/* Password Fields */}
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Thời gian sử dụng</Label>
-                <Select value={guestForm.duration} onValueChange={(v) => setGuestForm({...guestForm, duration: v})}>
-                  <SelectTrigger className="h-11 rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1h">1 giờ</SelectItem>
-                    <SelectItem value="4h">4 giờ</SelectItem>
-                    <SelectItem value="1d">1 ngày</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="guest-password" className="text-sm font-medium">
+                  Mật khẩu <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    id="guest-password"
+                    type={showGuestPassword ? 'text' : 'password'}
+                    placeholder="Tối thiểu 8 ký tự"
+                    value={guestForm.password}
+                    onChange={(e) => setGuestForm({...guestForm, password: e.target.value})}
+                    className="pl-10 pr-10 h-11 rounded-xl"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowGuestPassword(!showGuestPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showGuestPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm">
-                <p className="font-medium text-amber-800 mb-1">Giới hạn tài khoản Khách:</p>
-                <p className="text-amber-700">
-                  {qosPolicies.Guest.bandwidth_limit} Mbps • {formatBytes(qosPolicies.Guest.quota_daily)}/ngày
-                </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="guest-confirm-password" className="text-sm font-medium">
+                  Xác nhận mật khẩu <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    id="guest-confirm-password"
+                    type={showGuestPassword ? 'text' : 'password'}
+                    placeholder="Nhập lại mật khẩu"
+                    value={guestForm.confirmPassword}
+                    onChange={(e) => setGuestForm({...guestForm, confirmPassword: e.target.value})}
+                    className="pl-10 h-11 rounded-xl"
+                  />
+                </div>
               </div>
+
+              {otpError && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
+                  <AlertCircle size={16} />
+                  <span className="text-sm">{otpError}</span>
+                </div>
+              )}
+
 
               <DialogFooter className="pt-2 gap-2">
                 <Button variant="outline" onClick={() => setGuestModalOpen(false)} className="rounded-xl">
@@ -748,7 +784,7 @@ export default function Login() {
                 </Button>
                 <Button 
                   onClick={handleSendOtp}
-                  disabled={!guestForm.fullName || (guestAuthMethod === 'email' ? !guestForm.email : !guestForm.phone) || isSendingOtp}
+                  disabled={!guestForm.password || !guestForm.confirmPassword || (guestAuthMethod === 'email' ? !guestForm.email : !guestForm.phone) || isSendingOtp}
                   className="bg-blue-600 hover:bg-blue-700 rounded-xl"
                 >
                   {isSendingOtp ? (

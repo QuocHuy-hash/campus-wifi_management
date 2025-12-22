@@ -5,9 +5,8 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { 
   Wifi, LogOut, History, Clock, Download, Upload, 
-  Activity, Globe, Server, Laptop, Smartphone, Monitor,
-  Menu, X, User, HelpCircle, Gauge, HardDrive,
-  Network, Router
+  Activity, Globe, Server, Menu, X, User, HelpCircle, Gauge, HardDrive,
+  Network
 } from 'lucide-react';
 import { 
   mockSessions, 
@@ -18,14 +17,14 @@ import {
   type RadiusSession 
 } from '@/data/mockData';
 
-function getDeviceIcon(deviceType: string, size: number = 18) {
-  switch (deviceType) {
-    case 'Smartphone': return <Smartphone size={size} />;
-    case 'Laptop': return <Laptop size={size} />;
-    case 'Tablet': return <Monitor size={size} />;
-    default: return <Monitor size={size} />;
-  }
-}
+// function getDeviceIcon(deviceType: string, size: number = 18) {
+//   switch (deviceType) {
+//     case 'Smartphone': return <Smartphone size={size} />;
+//     case 'Laptop': return <Laptop size={size} />;
+//     case 'Tablet': return <Monitor size={size} />;
+//     default: return <Monitor size={size} />;
+//   }
+// }
 
 export default function Session() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -173,18 +172,18 @@ export default function Session() {
                 {/* Device & Location */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-10 h-10 bg-white border rounded-lg flex items-center justify-center text-gray-600">
+                    {/* <div className="w-10 h-10 bg-white border rounded-lg flex items-center justify-center text-gray-600">
                       {getDeviceIcon(activeSession.device_type, 18)}
-                    </div>
+                    </div> */}
                     <div className="min-w-0">
                       <p className="text-xs text-gray-500">Thiết bị</p>
                       <p className="text-sm font-medium truncate">{activeSession.device_name}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-10 h-10 bg-white border rounded-lg flex items-center justify-center text-gray-600">
+                    {/* <div className="w-10 h-10 bg-white border rounded-lg flex items-center justify-center text-gray-600">
                       <Router size={18} />
-                    </div>
+                    </div> */}
                     <div className="min-w-0">
                       <p className="text-xs text-gray-500">Vị trí</p>
                       <p className="text-sm font-medium truncate">{activeSession.ap_location}</p>
