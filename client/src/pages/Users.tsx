@@ -28,8 +28,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, Edit, Trash2, Eye, Plus, Shield } from 'lucide-react';
-import { initialPolicies, initialUsers, User } from '../data/mockData';
+import { Search, Edit, Trash2, Eye, Plus, Shield, Mail, Globe, Facebook } from 'lucide-react';
+import { initialPolicies, initialUsers, User, LinkedAccount } from '../data/mockData';
 
 const userRoles = ['Sinh viên', 'Cán bộ', 'Khách'];
 const accountStatuses = ['Active', 'Disabled'];
@@ -138,6 +138,7 @@ export default function Users() {
       sessionPolicy: addForm.sessionPolicy || sessionPolicies[0]?.name || '',
       auditPolicy: addForm.auditPolicy || auditPolicies[0]?.name || '',
       securityPolicy: addForm.securityPolicy || securityPolicies[0]?.name || '',
+      linkedAccounts: [],
     };
     setUsers([...users, newUser]);
     setAddDialogOpen(false);
@@ -216,6 +217,7 @@ export default function Users() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Đơn vị</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Ngày tạo</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Vai trò</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Liên kết</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hành động</th>
               </tr>
             </thead>
@@ -244,6 +246,20 @@ export default function Users() {
                       {user.role}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-sm">
+                    <div className="flex gap-2">
+                      {user.linkedAccounts?.map((acc, idx) => (
+                        <span key={idx} title={`${acc.type}: ${acc.email || acc.id}`}>
+                          {acc.type === 'gmail' && <Mail size={16} className="text-red-500" />}
+                          {acc.type === 'microsoft' && <Globe size={16} className="text-blue-500" />}
+                          {acc.type === 'facebook' && <Facebook size={16} className="text-blue-600" />}
+                        </span>
+                      ))}
+                      {(!user.linkedAccounts || user.linkedAccounts.length === 0) && (
+                        <span className="text-gray-300">-</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <Button variant="ghost" size="sm" title="Xem chi tiết" onClick={() => handleView(user)}>
@@ -266,11 +282,11 @@ export default function Users() {
           </table>
         </div>
 
-        {filteredUsers.length === 0 && (
+        {filteredUsers.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500">Không tìm thấy người dùng nào</p>
           </div>
-        )}
+        ) : null}
       </Card>
 
       {/* View User Dialog */}
@@ -279,7 +295,7 @@ export default function Users() {
           <DialogHeader>
             <DialogTitle>Chi tiết Người dùng</DialogTitle>
           </DialogHeader>
-          {selectedUser && (
+          {selectedUser ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -324,6 +340,28 @@ export default function Users() {
                   <Label className="text-xs text-gray-500">MAC Address</Label>
                   <p className="text-sm font-medium font-mono">{selectedUser.macAddress || 'Chưa đăng ký'}</p>
                 </div>
+                <div className="col-span-2 border-t pt-4">
+                  <Label className="text-xs text-gray-500 block mb-2 font-bold uppercase tracking-wider">Tài khoản liên kết</Label>
+                  <div className="space-y-2">
+                    {selectedUser.linkedAccounts && selectedUser.linkedAccounts.length > 0 ? (
+                      selectedUser.linkedAccounts.map((acc, idx) => (
+                        <div key={idx} className="flex items-center gap-3 p-2 bg-gray-50 rounded border">
+                          {acc.type === 'gmail' && <Mail size={18} className="text-red-500" />}
+                          {acc.type === 'microsoft' && <Globe size={18} className="text-blue-500" />}
+                          {acc.type === 'facebook' && <Facebook size={18} className="text-blue-600" />}
+                          <div>
+                            <p className="text-xs font-semibold capitalize">{acc.type}</p>
+                            <p className="text-sm text-gray-600">
+                              {acc.email || acc.id} {acc.name ? `(${acc.name})` : ''}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">Chưa có tài khoản liên kết</p>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="border-t pt-4">
                 <Label className="text-xs text-gray-500 block mb-2">Chính sách áp dụng</Label>
@@ -335,7 +373,7 @@ export default function Users() {
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Đóng</Button>
           </DialogFooter>
@@ -375,7 +413,7 @@ export default function Users() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="edit-role">Vai trò</Label>
-                <Select value={editForm.role} onValueChange={(value) => setEditForm({ ...editForm, role: value })}>
+                <Select value={editForm.role || ''} onValueChange={(value) => setEditForm({ ...editForm, role: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn vai trò" />
                   </SelectTrigger>
@@ -388,7 +426,7 @@ export default function Users() {
               </div>
               <div>
                 <Label htmlFor="edit-status">Trạng thái</Label>
-                <Select value={editForm.status} onValueChange={(value) => setEditForm({ ...editForm, status: value })}>
+                <Select value={editForm.status || ''} onValueChange={(value) => setEditForm({ ...editForm, status: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn trạng thái" />
                   </SelectTrigger>
@@ -409,6 +447,22 @@ export default function Users() {
                 placeholder="AA:BB:CC:DD:EE:FF"
               />
             </div>
+            {editForm.linkedAccounts && editForm.linkedAccounts.length > 0 && (
+              <div className="border-t pt-4">
+                <Label className="text-xs font-bold text-gray-500 uppercase mb-3 block">Tài khoản đã liên kết (OAuth)</Label>
+                <div className="space-y-2">
+                  {editForm.linkedAccounts.map((acc, idx) => (
+                    <div key={idx} className="flex items-center gap-3 p-2 bg-gray-50 rounded border border-gray-100">
+                      {acc.type === 'gmail' && <Mail size={16} className="text-red-500" />}
+                      {acc.type === 'microsoft' && <Globe size={16} className="text-blue-500" />}
+                      {acc.type === 'facebook' && <Facebook size={16} className="text-blue-600" />}
+                      <span className="text-sm text-gray-700">{acc.email || acc.id}</span>
+                      <span className="ml-auto text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded uppercase">Verified</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Hủy</Button>
@@ -430,7 +484,7 @@ export default function Users() {
             <div>
               <Label htmlFor="policy-bandwidth">Chính sách Băng thông</Label>
               <Select 
-                value={editForm.bandwidthPolicy} 
+                value={editForm.bandwidthPolicy || ''} 
                 onValueChange={(value) => setEditForm({ ...editForm, bandwidthPolicy: value })}
               >
                 <SelectTrigger>
@@ -444,9 +498,9 @@ export default function Users() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="policy-session mb-5">Chính sách Cấp quyền truy cập (Phiên)</Label>
+              <Label htmlFor="policy-session">Chính sách Cấp quyền truy cập (Phiên)</Label>
               <Select 
-                value={editForm.sessionPolicy} 
+                value={editForm.sessionPolicy || ''} 
                 onValueChange={(value) => setEditForm({ ...editForm, sessionPolicy: value })}
               >
                 <SelectTrigger>
@@ -462,7 +516,7 @@ export default function Users() {
             <div>
               <Label htmlFor="policy-audit">Chính sách Kiểm toán</Label>
               <Select 
-                value={editForm.auditPolicy} 
+                value={editForm.auditPolicy || ''} 
                 onValueChange={(value) => setEditForm({ ...editForm, auditPolicy: value })}
               >
                 <SelectTrigger>
@@ -478,7 +532,7 @@ export default function Users() {
             <div>
               <Label htmlFor="policy-security">Chính sách Bảo mật</Label>
               <Select 
-                value={editForm.securityPolicy} 
+                value={editForm.securityPolicy || ''} 
                 onValueChange={(value) => setEditForm({ ...editForm, securityPolicy: value })}
               >
                 <SelectTrigger>
@@ -518,79 +572,79 @@ export default function Users() {
                 placeholder="example@hcmus.edu.vn"
               />
             </div>
-            <div>
-              <Label htmlFor="add-name">Họ tên</Label>
-              <Input 
-                id="add-name" 
-                value={addForm.name || ''} 
-                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                placeholder="Nguyễn Văn A"
-              />
-            </div>
-            <div>
-              <Label htmlFor="add-unit">Đơn vị</Label>
-              <Input 
-                id="add-unit" 
-                value={addForm.unit || ''} 
-                onChange={(e) => setAddForm({ ...addForm, unit: e.target.value })}
-                placeholder="Khoa CNTT"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="add-role">Vai trò</Label>
-                <Select value={addForm.role} onValueChange={(value) => setAddForm({ ...addForm, role: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn vai trò" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {userRoles.map((role) => (
-                      <SelectItem key={role} value={role}>{role}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+             <div>
+               <Label htmlFor="add-name">Họ tên</Label>
+               <Input 
+                 id="add-name" 
+                 value={addForm.name || ''} 
+                 onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                 placeholder="Nguyễn Văn A"
+               />
+             </div>
+             <div>
+               <Label htmlFor="add-unit">Đơn vị</Label>
+               <Input 
+                 id="add-unit" 
+                 value={addForm.unit || ''} 
+                 onChange={(e) => setAddForm({ ...addForm, unit: e.target.value })}
+                 placeholder="Khoa CNTT"
+               />
+             </div>
+             <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="add-role">Vai trò</Label>
+                  <Select value={addForm.role || ''} onValueChange={(value) => setAddForm({ ...addForm, role: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn vai trò" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userRoles.map((role) => (
+                        <SelectItem key={role} value={role}>{role}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="add-status">Trạng thái</Label>
+                  <Select value={addForm.status || ''} onValueChange={(value) => setAddForm({ ...addForm, status: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn trạng thái" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accountStatuses.map((status) => (
+                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="add-status">Trạng thái</Label>
-                <Select value={addForm.status} onValueChange={(value) => setAddForm({ ...addForm, status: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn trạng thái" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accountStatuses.map((status) => (
-                      <SelectItem key={status} value={status}>{status}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Hủy</Button>
-            <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">Thêm người dùng</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận xóa người dùng</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa người dùng <strong>{selectedUser?.name}</strong> ({selectedUser?.email})? 
-              Hành động này không thể hoàn tác.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Xóa
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
+ 
+           </div>
+           <DialogFooter>
+             <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Hủy</Button>
+             <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">Thêm người dùng</Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+ 
+       {/* Delete Confirmation Dialog */}
+       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+         <AlertDialogContent>
+           <AlertDialogHeader>
+             <AlertDialogTitle>Xác nhận xóa người dùng</AlertDialogTitle>
+             <AlertDialogDescription>
+               Bạn có chắc chắn muốn xóa người dùng <strong>{selectedUser?.name}</strong> ({selectedUser?.email})? 
+               Hành động này không thể hoàn tác.
+             </AlertDialogDescription>
+           </AlertDialogHeader>
+           <AlertDialogFooter>
+             <AlertDialogCancel>Hủy</AlertDialogCancel>
+             <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+               Xóa
+             </AlertDialogAction>
+           </AlertDialogFooter>
+         </AlertDialogContent>
+       </AlertDialog>
+     </div>
+   );
+ }

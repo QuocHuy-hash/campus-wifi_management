@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Eye, EyeOff, Lock, User, AlertCircle, Clock, Shield, Gauge, 
   UserPlus, Mail, Phone, FileText, HardDrive, Globe, ChevronRight,
-  MessageCircle, ArrowLeft, CheckCircle
+  MessageCircle, ArrowLeft, CheckCircle, Facebook
 } from 'lucide-react';
 import { currentUser, qosPolicies, formatBytes } from '@/data/mockData';
 import hcmusLogo from '@/assets/logo_hcmus.png';
@@ -97,12 +97,21 @@ export default function Login() {
     }
     setIsLoading(true);
     setTimeout(() => {
+      const providerLower = provider.toLowerCase();
+      const linkedAccount = {
+        type: providerLower,
+        email: `${providerLower}.user@gmail.com`,
+        name: `User ${provider}`
+      };
+
       localStorage.setItem('portalLoggedIn', 'true');
       localStorage.setItem('portalUser', JSON.stringify({ 
         ...currentUser,
-        username: `${provider.toLowerCase()}.user@hcmus.edu.vn`,
+        id: Date.now(),
+        username: linkedAccount.email,
         fullname: `Người dùng ${provider}`,
-        loginTime: new Date().toISOString()
+        loginTime: new Date().toISOString(),
+        linkedAccounts: [linkedAccount]
       }));
       setLocation('/session');
     }, 1500);
@@ -441,36 +450,36 @@ export default function Login() {
             <div className="grid grid-cols-3 gap-3">
               <button 
                 type="button"
-                onClick={() => handleSSOLogin('SSO')}
+                onClick={() => handleSSOLogin('Gmail')}
+                disabled={isLoading}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-red-300 hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                  <Mail size={20} className="text-red-600" />
+                </div>
+                <span className="text-xs font-medium text-gray-700">Gmail</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => handleSSOLogin('Microsoft')}
                 disabled={isLoading}
                 className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors disabled:opacity-50"
               >
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Globe size={20} className="text-blue-600" />
                 </div>
-                <span className="text-xs font-medium text-gray-700">SSO</span>
+                <span className="text-xs font-medium text-gray-700">Microsoft</span>
               </button>
               <button 
                 type="button"
-                onClick={() => handleSSOLogin('OAuth2')}
+                onClick={() => handleSSOLogin('Facebook')}
                 disabled={isLoading}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors disabled:opacity-50"
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50"
               >
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Shield size={20} className="text-green-600" />
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Facebook size={20} className="text-blue-700" />
                 </div>
-                <span className="text-xs font-medium text-gray-700">OAuth2</span>
-              </button>
-              <button 
-                type="button"
-                onClick={() => handleSSOLogin('SAML')}
-                disabled={isLoading}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors disabled:opacity-50"
-              >
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Lock size={20} className="text-purple-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">SAML</span>
+                <span className="text-xs font-medium text-gray-700">Facebook</span>
               </button>
             </div>
           </div>

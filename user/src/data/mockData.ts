@@ -51,6 +51,12 @@ export interface UserInfo {
   department: string;
   status: 'Active' | 'Suspended';
   avatar?: string;
+  linkedAccounts?: {
+    type: string;
+    email?: string;
+    id?: string;
+    name?: string;
+  }[];
 }
 
 export interface AccessPoint {

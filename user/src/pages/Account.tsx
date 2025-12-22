@@ -9,7 +9,8 @@ import {
   Wifi, History, Clock, Download, Upload, 
   Activity, Laptop, Smartphone, Monitor,
   Menu, X, User, HelpCircle, Mail, Building, Shield,
-  Gauge, HardDrive, Package, LogOut, Key, Eye, EyeOff, CheckCircle, AlertCircle
+  Gauge, HardDrive, Package, LogOut, Key, Eye, EyeOff, CheckCircle, AlertCircle,
+  Globe, Facebook
 } from 'lucide-react';
 import { 
   mockSessions, 
@@ -243,10 +244,43 @@ export default function Account() {
                   <Key size={12} className="mr-1.5" />
                   Đổi mật khẩu
                 </Button>
-                {/* <Button variant="outline" size="sm" className="h-8 text-xs">
-                  <Bell size={12} className="mr-1.5" />
-                  Cài đặt thông báo
-                </Button> */}
+              </div>
+
+              {/* Linked Accounts */}
+              <div className="pt-4 border-t border-gray-100">
+                <p className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                  <Globe size={12} /> Tài khoản liên kết (OAuth)
+                </p>
+                <div className="space-y-2">
+                  {user?.linkedAccounts && user.linkedAccounts.length > 0 ? (
+                    user.linkedAccounts.map((acc: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
+                        {acc.type === 'gmail' && <Mail size={18} className="text-red-500" />}
+                        {acc.type === 'microsoft' && <Globe size={18} className="text-blue-500" />}
+                        {acc.type === 'facebook' && <Facebook size={18} className="text-blue-600" />}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold capitalize">{acc.type}</p>
+                          <p className="text-sm text-gray-600 truncate">{acc.email || acc.id}</p>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-8 text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50">
+                          Gỡ liên kết
+                        </Button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
+                      <p className="text-xs text-gray-500 italic mb-3">Bạn chưa liên kết tài khoản mạng xã hội</p>
+                      <div className="flex justify-center gap-2">
+                        <Button variant="outline" size="sm" className="h-8 px-2">
+                          <Mail size={14} className="text-red-500 mr-1" /> Google
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 px-2">
+                          <Facebook size={14} className="text-blue-600 mr-1" /> Facebook
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </Card>

@@ -211,6 +211,13 @@ export const initialCampuses: Campus[] = [
   },
 ];
 // users 
+export interface LinkedAccount {
+  type: 'gmail' | 'microsoft' | 'facebook';
+  email?: string;
+  id?: string;
+  name?: string;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -224,6 +231,7 @@ export interface User {
   sessionPolicy: string;
   auditPolicy: string;
   securityPolicy: string;
+  linkedAccounts?: LinkedAccount[];
 }
 
 export const initialUsers: User[] = [
@@ -240,6 +248,9 @@ export const initialUsers: User[] = [
     sessionPolicy: 'Sinh viên - AUTHZ_Standard',
     auditPolicy: 'Accounting Policy - Sinh viên 8H',
     securityPolicy: 'SEC_Sinh_viên_Standard',
+    linkedAccounts: [
+      { type: 'gmail', email: 'nguyenvanminh@gmail.com', name: 'Nguyễn Văn Minh' },
+    ],
   },
   {
     id: 2,
@@ -254,6 +265,9 @@ export const initialUsers: User[] = [
     sessionPolicy: 'Sinh viên - AUTHZ_Standard',
     auditPolicy: 'Accounting Policy - Sinh viên 8H',
     securityPolicy: 'SEC_Sinh_viên_Standard',
+   linkedAccounts: [
+      { type: 'facebook', id: '123456789', name: 'Trần Thị Hương' }
+    ],
   },
   {
     id: 3,
@@ -262,6 +276,9 @@ export const initialUsers: User[] = [
     unit: 'Phòng Công nghệ Thông tin',
     created: '2024-01-10',
     role: 'Cán bộ',
+    linkedAccounts: [
+      { type: 'microsoft', email: 'phamvantuan@hcmus.edu.vn', name: 'Phạm Văn Tuấn' }
+    ],
     status: 'Active',
     macAddress: 'AA:BB:CC:DD:EE:03',
     bandwidthPolicy: 'Băng thông Cán bộ',
