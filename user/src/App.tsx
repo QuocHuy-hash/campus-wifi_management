@@ -15,7 +15,7 @@ function Router() {
   const authenticated = isAuthenticated();
   
   // Redirect to session page if already logged in
-  if (location === '/' && authenticated) {
+  if (location === '/') {
     return <Redirect to="/session" />;
   }
   

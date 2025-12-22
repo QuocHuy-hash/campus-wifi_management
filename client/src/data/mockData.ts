@@ -10,6 +10,9 @@ export interface AP {
   name: string;
   location: string;
   building: string;
+  campusId?: number;
+  buildingId?: number;
+  locationId?: number;
   uptime: string;
   ipModel: string;
   controller: string;
@@ -46,6 +49,14 @@ export interface Building {
   name: string;
   code: string;
   floors?: number;
+  description?: string;
+}
+
+export interface Location {
+  id: number;
+  buildingId: number;
+  name: string;
+  code: string;
   description?: string;
 }
 
@@ -303,6 +314,8 @@ export const initialUsers: User[] = [
 ];
 
 // Buildings
+
+
 export const initialBuildings: Building[] = [
   // Dĩ An Campus
   {
@@ -402,6 +415,31 @@ export const initialBuildings: Building[] = [
     code: "IT",
     floors: 1,
     description: "Phòng IT",
+  },
+];
+
+// Locations
+export const initialLocations: Location[] = [
+  {
+    id: 1,
+    buildingId: 1,
+    name: "Phòng A101",
+    code: "A101",
+    description: "Phòng học lý thuyết",
+  },
+  {
+    id: 2,
+    buildingId: 1,
+    name: "Phòng A102",
+    code: "A102",
+    description: "Phòng học lý thuyết",
+  },
+  {
+    id: 3,
+    buildingId: 10,
+    name: "Hội trường 1",
+    code: "HT1",
+    description: "Hội trường lớn",
   },
 ];
 
@@ -534,107 +572,50 @@ export const authSourceTypes = [
 export const initialAPs: AP[] = [
   {
     id: 1,
-    name: "GD1-01",
-    location: "Giảng đường 1",
-    building: "227 NVC",
-    uptime: "15h00 1days",
-    ipModel: "172.29.99.1 - AC Mesh Pro",
-    controller: "UniFi 1",
-    clients: 112,
-    usage: 90,
-    status: "Online",
-    usagePercent: 90,
+    name: "AP-A101",
+    location: "Góc phải",
+    building: "Tòa nhà A",
+    campusId: 1,
+    buildingId: 1,
+    locationId: 1,
+    uptime: "12d 4h",
+    ipModel: "10.0.1.10 - Unifi U6 LR",
+    controller: "Primary Controller",
+    clients: 85,
+    usage: 95.5,
+    status: "Warning",
+    usagePercent: 95,
   },
   {
     id: 2,
-    name: "I1-01",
-    location: "Sảnh nhà I",
-    building: "227NVC",
-    uptime: "03h15 98days",
-    ipModel: "172.29.99.2 - AC Pro 7",
-    controller: "UniFi 1",
-    clients: 69,
-    usage: 88,
+    name: "AP-B202",
+    location: "Trần nhà",
+    building: "Tòa nhà B",
+    campusId: 2,
+    buildingId: 3,
+    // No locationId for this one yet as demo
+    uptime: "5d 1h",
+    ipModel: "10.0.1.11 - TP-Link Omada",
+    controller: "Secondary Controller",
+    clients: 12,
+    usage: 3.2,
     status: "Online",
-    usagePercent: 88,
+    usagePercent: 30,
   },
   {
     id: 3,
-    name: "I11-01",
-    location: "Nhà I lầu 11",
-    building: "227NVC",
-    uptime: "05h00 1days",
-    ipModel: "172.29.99.9 - AC Mesh Pro",
-    controller: "UniFi 1",
-    clients: 225,
-    usage: 92,
-    status: "Warning",
-    usagePercent: 92,
-  },
-  {
-    id: 4,
-    name: "F103-02",
-    location: "Nhà F",
-    building: "227NVC",
-    uptime: "01h00 1days",
-    ipModel: "10.29.29.5 - U7 Pro",
-    controller: "UniFi 2",
-    clients: 88,
-    usage: 70,
-    status: "Online",
-    usagePercent: 70,
-  },
-  {
-    id: 5,
-    name: "GD2-01",
-    location: "Giảng đường 2",
-    building: "227NVC",
-    uptime: "03h00 0days",
-    ipModel: "10.29.29.6 - U7 Pro",
-    controller: "UniFi 2",
-    clients: 45,
-    usage: 55,
+    name: "AP-C101 (Offline)",
+    location: "Hành lang",
+    building: "Tòa nhà C",
+    campusId: 3,
+    buildingId: 5,
+    uptime: "-",
+    ipModel: "10.0.1.12 - Cisco Meraki",
+    controller: "Backup Controller",
+    clients: 0,
+    usage: 0,
     status: "Offline",
-    usagePercent: 55,
-  },
-  {
-    id: 6,
-    name: "A1-01",
-    location: "Nhà A Tầng 1",
-    building: "227NVC",
-    uptime: "12h30 5days",
-    ipModel: "172.29.99.10 - AC Lite",
-    controller: "UniFi 1",
-    clients: 32,
-    usage: 45,
-    status: "Online",
-    usagePercent: 45,
-  },
-  {
-    id: 7,
-    name: "B2-03",
-    location: "Nhà B Tầng 2",
-    building: "Dĩ An",
-    uptime: "08h45 3days",
-    ipModel: "172.29.99.15 - AC Pro",
-    controller: "UniFi 3",
-    clients: 78,
-    usage: 82,
-    status: "Warning",
-    usagePercent: 82,
-  },
-  {
-    id: 8,
-    name: "C3-02",
-    location: "Nhà C Tầng 3",
-    building: "Dĩ An",
-    uptime: "20h00 7days",
-    ipModel: "172.29.99.20 - U6 Pro",
-    controller: "UniFi 3",
-    clients: 95,
-    usage: 78,
-    status: "Online",
-    usagePercent: 78,
+    usagePercent: 0,
   },
 ];
 

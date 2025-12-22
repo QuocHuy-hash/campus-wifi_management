@@ -29,14 +29,15 @@ const overloadedAPs = getOverloadedAPs(initialAPs);
 
 export default function AccessPoints() {
   const [, setLocation] = useLocation();
-  const [aps] = useState<AP[]>(initialAPs);
+  // Use imported data directly to ensure HMR updates behave correctly
+  const aps = initialAPs;
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBuilding, setSelectedBuilding] = useState('227NVC');
+  const [selectedBuilding, setSelectedBuilding] = useState('All');
   const [selectedCampus, setSelectedCampus] = useState('Dĩ An');
   const [selectedArea, setSelectedArea] = useState('Nhà A');
 
   // Controller states - read only
-  const [controllers] = useState<Controller[]>(initialControllers);
+  const controllers = initialControllers;
   const [showControllerSection, setShowControllerSection] = useState(false);
   const [selectedControllerFilter, setSelectedControllerFilter] = useState<string | null>(null);
 
@@ -44,7 +45,14 @@ export default function AccessPoints() {
   const filteredAPs = aps.filter(ap => {
     const matchesSearch = ap.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ap.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesBuilding = selectedBuilding === 'All' || ap.building === selectedBuilding;
+    
+    // Map filter values to Campus IDs for backward compatibility since the dropdown uses Campus names
+    const matchesBuilding = selectedBuilding === 'All' || 
+                           ap.building === selectedBuilding ||
+                           (selectedBuilding === 'Dĩ An' && ap.campusId === 1) ||
+                           (selectedBuilding === 'Thủ Đức' && ap.campusId === 2) ||
+                           (selectedBuilding === '227NVC' && ap.campusId === 3);
+
     const matchesController = !selectedControllerFilter || ap.controller === selectedControllerFilter;
     return matchesSearch && matchesBuilding && matchesController;
   });

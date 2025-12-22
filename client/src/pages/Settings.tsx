@@ -55,10 +55,12 @@ import {
   LogEntry,
   Campus,
   Building,
+  Location,
   initialAdminUsers,
   initialLogs,
   initialCampuses,
   initialBuildings,
+  initialLocations,
   initialAPs,
   initialControllers,
   AP,
@@ -200,6 +202,41 @@ export default function Settings() {
   const [deleteBuildingDialogOpen, setDeleteBuildingDialogOpen] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [buildingForm, setBuildingForm] = useState<Partial<Building>>({});
+
+  // Data states - Locations
+  const [locations, setLocations] = useState<Location[]>(initialLocations);
+
+  // Dialog states - Location
+  const [addLocationDialogOpen, setAddLocationDialogOpen] = useState(false);
+  const [editLocationDialogOpen, setEditLocationDialogOpen] = useState(false);
+  const [deleteLocationDialogOpen, setDeleteLocationDialogOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [locationForm, setLocationForm] = useState<Partial<Location>>({});
+  const [locationDialogCampusId, setLocationDialogCampusId] = useState<number | null>(null);
+  
+  // Dialog states - AP Cascading Dropdowns
+  const [apDialogCampusId, setApDialogCampusId] = useState<number | null>(null);
+  const [apDialogBuildingId, setApDialogBuildingId] = useState<number | null>(null);
+  
+  // Filtered data for Locations
+  const filteredLocations = useMemo(() => {
+    let result = locations;
+    
+    // Filter by Campus first (if selected)
+    if (selectedCampusFilter !== 'all') {
+      // Get buildings in this campus
+      const campusBuildingIds = buildings.filter(b => b.campusId === selectedCampusFilter).map(b => b.id);
+      result = result.filter(l => campusBuildingIds.includes(l.buildingId));
+    }
+    
+    // Then can add building filter logic here if we had a specific building filter dropdown for locations
+    return result;
+  }, [locations, buildings, selectedCampusFilter]);
+
+  // Helper to get building name
+  const getBuildingName = (buildingId: number) => {
+    return buildings.find(b => b.id === buildingId)?.name || 'N/A';
+  };
 
   // Data states - Devices
   const [controllers, setControllers] = useState<Controller[]>(initialControllers);
@@ -392,6 +429,69 @@ export default function Settings() {
     return buildings.filter(b => b.campusId === campusId).length;
   };
 
+  // Location Handlers
+  const handleAddLocation = () => {
+    // Determine initial campus: use current filter if set, otherwise first campus
+    const initialCampusId = selectedCampusFilter !== 'all' ? selectedCampusFilter : (campuses.length > 0 ? campuses[0].id : null);
+    setLocationDialogCampusId(initialCampusId);
+
+    // Filter buildings for this campus
+    const campusBuildings = buildings.filter(b => b.campusId === initialCampusId);
+    
+    // Default to first available building if any
+    const defaultBuildingId = campusBuildings.length > 0 ? campusBuildings[0].id : undefined;
+    
+    setLocationForm({ buildingId: defaultBuildingId });
+    setAddLocationDialogOpen(true);
+  };
+
+  const handleEditLocation = (location: Location) => {
+    // Find valid campus for this location's building
+    const building = buildings.find(b => b.id === location.buildingId);
+    if (building) {
+      setLocationDialogCampusId(building.campusId);
+    }
+    
+    setSelectedLocation(location);
+    setLocationForm({ ...location });
+    setEditLocationDialogOpen(true);
+  };
+
+  const handleDeleteLocation = (location: Location) => {
+    setSelectedLocation(location);
+    setDeleteLocationDialogOpen(true);
+  };
+
+  const saveNewLocation = () => {
+    const newLocation: Location = {
+      id: Math.max(...locations.map(l => l.id), 0) + 1,
+      buildingId: locationForm.buildingId || 1,
+      name: locationForm.name || '',
+      code: locationForm.code || '',
+      description: locationForm.description || '',
+    };
+    setLocations([...locations, newLocation]);
+    setAddLocationDialogOpen(false);
+    setLocationForm({});
+  };
+
+  const saveEditLocation = () => {
+    if (selectedLocation) {
+      setLocations(locations.map(l => l.id === selectedLocation.id ? { ...l, ...locationForm } as Location : l));
+    }
+    setEditLocationDialogOpen(false);
+    setSelectedLocation(null);
+    setLocationForm({});
+  };
+
+  const confirmDeleteLocation = () => {
+    if (selectedLocation) {
+      setLocations(locations.filter(l => l.id !== selectedLocation.id));
+    }
+    setDeleteLocationDialogOpen(false);
+    setSelectedLocation(null);
+  };
+
   // Controller Handlers
   const handleAddController = () => {
     setControllerForm({ status: 'Online', apCount: 0, totalClients: 0 });
@@ -446,12 +546,18 @@ export default function Settings() {
   // AP Handlers
   const handleAddAP = () => {
     setAPForm({ status: 'Online', usage: 0, clients: 0, usagePercent: 0 });
+    // Reset selection states for AP dialog
+    setApDialogCampusId(null);
+    setApDialogBuildingId(null);
     setAddAPDialogOpen(true);
   };
 
   const handleEditAP = (ap: AP) => {
     setSelectedAP(ap);
     setAPForm({ ...ap });
+    // Initialize cascading dropdown states based on AP data
+    if (ap.campusId) setApDialogCampusId(ap.campusId);
+    if (ap.buildingId) setApDialogBuildingId(ap.buildingId);
     setEditAPDialogOpen(true);
   };
 
@@ -461,11 +567,28 @@ export default function Settings() {
   };
 
   const saveNewAP = () => {
+    // Look up names for display if IDs are present
+    let locationName = apForm.location || '';
+    let buildingName = apForm.building || '';
+    
+    if (apForm.locationId) {
+      const loc = locations.find(l => l.id === apForm.locationId);
+      if (loc) locationName = loc.name;
+    }
+    
+    if (apForm.buildingId) {
+      const b = buildings.find(build => build.id === apForm.buildingId);
+      if (b) buildingName = b.name;
+    }
+
     const newAP: AP = {
       id: Math.max(...aps.map(a => a.id), 0) + 1,
       name: apForm.name || '',
-      location: apForm.location || '',
-      building: apForm.building || '',
+      location: locationName,
+      building: buildingName,
+      campusId: apForm.campusId,
+      buildingId: apForm.buildingId,
+      locationId: apForm.locationId,
       uptime: '0h',
       ipModel: apForm.ipModel || '',
       controller: apForm.controller || '',
@@ -481,7 +604,27 @@ export default function Settings() {
 
   const saveEditAP = () => {
     if (selectedAP) {
-      setAPs(aps.map(a => a.id === selectedAP.id ? { ...a, ...apForm } as AP : a));
+      // Look up names for display if IDs are present
+      let locationName = apForm.location || '';
+      let buildingName = apForm.building || '';
+      
+      if (apForm.locationId) {
+        const loc = locations.find(l => l.id === apForm.locationId);
+        if (loc) locationName = loc.name;
+      }
+      
+      if (apForm.buildingId) {
+        const b = buildings.find(build => build.id === apForm.buildingId);
+        if (b) buildingName = b.name;
+      }
+
+      const updatedAP = {
+        ...apForm,
+        location: locationName,
+        building: buildingName
+      };
+
+      setAPs(aps.map(a => a.id === selectedAP.id ? { ...a, ...updatedAP } as AP : a));
     }
     setEditAPDialogOpen(false);
     setSelectedAP(null);
@@ -994,9 +1137,11 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Buildings Section */}
-            <div className="border-t pt-6">
-              <div className="flex items-center justify-between mb-4">
+            {/* Buildings & Locations Grid */}
+            <div className="border-t pt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              {/* Buildings Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <Building2 size={20} className="text-blue-600" />
@@ -1032,8 +1177,7 @@ export default function Settings() {
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên tòa nhà</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Mã</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Cơ sở</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Cơ sở</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Số tầng</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Mô tả</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hành động</th>
@@ -1053,9 +1197,7 @@ export default function Settings() {
                             {building.name}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className="bg-gray-100 px-2 py-1 rounded text-gray-700 font-mono text-xs">{building.code}</span>
-                        </td>
+    
                         <td className="px-4 py-3 text-sm text-gray-600">{getCampusName(building.campusId)}</td>
                         <td className="px-4 py-3 text-sm text-center">
                           <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">{building.floors} tầng</span>
@@ -1085,6 +1227,89 @@ export default function Settings() {
                 </table>
               </div>
             </div>
+
+            {/* Locations Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <MapPin size={20} className="text-blue-600" />
+                    Quản lý Địa điểm
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">Quản lý các phòng/địa điểm trong tòa nhà</p>
+                </div>
+                <div className="flex items-center gap-3">
+                   {/* Note: Reuse the same campus filter from Buildings section or add a new one if needed to be independent.
+                       For now, assuming the top filter applies to both Buildings and Locations view context. 
+                   */}
+                  <Button onClick={handleAddLocation} className="bg-blue-600 hover:bg-green-700">
+                    <Plus size={18} className="mr-2" />
+                    Thêm địa điểm
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Locations Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Tên địa điểm</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Mã</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Thuộc tòa nhà</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Mô tả</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLocations.map((location, index) => (
+                      <tr
+                        key={location.id}
+                        className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }`}
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          <div className="flex items-center gap-2">
+                            <MapPin size={16} className="text-gray-400" />
+                            {location.name}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="bg-gray-100 px-2 py-1 rounded text-gray-700 font-mono text-xs">{location.code}</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <Building2 size={14} className="text-gray-400" />
+                            {getBuildingName(location.buildingId)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{location.description}</td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button variant="ghost" size="sm" title="Chỉnh sửa" onClick={() => handleEditLocation(location)}>
+                              <Edit size={18} className="text-amber-600" />
+                            </Button>
+                            <Button variant="ghost" size="sm" title="Xóa" onClick={() => handleDeleteLocation(location)}>
+                              <Trash2 size={18} className="text-red-600" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredLocations.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                          <MapPin size={40} className="mx-auto text-gray-300 mb-2" />
+                          <p>Chưa có địa điểm nào{selectedCampusFilter !== 'all' && ` trong cơ sở này`}</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
           </TabsContent>
 
           {/* Tab 3: Security */}
@@ -2533,22 +2758,63 @@ export default function Settings() {
               <Label>Địa chỉ IP / Model</Label>
               <Input value={apForm.ipModel || ''} onChange={e => setAPForm({...apForm, ipModel: e.target.value})} />
             </div>
-             <div className="grid gap-2">
-              <Label>Vị trí chi tiết</Label>
-              <Input value={apForm.location || ''} onChange={e => setAPForm({...apForm, location: e.target.value})} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Tòa nhà</Label>
-               <Select value={apForm.building} onValueChange={(v) => setAPForm({...apForm, building: v})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn tòa nhà" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="227NVC">227 NVC</SelectItem>
-                  <SelectItem value="Dĩ An">Dĩ An</SelectItem>
-                  <SelectItem value="Thủ Đức">Thủ Đức</SelectItem>
-                </SelectContent>
-              </Select>
+             <div className="space-y-2 border-t pt-2 mt-2">
+               <div className="grid gap-3">
+                 <div className="grid gap-2">
+                  <Label className="text-xs text-gray-500">Cơ sở</Label>
+                  <Select 
+                    value={apDialogCampusId?.toString() || ''} 
+                    onValueChange={(v) => {
+                      const cid = Number(v);
+                      setApDialogCampusId(cid);
+                      setApDialogBuildingId(null);
+                      setAPForm({...apForm, campusId: cid, buildingId: undefined, locationId: undefined});
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Chọn Cơ sở" /></SelectTrigger>
+                    <SelectContent>
+                      {campuses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                 </div>
+                 
+                 <div className="grid grid-cols-2 gap-2">
+                   <div className="grid gap-2">
+                    <Label className="text-xs text-gray-500">Tòa nhà</Label>
+                    <Select 
+                      value={apDialogBuildingId?.toString() || ''} 
+                      onValueChange={(v) => {
+                        const bid = Number(v);
+                        setApDialogBuildingId(bid);
+                        setAPForm({...apForm, buildingId: bid, locationId: undefined});
+                      }}
+                      disabled={!apDialogCampusId}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Chọn Tòa nhà" /></SelectTrigger>
+                      <SelectContent>
+                        {buildings.filter(b => b.campusId === apDialogCampusId).map(b => (
+                          <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                   </div>
+                   <div className="grid gap-2">
+                    <Label className="text-xs text-gray-500">Địa điểm / Phòng</Label>
+                    <Select 
+                      value={apForm.locationId?.toString() || ''} 
+                      onValueChange={(v) => setAPForm({...apForm, locationId: Number(v)})}
+                      disabled={!apDialogBuildingId}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Chọn địa điểm" /></SelectTrigger>
+                      <SelectContent>
+                        {locations.filter(l => l.buildingId === apDialogBuildingId).map(l => (
+                          <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                   </div>
+                 </div>
+               </div>
             </div>
              <div className="grid gap-2">
               <Label>Controller quản lý</Label>
@@ -2585,9 +2851,63 @@ export default function Settings() {
               <Label>Địa chỉ IP / Model</Label>
               <Input value={apForm.ipModel || ''} onChange={e => setAPForm({...apForm, ipModel: e.target.value})} />
             </div>
-             <div className="grid gap-2">
-              <Label>Vị trí chi tiết</Label>
-              <Input value={apForm.location || ''} onChange={e => setAPForm({...apForm, location: e.target.value})} />
+             <div className="space-y-2 border-t pt-2 mt-2">
+               <div className="grid gap-3">
+                 <div className="grid gap-2">
+                  <Label className="text-xs text-gray-500">Cơ sở</Label>
+                  <Select 
+                    value={apDialogCampusId?.toString() || ''} 
+                    onValueChange={(v) => {
+                      const cid = Number(v);
+                      setApDialogCampusId(cid);
+                      setApDialogBuildingId(null);
+                      setAPForm({...apForm, campusId: cid, buildingId: undefined, locationId: undefined});
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Chọn Cơ sở" /></SelectTrigger>
+                    <SelectContent>
+                      {campuses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                 </div>
+                 
+                 <div className="grid grid-cols-2 gap-2">
+                   <div className="grid gap-2">
+                    <Label className="text-xs text-gray-500">Tòa nhà</Label>
+                    <Select 
+                      value={apDialogBuildingId?.toString() || ''} 
+                      onValueChange={(v) => {
+                        const bid = Number(v);
+                        setApDialogBuildingId(bid);
+                        setAPForm({...apForm, buildingId: bid, locationId: undefined});
+                      }}
+                      disabled={!apDialogCampusId}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Chọn Tòa nhà" /></SelectTrigger>
+                      <SelectContent>
+                        {buildings.filter(b => b.campusId === apDialogCampusId).map(b => (
+                          <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                   </div>
+                   <div className="grid gap-2">
+                    <Label className="text-xs text-gray-500">Địa điểm / Phòng</Label>
+                    <Select 
+                      value={apForm.locationId?.toString() || ''} 
+                      onValueChange={(v) => setAPForm({...apForm, locationId: Number(v)})}
+                      disabled={!apDialogBuildingId}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Chọn địa điểm" /></SelectTrigger>
+                      <SelectContent>
+                        {locations.filter(l => l.buildingId === apDialogBuildingId).map(l => (
+                          <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                   </div>
+                 </div>
+               </div>
             </div>
              <div className="grid gap-2">
               <Label>Controller quản lý</Label>
@@ -3180,6 +3500,126 @@ export default function Settings() {
           <AlertDialogFooter>
              <AlertDialogCancel>Hủy</AlertDialogCancel>
              <AlertDialogAction onClick={confirmDeletePortal} className="bg-red-600 hover:bg-red-700">Xóa</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Location Dialog (Add/Edit) */}
+      <Dialog open={addLocationDialogOpen || editLocationDialogOpen} onOpenChange={(open) => !open && (addLocationDialogOpen ? setAddLocationDialogOpen(false) : setEditLocationDialogOpen(false))}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{addLocationDialogOpen ? 'Thêm Địa điểm Mới' : 'Chỉnh sửa Địa điểm'}</DialogTitle>
+            <DialogDescription>
+              {addLocationDialogOpen ? 'Thêm thông tin địa điểm/phòng học mới.' : 'Cập nhật thông tin địa điểm.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="loc-name">Tên địa điểm <span className="text-red-500">*</span></Label>
+                <Input
+                  id="loc-name"
+                  placeholder="VD: Phòng A101"
+                  value={locationForm.name || ''}
+                  onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="loc-code">Mã địa điểm <span className="text-red-500">*</span></Label>
+                <Input
+                  id="loc-code"
+                  placeholder="VD: A101"
+                  value={locationForm.code || ''}
+                  onChange={(e) => setLocationForm({ ...locationForm, code: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="loc-campus">Thuộc Cơ sở <span className="text-red-500">*</span></Label>
+                <Select
+                  value={String(locationDialogCampusId || '')}
+                  onValueChange={(v) => {
+                    const newCampusId = Number(v);
+                    setLocationDialogCampusId(newCampusId);
+                    // Reset building selection when campus changes
+                    const firstBuildingInNewCampus = buildings.find(b => b.campusId === newCampusId);
+                    setLocationForm({ ...locationForm, buildingId: firstBuildingInNewCampus?.id });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn cơ sở" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {campuses.map((campus) => (
+                      <SelectItem key={campus.id} value={String(campus.id)}>
+                        {campus.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="loc-building">Thuộc Tòa nhà <span className="text-red-500">*</span></Label>
+                <Select 
+                  value={String(locationForm.buildingId || '')} 
+                  onValueChange={(v) => setLocationForm({ ...locationForm, buildingId: Number(v) })}
+                  disabled={!locationDialogCampusId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn tòa nhà" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buildings
+                      .filter(b => b.campusId === locationDialogCampusId)
+                      .map((building) => (
+                      <SelectItem key={building.id} value={String(building.id)}>
+                        {building.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="loc-desc">Mô tả</Label>
+              <Input
+                id="loc-desc"
+                placeholder="Mô tả chức năng, vị trí..."
+                value={locationForm.description || ''}
+                onChange={(e) => setLocationForm({ ...locationForm, description: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAddLocationDialogOpen(false); setEditLocationDialogOpen(false); }}>Hủy</Button>
+            <Button 
+              onClick={addLocationDialogOpen ? saveNewLocation : saveEditLocation} 
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={!locationForm.name || !locationForm.code || !locationForm.buildingId}
+            >
+              {addLocationDialogOpen ? 'Thêm mới' : 'Lưu thay đổi'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Location Alert */}
+      <AlertDialog open={deleteLocationDialogOpen} onOpenChange={setDeleteLocationDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa Địa điểm?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa địa điểm <strong>{selectedLocation?.name}</strong>?
+              <br/>
+              Hành động này không thể hoàn tác. Các thiết bị gắn với địa điểm này có thể bị ảnh hưởng.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteLocation} className="bg-red-600 hover:bg-red-700">
+              Xóa địa điểm
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
