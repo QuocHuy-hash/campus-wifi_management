@@ -183,7 +183,7 @@ export default function Account() {
             <div className="bg-gray-900 text-white p-5">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center text-2xl font-bold">
-                  {user.fullname?.charAt(0) || 'U'}
+                 Nguyễn Văn A
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-400">@{user?.username || 'guest'}</p>
