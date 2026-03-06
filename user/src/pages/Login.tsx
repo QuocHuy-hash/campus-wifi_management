@@ -13,12 +13,12 @@ import {
 } from 'lucide-react';
 import { currentUser, qosPolicies, formatBytes } from '@/data/mockData';
 import hcmusLogo from '@/assets/logo_hcmus.png';
+import InternalLoginTab from '@/components/InternalLoginTab';
+import GuestLoginTab from '@/components/GuestLoginTab';
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState<'internal' | 'guest'>('internal');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -42,6 +42,11 @@ export default function Login() {
   const [showGuestPassword, setShowGuestPassword] = useState(false);
   const [isSettingGuestPassword, setIsSettingGuestPassword] = useState(false);
 
+  // Standard Login states for returned guests
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+
   // Forgot password states
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [forgotMethod, setForgotMethod] = useState<'email' | 'phone'>('email');
@@ -58,37 +63,7 @@ export default function Login() {
 
   const studentPolicy = qosPolicies.Student;
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!username || !password) {
-      setError('Vui lòng nhập đầy đủ thông tin đăng nhập');
-      return;
-    }
 
-    if (!agreeTerms) {
-      setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
-      return;
-    }
-
-    setIsLoading(true);
-    
-    setTimeout(() => {
-      if (username && password) {
-        localStorage.setItem('portalLoggedIn', 'true');
-        localStorage.setItem('portalUser', JSON.stringify({ 
-          ...currentUser,
-          username: username,
-          loginTime: new Date().toISOString()
-        }));
-        setLocation('/session');
-      } else {
-        setError('Tên đăng nhập hoặc mật khẩu không đúng');
-      }
-      setIsLoading(false);
-    }, 1000);
-  };
 
   const handleSSOLogin = (provider: string) => {
     if (!agreeTerms) {
@@ -244,12 +219,40 @@ export default function Login() {
   };
 
   const handleUseGuestCredentials = () => {
-    // Use email or phone as username
     const guestUsername = guestAuthMethod === 'email' ? guestForm.email : guestForm.phone;
-    setUsername(guestUsername);
-    setPassword(guestNewPassword);
     setGuestModalOpen(false);
-    resetGuestForm();
+    setIsLoading(true);
+    setTimeout(() => {
+      localStorage.setItem('portalLoggedIn', 'true');
+      localStorage.setItem('portalUser', JSON.stringify({ 
+        ...currentUser,
+        username: guestUsername,
+        loginTime: new Date().toISOString()
+      }));
+      resetGuestForm();
+      setLocation('/session');
+    }, 1000);
+  };
+
+  const handleStandardLogin = () => {
+    setIsLoading(true);
+    setError('');
+    
+    // Mock standard login logic
+    if (loginUsername && loginPassword) {
+      setTimeout(() => {
+        localStorage.setItem('portalLoggedIn', 'true');
+        localStorage.setItem('portalUser', JSON.stringify({ 
+          ...currentUser,
+          username: loginUsername,
+          loginTime: new Date().toISOString()
+        }));
+        setLocation('/session');
+      }, 1000);
+    } else {
+      setIsLoading(false);
+      setError('Vui lòng nhập tài khoản và mật khẩu');
+    }
   };
 
   // Forgot password handlers
@@ -339,10 +342,18 @@ export default function Login() {
   };
 
   const handleUseForgotCredentials = () => {
-    setUsername(forgotContact);
-    setPassword(newPassword);
     setForgotModalOpen(false);
-    resetForgotForm();
+    setIsLoading(true);
+    setTimeout(() => {
+      localStorage.setItem('portalLoggedIn', 'true');
+      localStorage.setItem('portalUser', JSON.stringify({ 
+        ...currentUser,
+        username: forgotContact,
+        loginTime: new Date().toISOString()
+      }));
+      resetForgotForm();
+      setLocation('/session');
+    }, 1000);
   };
 
   return (
@@ -366,157 +377,75 @@ export default function Login() {
               </div>
             )}
 
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="username" className="text-sm font-medium text-gray-700">
-                 Tài khoản
-                </Label>
-                <div className="relative">
-                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="21120001 hoặc email@hcmus.edu.vn"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="pl-10 h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Mật khẩu
-                </Label>
-                <div className="relative">
-                  <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Nhập mật khẩu"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                <div className="flex justify-end mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setForgotModalOpen(true)}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    Quên mật khẩu?
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 py-1">
-                <Checkbox 
-                  id="terms" 
-                  checked={agreeTerms}
-                  onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
-                  className="mt-0.5 rounded"
-                />
-                <Label htmlFor="terms" className="text-sm text-gray-600 cursor-pointer leading-relaxed">
-                  Tôi đồng ý với{' '}
-                  <button 
-                    type="button"
-                    onClick={() => setTermsModalOpen(true)}
-                    className="text-blue-600 hover:underline font-medium"
-                  >
-                    Điều khoản sử dụng WiFi
-                  </button>
-                </Label>
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-base font-medium"
-                disabled={isLoading}
+            {/* Segmented Control */}
+            <div className="flex p-1 bg-gray-100 rounded-xl">
+              <button
+                onClick={() => setActiveTab('internal')}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  activeTab === 'internal'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Đang đăng nhập...
-                  </div>
-                ) : (
-                  <>
-                    Đăng nhập
-                    <ChevronRight size={18} className="ml-1" />
-                  </>
-                )}
-              </Button>
-            </form>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center">
-                <span className="px-3 bg-white text-gray-400 text-sm">hoặc đăng nhập với</span>
-              </div>
-            </div>
-
-            {/* SSO Options */}
-            <div className="grid grid-cols-3 gap-3">
-              <button 
-                type="button"
-                onClick={() => handleSSOLogin('Gmail')}
-                disabled={isLoading}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-red-300 hover:bg-red-50 transition-colors disabled:opacity-50"
-              >
-                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                  <Mail size={20} className="text-red-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">Gmail</span>
+                Cán bộ / Sinh viên
               </button>
-              <button 
-                type="button"
-                onClick={() => handleSSOLogin('Microsoft')}
-                disabled={isLoading}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors disabled:opacity-50"
+              <button
+                onClick={() => setActiveTab('guest')}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  activeTab === 'guest'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Globe size={20} className="text-blue-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">Microsoft</span>
-              </button>
-              <button 
-                type="button"
-                onClick={() => handleSSOLogin('Facebook')}
-                disabled={isLoading}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 hover:border-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50"
-              >
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Facebook size={20} className="text-blue-700" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">Facebook</span>
+                Khách
               </button>
             </div>
-          </div>
 
-          {/* Guest Registration */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-            <button 
-              className="w-full flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-600 transition-colors"
-              onClick={() => setGuestModalOpen(true)}
-            >
-              <UserPlus size={16} className="text-blue-600" />
-              Đăng ký tài khoản
-            </button>
+            {activeTab === 'internal' ? (
+              <InternalLoginTab 
+                isLoading={isLoading} 
+                onSSOLogin={handleSSOLogin} 
+              />
+            ) : (
+              <GuestLoginTab 
+                isLoading={isLoading}
+                onSSOLogin={handleSSOLogin}
+                onOpenGuestModal={() => setGuestModalOpen(true)}
+                username={loginUsername}
+                onUsernameChange={setLoginUsername}
+                password={loginPassword}
+                onPasswordChange={setLoginPassword}
+                showPassword={showLoginPassword}
+                onTogglePassword={() => setShowLoginPassword(!showLoginPassword)}
+                onLogin={handleStandardLogin}
+                onOpenForgotModal={() => setForgotModalOpen(true)}
+              />
+            )}
+
+            {/* Terms Checkbox */}
+            <div className="flex items-start space-x-3 pt-4 border-t border-gray-100 mt-2">
+              <Checkbox 
+                id="terms" 
+                checked={agreeTerms}
+                onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
+                className="mt-0.5 rounded"
+              />
+              <Label htmlFor="terms" className="text-sm text-gray-600 cursor-pointer leading-relaxed">
+                Tôi đồng ý với{' '}
+                <button 
+                  type="button"
+                  onClick={() => setTermsModalOpen(true)}
+                  className="text-blue-600 hover:underline font-medium"
+                >
+                  Điều khoản sử dụng WiFi
+                </button>
+              </Label>
+            </div>
           </div>
         </div>
 
         {/* Policy Info */}
-        <div className="mt-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+        {/* <div className="mt-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-medium">Chính sách sử dụng</p>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
@@ -541,7 +470,7 @@ export default function Login() {
               <p className="text-gray-500 text-xs">hạn ngạch/ngày</p>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Footer */}
         <p className="text-center text-gray-400 text-xs mt-6">
@@ -672,7 +601,7 @@ export default function Login() {
                         : 'border-gray-200 hover:border-gray-300 text-gray-600'
                     }`}
                   >
-                    <Mail size={18} />
+                    <img src="/mail.png" alt="Email" className="w-5 h-5 object-contain" />
                     <span className="font-medium text-sm">Email</span>
                   </button>
                   <button
@@ -684,7 +613,7 @@ export default function Login() {
                         : 'border-gray-200 hover:border-gray-300 text-gray-600'
                     }`}
                   >
-                    <MessageCircle size={18} />
+                    <img src="/zalo.png" alt="Zalo" className="w-5 h-5 object-contain" />
                     <span className="font-medium text-sm">Zalo</span>
                   </button>
                 </div>
