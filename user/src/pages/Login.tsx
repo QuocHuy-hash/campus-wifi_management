@@ -18,7 +18,7 @@ import GuestLoginTab from '@/components/GuestLoginTab';
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState<'internal' | 'guest'>('internal');
+  const [activeTab, setActiveTab] = useState<'internal' | 'guest'>('guest');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
