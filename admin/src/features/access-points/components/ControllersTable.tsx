@@ -11,15 +11,6 @@ export function ControllersTable() {
   const dispatch = useAppDispatch();
   const { controllers, aps, selectedControllerFilter, controllersLoading } = useAppSelector(state => state.accessPoints);
 
-  // Helpers to get counts directly from the current Redux AP state
-  const getAPCountByController = (controllerName: string) => {
-    return aps.filter(ap => ap.controller === controllerName).length;
-  };
-
-  const getTotalClientsByController = (controllerName: string) => {
-    return aps.filter(ap => ap.controller === controllerName).reduce((sum, ap) => sum + (ap.clients || 0), 0);
-  };
-
   const getStatusColor = (status: Controller['status']) => {
     switch (status) {
       case 'Online': return 'bg-green-100 text-green-800';
@@ -72,7 +63,7 @@ export function ControllersTable() {
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Tên Controller</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Địa chỉ IP</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Version</th>
+                {/* <th className="text-left px-4 py-3 font-semibold text-gray-700">Version</th> */}
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Vị trí</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-700">Trạng thái</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-700">Số AP</th>
@@ -105,8 +96,8 @@ export function ControllersTable() {
                     </div>
                   </td>
                   <td className="px-4 py-3 font-mono text-gray-600">{controller.ipAddress}</td>
-                  <td className="px-4 py-3 text-gray-600">{controller.version}</td>
-                  <td className="px-4 py-3 text-gray-600">{controller.location}</td>
+                  {/* <td className="px-4 py-3 text-gray-600">{controller.version}</td> */}
+                  <td className="px-4 py-3 text-gray-600">{controller.locationName}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(controller.status)}`}>
                       {controller.status}
@@ -115,13 +106,13 @@ export function ControllersTable() {
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Wifi size={14} className="text-blue-500" />
-                      <span className="font-medium">{getAPCountByController(controller.nasIdentifier)}</span>
+                      <span className="font-medium">{controller.apCount}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Activity size={14} className="text-green-500" />
-                      <span className="font-medium">{getTotalClientsByController(controller.nasIdentifier)}</span>
+                      <span className="font-medium">{controller.totalClients}</span>
                     </div>
                   </td>
                 </tr>

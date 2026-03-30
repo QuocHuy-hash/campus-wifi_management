@@ -3,8 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { setSelectedRole, openDialog } from '../slices/usersSlice';
-
-const userRoles = ['Sinh viên', 'Cán bộ', 'Khách'];
+import { USER_DIALOG_KEYS, USER_ROLES, USER_UI_TEXT } from '@/features/users/constants';
 
 export function UsersFilter() {
   const dispatch = useAppDispatch();
@@ -15,7 +14,7 @@ export function UsersFilter() {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-900">Lọc theo vai trò</h3>
         <Button
-          onClick={() => dispatch(openDialog({ dialog: 'addOpen' }))}
+          onClick={() => dispatch(openDialog({ dialog: USER_DIALOG_KEYS.ADD }))}
           className="bg-blue-600 hover:bg-blue-700"
         >
           <Plus size={18} className="mr-2" />
@@ -28,9 +27,9 @@ export function UsersFilter() {
           onClick={() => dispatch(setSelectedRole(null))}
           className={selectedRole === null ? 'bg-blue-600 hover:bg-blue-700' : ''}
         >
-          Tất cả
+          {USER_UI_TEXT.FILTER_ALL}
         </Button>
-        {userRoles.map((role) => (
+        {USER_ROLES.map((role) => (
           <Button
             key={role}
             variant={selectedRole === role ? 'default' : 'outline'}

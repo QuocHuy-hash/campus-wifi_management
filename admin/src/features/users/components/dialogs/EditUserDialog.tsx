@@ -8,9 +8,7 @@ import { Mail, Globe, Facebook } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { closeDialog, editUser } from '../../slices/usersSlice';
 import { User } from '../../types';
-
-const userRoles = ['Sinh viên', 'Cán bộ', 'Khách'];
-const accountStatuses = ['Active', 'Disabled'];
+import { ACCOUNT_STATUSES, USER_DIALOG_KEYS, USER_ROLES } from '@/features/users/constants';
 
 export function EditUserDialog() {
   const dispatch = useAppDispatch();
@@ -31,7 +29,7 @@ export function EditUserDialog() {
   };
 
   return (
-    <Dialog open={dialogs.editOpen} onOpenChange={(open) => !open && dispatch(closeDialog('editOpen'))}>
+    <Dialog open={dialogs.editOpen} onOpenChange={(open) => !open && dispatch(closeDialog(USER_DIALOG_KEYS.EDIT))}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Chỉnh sửa Người dùng</DialogTitle>
@@ -68,7 +66,7 @@ export function EditUserDialog() {
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  {userRoles.map((role) => (
+                  {USER_ROLES.map((role) => (
                     <SelectItem key={role} value={role}>{role}</SelectItem>
                   ))}
                 </SelectContent>
@@ -81,7 +79,7 @@ export function EditUserDialog() {
                   <SelectValue placeholder="Chọn trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
-                  {accountStatuses.map((status) => (
+                  {ACCOUNT_STATUSES.map((status) => (
                     <SelectItem key={status} value={status}>{status}</SelectItem>
                   ))}
                 </SelectContent>
@@ -115,7 +113,7 @@ export function EditUserDialog() {
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => dispatch(closeDialog('editOpen'))}>Hủy</Button>
+          <Button variant="outline" onClick={() => dispatch(closeDialog(USER_DIALOG_KEYS.EDIT))}>Hủy</Button>
           <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">Lưu thay đổi</Button>
         </DialogFooter>
       </DialogContent>

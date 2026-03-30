@@ -7,9 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { closeDialog, addNewUser } from '../../slices/usersSlice';
 import { User } from '../../types';
-
-const userRoles = ['Sinh viên', 'Cán bộ', 'Khách'];
-const accountStatuses = ['Active', 'Disabled'];
+import { ACCOUNT_STATUSES, USER_DIALOG_KEYS, USER_ROLES } from '@/features/users/constants';
 
 export function AddUserDialog() {
   const dispatch = useAppDispatch();
@@ -21,8 +19,8 @@ export function AddUserDialog() {
   const securityPolicies = policies.filter(p => p.type === 'security');
 
   const defaultForm = {
-    role: 'Sinh viên',
-    status: 'Active',
+    role: USER_ROLES[0],
+    status: ACCOUNT_STATUSES[0],
     bandwidthPolicy: '',
     sessionPolicy: '',
     auditPolicy: '',
@@ -53,8 +51,8 @@ export function AddUserDialog() {
       name: addForm.name || '',
       unit: addForm.unit || '',
       created: new Date().toISOString().split('T')[0],
-      role: addForm.role || 'Sinh viên',
-      status: addForm.status || 'Active',
+      role: addForm.role || USER_ROLES[0],
+      status: addForm.status || ACCOUNT_STATUSES[0],
       macAddress: addForm.macAddress || '',
       bandwidthPolicy: addForm.bandwidthPolicy || '',
       sessionPolicy: addForm.sessionPolicy || '',
@@ -65,7 +63,7 @@ export function AddUserDialog() {
   };
 
   return (
-    <Dialog open={dialogs.addOpen} onOpenChange={(open) => !open && dispatch(closeDialog('addOpen'))}>
+    <Dialog open={dialogs.addOpen} onOpenChange={(open) => !open && dispatch(closeDialog(USER_DIALOG_KEYS.ADD))}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Thêm Người dùng mới</DialogTitle>
@@ -109,7 +107,7 @@ export function AddUserDialog() {
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  {userRoles.map((role) => (
+                  {USER_ROLES.map((role) => (
                     <SelectItem key={role} value={role}>{role}</SelectItem>
                   ))}
                 </SelectContent>
@@ -122,7 +120,7 @@ export function AddUserDialog() {
                   <SelectValue placeholder="Chọn trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
-                  {accountStatuses.map((status) => (
+                  {ACCOUNT_STATUSES.map((status) => (
                     <SelectItem key={status} value={status}>{status}</SelectItem>
                   ))}
                 </SelectContent>
@@ -131,7 +129,7 @@ export function AddUserDialog() {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => dispatch(closeDialog('addOpen'))}>Hủy</Button>
+          <Button variant="outline" onClick={() => dispatch(closeDialog(USER_DIALOG_KEYS.ADD))}>Hủy</Button>
           <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">Thêm người dùng</Button>
         </DialogFooter>
       </DialogContent>

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RootState, AppDispatch } from '@/stores/store';
 import { 
   setAddAuthPolicyDialogOpen, setEditAuthPolicyDialogOpen, setDeleteAuthPolicyDialogOpen,
-  setAuthPolicyForm, setValidationError, addAuthPolicy, updateAuthPolicy, deleteAuthPolicy
+  setAuthPolicyForm, setValidationError, createAuthPolicyAsync, updateAuthPolicyAsync, deleteAuthPolicyAsync
 } from '../../slices/authPoliciesSlice';
 import { 
   AuthPolicy, AuthMethod, AuthUserType,
@@ -41,8 +41,7 @@ export const AuthPolicyDialogs = () => {
       dispatch(setValidationError(error));
       return;
     }
-    const newPolicy: AuthPolicy = {
-      id: Math.max(...authPolicies.map(p => p.id), 0) + 1,
+    const newPolicy: Omit<AuthPolicy, 'id'> = {
       name: authPolicyForm.name || '',
       description: authPolicyForm.description || '',
       userType: authPolicyForm.userType as AuthUserType,
@@ -55,7 +54,7 @@ export const AuthPolicyDialogs = () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    dispatch(addAuthPolicy(newPolicy));
+    dispatch(createAuthPolicyAsync(newPolicy));
   };
 
   const saveEditAuthPolicy = () => {
@@ -65,13 +64,13 @@ export const AuthPolicyDialogs = () => {
       return;
     }
     if (selectedAuthPolicy) {
-      dispatch(updateAuthPolicy({ ...selectedAuthPolicy, ...authPolicyForm } as AuthPolicy));
+      dispatch(updateAuthPolicyAsync({ ...selectedAuthPolicy, ...authPolicyForm } as AuthPolicy));
     }
   };
 
   const confirmDeleteAuthPolicy = () => {
     if (selectedAuthPolicy) {
-      dispatch(deleteAuthPolicy(selectedAuthPolicy.id));
+      dispatch(deleteAuthPolicyAsync(selectedAuthPolicy.id));
     }
   };
 

@@ -5,6 +5,7 @@ import { Search, Edit, Trash2, Eye, Shield, Mail, Globe, Facebook } from 'lucide
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { setSearchTerm, openDialog } from '../slices/usersSlice';
 import { useMemo } from 'react';
+import { getUserRoleBadgeClass, USER_DIALOG_KEYS, USER_UI_TEXT } from '@/features/users/constants';
 
 export function UsersTable() {
   const dispatch = useAppDispatch();
@@ -36,7 +37,7 @@ export function UsersTable() {
       </div>
 
       {loading ? (
-        <div className="text-center py-8 text-gray-500">Đang tải danh sách người dùng...</div>
+        <div className="text-center py-8 text-gray-500">{USER_UI_TEXT.LOADING_USERS}</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -65,13 +66,7 @@ export function UsersTable() {
                   <td className="px-4 py-3 text-sm text-gray-600">{user.created}</td>
                   <td className="px-4 py-3 text-sm">
                     <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                        user.role === 'Sinh viên'
-                          ? 'bg-blue-100 text-blue-800'
-                          : user.role === 'Cán bộ'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                      }`}
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getUserRoleBadgeClass(user.role)}`}
                     >
                       {user.role}
                     </span>
@@ -92,16 +87,16 @@ export function UsersTable() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <Button variant="ghost" size="sm" title="Xem chi tiết" onClick={() => dispatch(openDialog({ dialog: 'viewOpen', user }))}>
+                      <Button variant="ghost" size="sm" title="Xem chi tiết" onClick={() => dispatch(openDialog({ dialog: USER_DIALOG_KEYS.VIEW, user }))}>
                         <Eye size={18} className="text-blue-600" />
                       </Button>
-                      <Button variant="ghost" size="sm" title="Áp chính sách" onClick={() => dispatch(openDialog({ dialog: 'policyOpen', user }))}>
+                      <Button variant="ghost" size="sm" title="Áp chính sách" onClick={() => dispatch(openDialog({ dialog: USER_DIALOG_KEYS.POLICY, user }))}>
                         <Shield size={18} className="text-green-600" />
                       </Button>
-                      <Button variant="ghost" size="sm" title="Chỉnh sửa" onClick={() => dispatch(openDialog({ dialog: 'editOpen', user }))}>
+                      <Button variant="ghost" size="sm" title="Chỉnh sửa" onClick={() => dispatch(openDialog({ dialog: USER_DIALOG_KEYS.EDIT, user }))}>
                         <Edit size={18} className="text-amber-600" />
                       </Button>
-                      <Button variant="ghost" size="sm" title="Xóa" onClick={() => dispatch(openDialog({ dialog: 'deleteOpen', user }))}>
+                      <Button variant="ghost" size="sm" title="Xóa" onClick={() => dispatch(openDialog({ dialog: USER_DIALOG_KEYS.DELETE, user }))}>
                         <Trash2 size={18} className="text-red-600" />
                       </Button>
                     </div>
@@ -115,7 +110,7 @@ export function UsersTable() {
 
       {!loading && filteredUsers.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-gray-500">Không tìm thấy người dùng nào</p>
+          <p className="text-gray-500">{USER_UI_TEXT.EMPTY_USERS}</p>
         </div>
       ) : null}
     </Card>

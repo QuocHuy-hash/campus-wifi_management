@@ -9,6 +9,8 @@ import { AppDispatch } from "@/stores/store";
 
 import { setAddPolicyDialogOpen, setPolicyForm } from "../slices/policiesSlice";
 import { setAddAuthPolicyDialogOpen, setAuthPolicyForm, setValidationError } from "../slices/authPoliciesSlice";
+import { loadWifiPolicies } from '../slices/policiesSlice';
+import { loadAuthPolicies } from '../slices/authPoliciesSlice';
 
 import { PoliciesFilterBar } from "./PoliciesFilterBar";
 import { PolicyDialogs } from "./dialogs/PolicyDialogs";
@@ -39,6 +41,11 @@ export const PoliciesFeature = () => {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
+
+  useEffect(() => {
+    dispatch(loadWifiPolicies());
+    dispatch(loadAuthPolicies());
+  }, [dispatch]);
 
   const handleAddPolicy = (type: string) => {
     if (type === 'auth') {

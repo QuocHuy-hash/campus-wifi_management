@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Edit, Trash2 } from 'lucide-react';
 import { RootState, AppDispatch } from '@/stores/store';
-import { setEditAuthPolicyDialogOpen, setDeleteAuthPolicyDialogOpen, setSelectedAuthPolicy, setAuthPolicyForm, updateAuthPolicy } from '../../slices/authPoliciesSlice';
+import { setEditAuthPolicyDialogOpen, setDeleteAuthPolicyDialogOpen, setSelectedAuthPolicy, setAuthPolicyForm, updateAuthPolicyAsync } from '../../slices/authPoliciesSlice';
 import { AuthPolicy, authUserTypeOptions, authMethodOptions } from '@/data/mockData';
 
 export const AuthPolicyTab = () => {
@@ -72,7 +72,7 @@ export const AuthPolicyTab = () => {
                       checked={policy.isActive}
                       onCheckedChange={(checked) => {
                          const updated = { ...policy, isActive: checked, updatedAt: new Date().toISOString().split('T')[0] };
-                         dispatch(updateAuthPolicy(updated));
+                         dispatch(updateAuthPolicyAsync(updated));
                       }}
                     />
                  </div>

@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { RootState, AppDispatch } from '@/stores/store';
 import { 
   setAddPolicyDialogOpen, setEditPolicyDialogOpen, setDeletePolicyDialogOpen, 
-  setPolicyForm, addPolicy, updatePolicy, deletePolicy 
+  setPolicyForm, createWifiPolicyAsync, updateWifiPolicyAsync, deleteWifiPolicyAsync
 } from '../../slices/policiesSlice';
 import { WifiPolicy, AreaLocation, initialCampuses, initialBuildings, getPolicyTypeLabel } from '@/data/mockData';
 
@@ -42,8 +42,7 @@ export const PolicyDialogs = () => {
   }, []);
 
   const saveNewPolicy = () => {
-    const newPolicy: WifiPolicy = {
-      id: Math.max(...policies.map(p => p.id), 0) + 1,
+    const newPolicy: Omit<WifiPolicy, 'id'> = {
       name: policyForm.name || '',
       description: policyForm.description || '',
       type: policyForm.type || 'bandwidth',
@@ -78,18 +77,18 @@ export const PolicyDialogs = () => {
       bindMacAddress: policyForm.bindMacAddress,
       isActive: policyForm.isActive,
     };
-    dispatch(addPolicy(newPolicy));
+    dispatch(createWifiPolicyAsync(newPolicy));
   };
 
   const saveEditPolicy = () => {
     if (selectedPolicy) {
-      dispatch(updatePolicy({ ...selectedPolicy, ...policyForm } as WifiPolicy));
+      dispatch(updateWifiPolicyAsync({ ...selectedPolicy, ...policyForm } as WifiPolicy));
     }
   };
 
   const confirmDeletePolicy = () => {
     if (selectedPolicy) {
-      dispatch(deletePolicy(selectedPolicy.id));
+      dispatch(deleteWifiPolicyAsync(selectedPolicy.id));
     }
   };
 

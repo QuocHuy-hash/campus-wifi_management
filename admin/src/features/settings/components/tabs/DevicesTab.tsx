@@ -22,9 +22,11 @@ export const DevicesTab = () => {
   }, [controllers, controllerCampusFilter]);
 
   const filteredAPs = useMemo(() => {
-    // Lặc AP theo controller thông qua nasIdentifier được chọn (dùng locationId vì AP mới không có field controller)
-    return aps;
-  }, [aps, selectedControllerFilter]);
+    if (!selectedControllerFilter) return aps;
+    const selectedController = controllers.find(c => c.nasIdentifier === selectedControllerFilter);
+    if (!selectedController) return aps;
+    return aps.filter(ap => ap.controllerId === selectedController.id);
+  }, [aps, controllers, selectedControllerFilter]);
 
   const handleControllerClick = (name: string) => {
     if (selectedControllerFilter === name) {
@@ -104,8 +106,8 @@ export const DevicesTab = () => {
                     <td className="px-3 py-2 text-sm text-gray-600 font-mono text-xs">{controller.ipAddress}</td>
                     <td className="px-3 py-2 text-center">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                        controller.status === 'Online' ? 'bg-green-100 text-green-800' : 
-                        controller.status === 'Warning' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                        controller.status === 'ONLINE' ? 'bg-green-100 text-green-800' : 
+                        controller.status === 'WARNING' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
                       }`}>
                         {controller.status}
                       </span>
@@ -141,7 +143,7 @@ export const DevicesTab = () => {
                   : "Tất cả thiết bị phát sóng"}
               </p>
             </div>
-            <Button onClick={() => dispatch(setAddAPDialogOpen(true))} size="sm" className="bg-green-600 hover:bg-green-700">
+            <Button onClick={() => dispatch(setAddAPDialogOpen(true))} size="sm" className="bg-blue-600 hover:bg-blue-700">
               <Plus size={16} className="mr-1" />
               Thêm
             </Button>
@@ -169,8 +171,11 @@ export const DevicesTab = () => {
                     <td className="px-3 py-2 text-sm font-medium text-gray-900">{ap.apName}</td>
                     <td className="px-3 py-2 text-sm text-gray-600">{ap.modelName}</td>
                     <td className="px-3 py-2 text-center">
-                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Active
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                        ap.status === 'ONLINE' ? 'bg-green-100 text-green-800' :
+                        ap.status === 'OFFLINE' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {ap.status}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">

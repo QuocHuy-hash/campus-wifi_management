@@ -29,7 +29,7 @@ export interface Controller {
   ipAddress: string;
   version: string;
   status: "Online" | "Offline" | "Warning";
-  location?: string;
+  locationName?: string;
   campusId?: number;
   // Computed fields
   apCount?: number;

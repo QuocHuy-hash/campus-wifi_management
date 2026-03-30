@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Mail, Globe, Facebook } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { closeDialog } from '../../slices/usersSlice';
+import { getUserRoleBadgeClass, USER_DIALOG_KEYS } from '@/features/users/constants';
 
 export function ViewUserDialog() {
   const dispatch = useAppDispatch();
@@ -12,7 +13,7 @@ export function ViewUserDialog() {
   if (!selectedUser) return null;
 
   return (
-    <Dialog open={dialogs.viewOpen} onOpenChange={(open) => !open && dispatch(closeDialog('viewOpen'))}>
+    <Dialog open={dialogs.viewOpen} onOpenChange={(open) => !open && dispatch(closeDialog(USER_DIALOG_KEYS.VIEW))}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Chi tiết Người dùng</DialogTitle>
@@ -38,11 +39,7 @@ export function ViewUserDialog() {
             <div>
               <Label className="text-xs text-gray-500">Vai trò</Label>
               <p className="text-sm font-medium">
-                <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                  selectedUser.role === 'Sinh viên' ? 'bg-blue-100 text-blue-800' :
-                  selectedUser.role === 'Cán bộ' ? 'bg-green-100 text-green-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
+                <span className={`inline-block px-2 py-1 rounded-full text-xs ${getUserRoleBadgeClass(selectedUser.role)}`}>
                   {selectedUser.role}
                 </span>
               </p>
@@ -95,7 +92,7 @@ export function ViewUserDialog() {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => dispatch(closeDialog('viewOpen'))}>Đóng</Button>
+          <Button variant="outline" onClick={() => dispatch(closeDialog(USER_DIALOG_KEYS.VIEW))}>Đóng</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
