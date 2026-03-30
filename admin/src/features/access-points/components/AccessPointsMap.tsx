@@ -4,11 +4,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MapPin, Server } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { setSelectedCampus, setSelectedArea, toggleControllerSection } from '../slices/accessPointsSlice';
-import { campusFilters, areaFilters } from '@/data/mockData';
 
 export function AccessPointsMap() {
   const dispatch = useAppDispatch();
-  const { selectedCampus, selectedArea, showControllerSection } = useAppSelector(state => state.accessPoints);
+  const { selectedCampus, selectedArea, showControllerSection, campuses, buildings } = useAppSelector(state => state.accessPoints);
+
+  // Get buildings for selected campus
+  const filteredBuildings = selectedCampus && selectedCampus !== 'all'
+    ? buildings.filter(b => b.campusId.toString() === selectedCampus)
+    : buildings;
 
   return (
     <Card className="p-4 h-full">
@@ -19,11 +23,12 @@ export function AccessPointsMap() {
           <span className="text-sm text-gray-600">Chọn campus</span>
           <Select value={selectedCampus} onValueChange={(val) => dispatch(setSelectedCampus(val))}>
             <SelectTrigger className="w-28 h-8">
-              <SelectValue />
+              <SelectValue placeholder="Tất cả" />
             </SelectTrigger>
             <SelectContent>
-              {campusFilters.map(c => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
+              <SelectItem value="all">Tất cả</SelectItem>
+              {campuses.map(campus => (
+                <SelectItem key={campus.id} value={campus.id.toString()}>{campus.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -32,19 +37,20 @@ export function AccessPointsMap() {
           <span className="text-sm text-gray-600">Chọn khu nhà</span>
           <Select value={selectedArea} onValueChange={(val) => dispatch(setSelectedArea(val))}>
             <SelectTrigger className="w-28 h-8">
-              <SelectValue />
+              <SelectValue placeholder="Tất cả" />
             </SelectTrigger>
             <SelectContent>
-              {areaFilters.map(a => (
-                <SelectItem key={a} value={a}>{a}</SelectItem>
+              <SelectItem value="all">Tất cả</SelectItem>
+              {filteredBuildings.map(building => (
+                <SelectItem key={building.id} value={building.id.toString()}>{building.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="flex items-center gap-2 ml-auto">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="text-blue-600 border-blue-600 hover:bg-blue-50"
             onClick={() => dispatch(toggleControllerSection())}
           >

@@ -1,4 +1,4 @@
-import { AP, Controller } from '../../../data/mockData';
+import { AP, Controller } from '../../../access-points/types';
 
 export interface AdminUser {
   id: number;
@@ -36,7 +36,7 @@ export interface Building {
   campusId: number;
   name: string;
   code: string;
-  floors: number;
+  totalFloors: number;
   description?: string;
 }
 
@@ -45,6 +45,7 @@ export interface Location {
   buildingId: number;
   name: string;
   code: string;
+  floorNumber: number;
   description?: string;
 }
 

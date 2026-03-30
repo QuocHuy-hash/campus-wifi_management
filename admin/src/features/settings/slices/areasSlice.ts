@@ -56,6 +56,7 @@ const initialState: AreasState = {
   selectedLocation: null,
 };
 
+// Retrieve Thunk
 export const fetchAreas = createAsyncThunk('settingsAreas/fetchAreas', async () => {
   const [campuses, buildings, locations] = await Promise.all([
     areasApi.getCampuses(),
@@ -64,6 +65,21 @@ export const fetchAreas = createAsyncThunk('settingsAreas/fetchAreas', async () 
   ]);
   return { campuses, buildings, locations };
 });
+
+// Campus Thunks
+export const createCampusThunk = createAsyncThunk('settingsAreas/createCampus', async (data: Omit<Campus, 'id'>) => await areasApi.createCampus(data));
+export const updateCampusThunk = createAsyncThunk('settingsAreas/updateCampus', async ({ id, data }: { id: number, data: Omit<Campus, 'id'> }) => await areasApi.updateCampus(id, data));
+export const deleteCampusThunk = createAsyncThunk('settingsAreas/deleteCampus', async (id: number) => { await areasApi.deleteCampus(id); return id; });
+
+// Building Thunks
+export const createBuildingThunk = createAsyncThunk('settingsAreas/createBuilding', async (data: Omit<Building, 'id'>) => await areasApi.createBuilding(data));
+export const updateBuildingThunk = createAsyncThunk('settingsAreas/updateBuilding', async ({ id, data }: { id: number, data: Omit<Building, 'id'> }) => await areasApi.updateBuilding(id, data));
+export const deleteBuildingThunk = createAsyncThunk('settingsAreas/deleteBuilding', async (id: number) => { await areasApi.deleteBuilding(id); return id; });
+
+// Location Thunks
+export const createLocationThunk = createAsyncThunk('settingsAreas/createLocation', async (data: Omit<Location, 'id'>) => await areasApi.createLocation(data));
+export const updateLocationThunk = createAsyncThunk('settingsAreas/updateLocation', async ({ id, data }: { id: number, data: Omit<Location, 'id'> }) => await areasApi.updateLocation(id, data));
+export const deleteLocationThunk = createAsyncThunk('settingsAreas/deleteLocation', async (id: number) => { await areasApi.deleteLocation(id); return id; });
 
 const areasSlice = createSlice({
   name: 'settingsAreas',
@@ -79,44 +95,21 @@ const areasSlice = createSlice({
     setDeleteCampusDialogOpen(state, action: PayloadAction<boolean>) { state.deleteCampusDialogOpen = action.payload; },
     setSelectedCampus(state, action: PayloadAction<Campus | null>) { state.selectedCampus = action.payload; },
     
-    // Campus Data
-    addCampus(state, action: PayloadAction<Campus>) { state.campuses.push(action.payload); },
-    updateCampus(state, action: PayloadAction<Campus>) {
-      const idx = state.campuses.findIndex(c => c.id === action.payload.id);
-      if (idx !== -1) state.campuses[idx] = action.payload;
-    },
-    removeCampus(state, action: PayloadAction<number>) { state.campuses = state.campuses.filter(c => c.id !== action.payload); },
-    
     // Building UI
     setAddBuildingDialogOpen(state, action: PayloadAction<boolean>) { state.addBuildingDialogOpen = action.payload; },
     setEditBuildingDialogOpen(state, action: PayloadAction<boolean>) { state.editBuildingDialogOpen = action.payload; },
     setDeleteBuildingDialogOpen(state, action: PayloadAction<boolean>) { state.deleteBuildingDialogOpen = action.payload; },
     setSelectedBuilding(state, action: PayloadAction<Building | null>) { state.selectedBuilding = action.payload; },
     
-    // Building Data
-    addBuilding(state, action: PayloadAction<Building>) { state.buildings.push(action.payload); },
-    updateBuilding(state, action: PayloadAction<Building>) {
-      const idx = state.buildings.findIndex(b => b.id === action.payload.id);
-      if (idx !== -1) state.buildings[idx] = action.payload;
-    },
-    removeBuilding(state, action: PayloadAction<number>) { state.buildings = state.buildings.filter(b => b.id !== action.payload); },
-    
     // Location UI
     setAddLocationDialogOpen(state, action: PayloadAction<boolean>) { state.addLocationDialogOpen = action.payload; },
     setEditLocationDialogOpen(state, action: PayloadAction<boolean>) { state.editLocationDialogOpen = action.payload; },
     setDeleteLocationDialogOpen(state, action: PayloadAction<boolean>) { state.deleteLocationDialogOpen = action.payload; },
     setSelectedLocation(state, action: PayloadAction<Location | null>) { state.selectedLocation = action.payload; },
-    
-    // Location Data
-    addLocation(state, action: PayloadAction<Location>) { state.locations.push(action.payload); },
-    updateLocation(state, action: PayloadAction<Location>) {
-      const idx = state.locations.findIndex(l => l.id === action.payload.id);
-      if (idx !== -1) state.locations[idx] = action.payload;
-    },
-    removeLocation(state, action: PayloadAction<number>) { state.locations = state.locations.filter(l => l.id !== action.payload); },
   },
   extraReducers: (builder) => {
     builder
+      // Fetch All
       .addCase(fetchAreas.pending, (state) => { state.status = 'loading'; })
       .addCase(fetchAreas.fulfilled, (state, action) => {
         state.status = 'succeeded';
@@ -127,6 +120,36 @@ const areasSlice = createSlice({
       .addCase(fetchAreas.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message || 'Failed';
+      })
+      
+      // Campus CRUD Handlers
+      .addCase(createCampusThunk.fulfilled, (state, action) => { state.campuses.push(action.payload); })
+      .addCase(updateCampusThunk.fulfilled, (state, action) => {
+        const idx = state.campuses.findIndex(c => c.id === action.payload.id);
+        if (idx !== -1) state.campuses[idx] = action.payload;
+      })
+      .addCase(deleteCampusThunk.fulfilled, (state, action) => {
+        state.campuses = state.campuses.filter(c => c.id !== action.payload);
+      })
+      
+      // Building CRUD Handlers
+      .addCase(createBuildingThunk.fulfilled, (state, action) => { state.buildings.push(action.payload); })
+      .addCase(updateBuildingThunk.fulfilled, (state, action) => {
+        const idx = state.buildings.findIndex(b => b.id === action.payload.id);
+        if (idx !== -1) state.buildings[idx] = action.payload;
+      })
+      .addCase(deleteBuildingThunk.fulfilled, (state, action) => {
+        state.buildings = state.buildings.filter(b => b.id !== action.payload);
+      })
+      
+      // Location CRUD Handlers
+      .addCase(createLocationThunk.fulfilled, (state, action) => { state.locations.push(action.payload); })
+      .addCase(updateLocationThunk.fulfilled, (state, action) => {
+        const idx = state.locations.findIndex(l => l.id === action.payload.id);
+        if (idx !== -1) state.locations[idx] = action.payload;
+      })
+      .addCase(deleteLocationThunk.fulfilled, (state, action) => {
+        state.locations = state.locations.filter(l => l.id !== action.payload);
       });
   }
 });
@@ -134,11 +157,8 @@ const areasSlice = createSlice({
 export const {
   setCampusFilter, setBuildingFilter,
   setAddCampusDialogOpen, setEditCampusDialogOpen, setDeleteCampusDialogOpen, setSelectedCampus,
-  addCampus, updateCampus, removeCampus,
   setAddBuildingDialogOpen, setEditBuildingDialogOpen, setDeleteBuildingDialogOpen, setSelectedBuilding,
-  addBuilding, updateBuilding, removeBuilding,
-  setAddLocationDialogOpen, setEditLocationDialogOpen, setDeleteLocationDialogOpen, setSelectedLocation,
-  addLocation, updateLocation, removeLocation
+  setAddLocationDialogOpen, setEditLocationDialogOpen, setDeleteLocationDialogOpen, setSelectedLocation
 } = areasSlice.actions;
 
 export default areasSlice.reducer;

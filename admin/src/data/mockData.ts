@@ -9,6 +9,7 @@ export interface AP {
   id: number;
   name: string;
   location: string;
+macAddress: string;
   building: string;
   campusId?: number;
   buildingId?: number;
@@ -24,7 +25,8 @@ export interface AP {
 
 export interface Controller {
   id: number;
-  name: string;
+  nasIdentifier: string;
+  macAddress: string;
   ipAddress: string;
   version: string;
   status: "Online" | "Offline" | "Warning";
@@ -48,7 +50,7 @@ export interface Building {
   campusId: number;
   name: string;
   code: string;
-  floors?: number;
+  totalFloors?: number;
   description?: string;
 }
 
@@ -57,6 +59,7 @@ export interface Location {
   buildingId: number;
   name: string;
   code: string;
+  floorNumber: number;
   description?: string;
 }
 
@@ -340,7 +343,7 @@ export const initialBuildings: Building[] = [
     campusId: 1,
     name: "Tòa nhà A",
     code: "A",
-    floors: 7,
+    totalFloors: 7,
     description: "Khu giảng đường và phòng học chính",
   },
   {
@@ -348,7 +351,7 @@ export const initialBuildings: Building[] = [
     campusId: 1,
     name: "Tòa nhà B",
     code: "B",
-    floors: 5,
+    totalFloors: 5,
     description: "Khu văn phòng và phòng thí nghiệm",
   },
   {
@@ -356,7 +359,7 @@ export const initialBuildings: Building[] = [
     campusId: 1,
     name: "Tòa nhà C",
     code: "C",
-    floors: 4,
+    totalFloors: 4,
     description: "Khu ký túc xá sinh viên",
   },
   {
@@ -364,7 +367,7 @@ export const initialBuildings: Building[] = [
     campusId: 1,
     name: "Thư viện",
     code: "LIB",
-    floors: 3,
+    totalFloors: 3,
     description: "Thư viện và trung tâm học liệu",
   },
   {
@@ -372,7 +375,7 @@ export const initialBuildings: Building[] = [
     campusId: 1,
     name: "Nhà điều hành",
     code: "NDH",
-    floors: 5,
+    totalFloors: 5,
     description: "Khu điều hành và hành chính",
   },
   // Thủ Đức Campus
@@ -381,7 +384,7 @@ export const initialBuildings: Building[] = [
     campusId: 2,
     name: "Tòa nhà E",
     code: "E",
-    floors: 6,
+    totalFloors: 6,
     description: "Khu giảng đường",
   },
   {
@@ -389,7 +392,7 @@ export const initialBuildings: Building[] = [
     campusId: 2,
     name: "Tòa nhà F",
     code: "F",
-    floors: 4,
+    totalFloors: 4,
     description: "Khu thí nghiệm CNTT",
   },
   // 227 NVC Campus
@@ -398,7 +401,7 @@ export const initialBuildings: Building[] = [
     campusId: 3,
     name: "Tòa nhà chính",
     code: "MAIN",
-    floors: 8,
+    totalFloors: 8,
     description: "Tòa nhà chính 227 NVC",
   },
   {
@@ -406,7 +409,7 @@ export const initialBuildings: Building[] = [
     campusId: 3,
     name: "Nhà I",
     code: "I",
-    floors: 11,
+    totalFloors: 11,
     description: "Nhà I - 11 tầng",
   },
   {
@@ -414,7 +417,7 @@ export const initialBuildings: Building[] = [
     campusId: 3,
     name: "Giảng đường",
     code: "GD",
-    floors: 3,
+    totalFloors: 3,
     description: "Khu giảng đường",
   },
   {
@@ -422,7 +425,7 @@ export const initialBuildings: Building[] = [
     campusId: 3,
     name: "Phòng Server",
     code: "SERVER",
-    floors: 1,
+    totalFloors: 1,
     description: "Phòng máy chủ",
   },
   {
@@ -430,7 +433,7 @@ export const initialBuildings: Building[] = [
     campusId: 3,
     name: "Phòng IT",
     code: "IT",
-    floors: 1,
+    totalFloors: 1,
     description: "Phòng IT",
   },
 ];
@@ -442,6 +445,7 @@ export const initialLocations: Location[] = [
     buildingId: 1,
     name: "Phòng A101",
     code: "A101",
+    floorNumber: 1,
     description: "Phòng học lý thuyết",
   },
   {
@@ -449,6 +453,7 @@ export const initialLocations: Location[] = [
     buildingId: 1,
     name: "Phòng A102",
     code: "A102",
+    floorNumber: 1,
     description: "Phòng học lý thuyết",
   },
   {
@@ -456,46 +461,11 @@ export const initialLocations: Location[] = [
     buildingId: 10,
     name: "Hội trường 1",
     code: "HT1",
+    floorNumber: 1,
     description: "Hội trường lớn",
   },
 ];
 
-// Controllers
-export const initialControllers: Controller[] = [
-  {
-    id: 1,
-    name: "UniFi 1",
-    ipAddress: "172.29.99.254",
-    version: "7.4.156",
-    status: "Online",
-    apCount: 4,
-    totalClients: 438,
-    location: "Cơ sở 227 NVC - Phòng Server",
-    campusId: 3,
-  },
-  {
-    id: 2,
-    name: "UniFi 2",
-    ipAddress: "10.29.29.254",
-    version: "7.4.156",
-    status: "Online",
-    apCount: 2,
-    totalClients: 133,
-    location: "Cơ sở 227 NVC - Phòng IT",
-    campusId: 3,
-  },
-  {
-    id: 3,
-    name: "UniFi 3",
-    ipAddress: "172.29.100.254",
-    version: "7.3.83",
-    status: "Warning",
-    apCount: 2,
-    totalClients: 173,
-    location: "Cơ sở Dĩ An - Nhà điều hành",
-    campusId: 1,
-  },
-];
 
 // Authentication
 // Authentication Policy Helper Types
@@ -585,56 +555,6 @@ export const authSourceTypes = [
   { value: "guest_db", label: "Guest Portal Database" },
 ];
 
-// Access Points
-export const initialAPs: AP[] = [
-  {
-    id: 1,
-    name: "AP-A101",
-    location: "Góc phải",
-    building: "Tòa nhà A",
-    campusId: 1,
-    buildingId: 1,
-    locationId: 1,
-    uptime: "12d 4h",
-    ipModel: "10.0.1.10 - Unifi U6 LR",
-    controller: "Primary Controller",
-    clients: 85,
-    usage: 95.5,
-    status: "Warning",
-    usagePercent: 95,
-  },
-  {
-    id: 2,
-    name: "AP-B202",
-    location: "Trần nhà",
-    building: "Tòa nhà B",
-    campusId: 2,
-    buildingId: 3,
-    // No locationId for this one yet as demo
-    uptime: "5d 1h",
-    ipModel: "10.0.1.11 - TP-Link Omada",
-    controller: "Secondary Controller",
-    clients: 12,
-    usage: 3.2,
-    status: "Online",
-    usagePercent: 30,
-  },
-  {
-    id: 3,
-    name: "AP-C101 (Offline)",
-    location: "Hành lang",
-    building: "Tòa nhà C",
-    campusId: 3,
-    buildingId: 5,
-    uptime: "-",
-    ipModel: "10.0.1.12 - Cisco Meraki",
-    controller: "Backup Controller",
-    clients: 0,
-    usage: 0,
-    status: "Offline",
-    usagePercent: 0,
-  },
-];
 
 // Admin Users
 export const initialAdminUsers: AdminUser[] = [
@@ -995,18 +915,6 @@ export const fetchAreaLocations = async (): Promise<AreaLocation[]> => {
   });
 
   return locations;
-};
-
-// Fetch Controllers
-export const fetchControllers = async (): Promise<Controller[]> => {
-  await simulateDelay();
-  return [...initialControllers];
-};
-
-// Fetch Access Points
-export const fetchAccessPoints = async (): Promise<AP[]> => {
-  await simulateDelay();
-  return [...initialAPs];
 };
 
 // Fetch Admin Users

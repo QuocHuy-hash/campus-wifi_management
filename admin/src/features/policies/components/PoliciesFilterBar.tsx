@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, RefreshCw, Filter } from 'lucide-react';
 import { RootState, AppDispatch } from '@/stores/store';
-import { initialControllers } from '@/data/mockData';
 import { 
   setFilterRole, setFilterArea, setFilterTime, setFilterController, setFilterSearch, resetFilters 
 } from '../slices/policiesSlice';
@@ -13,6 +12,8 @@ import {
 export const PoliciesFilterBar = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { filterRole, filterArea, filterTime, filterController, filterSearch } = useSelector((state: RootState) => state.policies.policies);
+  // Lấy danh sách Controller thực tế từ Redux Store thay vì mock data
+  const controllers = useSelector((state: RootState) => state.settings.devices.controllers);
 
   return (
     <Card className="bg-white shadow-sm p-3">
@@ -66,8 +67,8 @@ export const PoliciesFilterBar = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả controller</SelectItem>
-            {initialControllers.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+            {controllers.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>{c.nasIdentifier || (c as any).name}</SelectItem>
             ))}
           </SelectContent>
         </Select>

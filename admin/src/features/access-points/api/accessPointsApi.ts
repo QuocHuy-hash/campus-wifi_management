@@ -1,14 +1,19 @@
-import { AP, Controller, initialAPs, initialControllers } from "@/data/mockData";
+import axios from 'axios';
+import { AP, Controller } from '../types';
+import { API_BASE_URL } from '@/config/api';
 
-// Simulate network delay of 800ms
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+interface ApiResponse<T> {
+  statusCode: number;
+  data: T;
+  message: string;
+}
 
 export const fetchAPs = async (): Promise<AP[]> => {
-  await delay(800);
-  return [...initialAPs];
+  const response = await axios.get<ApiResponse<AP[]>>(`${API_BASE_URL}/access-points`);
+  return response.data.data;
 };
 
 export const fetchControllers = async (): Promise<Controller[]> => {
-  await delay(800);
-  return [...initialControllers];
+  const response = await axios.get<ApiResponse<Controller[]>>(`${API_BASE_URL}/wifi-controllers`);
+  return response.data.data;
 };

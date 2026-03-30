@@ -1,13 +1,17 @@
 import { Card } from '@/components/ui/card';
 import { useAppSelector } from '@/stores/hooks';
-import { getOverloadedAPs } from '@/data/mockData';
 import { useMemo } from 'react';
 
 export function OverloadedAPsTable() {
   const { aps } = useAppSelector(state => state.accessPoints);
 
-  // Derive overloaded APs from the current state rather than static mockData
-  const overloadedAPs = useMemo(() => getOverloadedAPs(aps), [aps]);
+  // Lọc các AP quá tải (usage >= 70%)
+  const overloadedAPs = useMemo(() => {
+    return aps
+      .filter(ap => (ap.usage || 0) >= 70)
+      .sort((a, b) => (b.usage || 0) - (a.usage || 0))
+      .slice(0, 4);
+  }, [aps]);
 
   return (
     <Card className="p-4 h-full">
@@ -22,12 +26,12 @@ export function OverloadedAPsTable() {
         </thead>
         <tbody>
           {overloadedAPs.map((ap) => (
-            <tr key={ap.id} className="border-b last:border-0">
-              <td className="py-2">{ap.name}</td>
-              <td className="py-2 text-right">{ap.clients}</td>
+            <tr key={ap.macAddress} className="border-b last:border-0">
+              <td className="py-2">{ap.apName}</td>
+              <td className="py-2 text-right">{ap.clients || 0}</td>
               <td className="py-2 text-right">
-                <span className={ap.usage >= 90 ? 'text-red-600 font-medium' : 'text-amber-600'}>
-                  {ap.usage}%
+                <span className={(ap.usage || 0) >= 90 ? 'text-red-600 font-medium' : 'text-amber-600'}>
+                  {ap.usage || 0}%
                 </span>
               </td>
             </tr>

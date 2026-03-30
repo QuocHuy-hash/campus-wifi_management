@@ -17,7 +17,7 @@ export function ControllersTable() {
   };
 
   const getTotalClientsByController = (controllerName: string) => {
-    return aps.filter(ap => ap.controller === controllerName).reduce((sum, ap) => sum + ap.clients, 0);
+    return aps.filter(ap => ap.controller === controllerName).reduce((sum, ap) => sum + (ap.clients || 0), 0);
   };
 
   const getStatusColor = (status: Controller['status']) => {
@@ -84,10 +84,10 @@ export function ControllersTable() {
                 <tr 
                   key={controller.id} 
                   className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                    selectedControllerFilter === controller.name ? 'bg-blue-50 hover:bg-blue-100' : ''
+                    selectedControllerFilter === controller.nasIdentifier ? 'bg-blue-50 hover:bg-blue-100' : ''
                   }`}
                   onClick={() => dispatch(
-                    setSelectedControllerFilter(selectedControllerFilter === controller.name ? null : controller.name)
+                    setSelectedControllerFilter(selectedControllerFilter === controller.nasIdentifier ? null : controller.nasIdentifier)
                   )}
                 >
                   <td className="px-4 py-3">
@@ -101,7 +101,7 @@ export function ControllersTable() {
                           controller.status === 'Warning' ? 'text-amber-600' : 'text-red-600'
                         } />
                       </div>
-                      <span className="font-medium">{controller.name}</span>
+                      <span className="font-medium">{controller.nasIdentifier}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 font-mono text-gray-600">{controller.ipAddress}</td>
@@ -115,13 +115,13 @@ export function ControllersTable() {
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Wifi size={14} className="text-blue-500" />
-                      <span className="font-medium">{getAPCountByController(controller.name)}</span>
+                      <span className="font-medium">{getAPCountByController(controller.nasIdentifier)}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Activity size={14} className="text-green-500" />
-                      <span className="font-medium">{getTotalClientsByController(controller.name)}</span>
+                      <span className="font-medium">{getTotalClientsByController(controller.nasIdentifier)}</span>
                     </div>
                   </td>
                 </tr>

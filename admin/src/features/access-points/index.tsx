@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
-import { getAPs, getControllers } from './slices/accessPointsSlice';
+import { getAPs, getControllers, getCampuses, getBuildings } from './slices/accessPointsSlice';
 import { AccessPointsHeader } from './components/AccessPointsHeader';
 import { AccessPointsMap } from './components/AccessPointsMap';
 import { OverloadedAPsTable } from './components/OverloadedAPsTable';
@@ -15,6 +15,8 @@ export function AccessPointsFeature() {
   useEffect(() => {
     dispatch(getAPs());
     dispatch(getControllers());
+    dispatch(getCampuses());
+    dispatch(getBuildings());
   }, [dispatch]);
 
   return (

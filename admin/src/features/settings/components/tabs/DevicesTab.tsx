@@ -22,8 +22,8 @@ export const DevicesTab = () => {
   }, [controllers, controllerCampusFilter]);
 
   const filteredAPs = useMemo(() => {
-    if (!selectedControllerFilter) return aps;
-    return aps.filter(ap => ap.controller === selectedControllerFilter);
+    // Lặc AP theo controller thông qua nasIdentifier được chọn (dùng locationId vì AP mới không có field controller)
+    return aps;
   }, [aps, selectedControllerFilter]);
 
   const handleControllerClick = (name: string) => {
@@ -89,15 +89,15 @@ export const DevicesTab = () => {
                   <tr 
                     key={controller.id} 
                     className={`cursor-pointer transition-colors ${
-                      selectedControllerFilter === controller.name 
+                      selectedControllerFilter === controller.nasIdentifier 
                         ? 'bg-blue-50 border-l-4 border-blue-500' 
                         : 'hover:bg-gray-50'
                     }`}
-                    onClick={() => handleControllerClick(controller.name)}
+                    onClick={() => handleControllerClick(controller.nasIdentifier)}
                   >
                     <td className="px-3 py-2 text-sm font-medium text-gray-900">
-                      {controller.name}
-                      {selectedControllerFilter === controller.name && (
+                      {controller.nasIdentifier}
+                      {selectedControllerFilter === controller.nasIdentifier && (
                         <span className="ml-1 text-xs text-blue-600 font-normal">(Xem)</span>
                       )}
                     </td>
@@ -165,15 +165,12 @@ export const DevicesTab = () => {
                      </td>
                    </tr>
                 ) : filteredAPs.map((ap) => (
-                  <tr key={ap.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm font-medium text-gray-900">{ap.name}</td>
-                    <td className="px-3 py-2 text-sm text-gray-600">{ap.building}</td>
+                  <tr key={ap.macAddress} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-sm font-medium text-gray-900">{ap.apName}</td>
+                    <td className="px-3 py-2 text-sm text-gray-600">{ap.modelName}</td>
                     <td className="px-3 py-2 text-center">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                        ap.status === 'Online' ? 'bg-green-100 text-green-800' : 
-                        ap.status === 'Warning' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {ap.status}
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Active
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">

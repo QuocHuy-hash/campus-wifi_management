@@ -6,9 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AppDispatch, RootState } from '../../../../stores/store';
 import {
-  setAddCampusDialogOpen, setEditCampusDialogOpen, setDeleteCampusDialogOpen, setSelectedCampus, addCampus, updateCampus, removeCampus,
-  setAddBuildingDialogOpen, setEditBuildingDialogOpen, setDeleteBuildingDialogOpen, setSelectedBuilding, addBuilding, updateBuilding, removeBuilding,
-  setAddLocationDialogOpen, setEditLocationDialogOpen, setDeleteLocationDialogOpen, setSelectedLocation, addLocation, updateLocation, removeLocation
+  setAddCampusDialogOpen, setEditCampusDialogOpen, setDeleteCampusDialogOpen, setSelectedCampus,
+  createCampusThunk, updateCampusThunk, deleteCampusThunk,
+  setAddBuildingDialogOpen, setEditBuildingDialogOpen, setDeleteBuildingDialogOpen, setSelectedBuilding,
+  createBuildingThunk, updateBuildingThunk, deleteBuildingThunk,
+  setAddLocationDialogOpen, setEditLocationDialogOpen, setDeleteLocationDialogOpen, setSelectedLocation,
+  createLocationThunk, updateLocationThunk, deleteLocationThunk
 } from '../../slices/areasSlice';
 import { Campus, Building, Location } from '../../types';
 
@@ -50,9 +53,9 @@ export const AreasDialogs = () => {
   // Handlers - Campus
   const handleSaveCampus = () => {
     if (editCampusDialogOpen && selectedCampus) {
-      dispatch(updateCampus(campusForm as Campus));
+      dispatch(updateCampusThunk({ id: selectedCampus.id, data: campusForm as Campus }));
     } else {
-      dispatch(addCampus({ ...campusForm, id: Math.max(0, ...campuses.map(c => c.id)) + 1 } as Campus));
+      dispatch(createCampusThunk(campusForm as Campus));
     }
     closeCampusDialogs();
   };
@@ -60,9 +63,9 @@ export const AreasDialogs = () => {
   // Handlers - Building
   const handleSaveBuilding = () => {
     if (editBuildingDialogOpen && selectedBuilding) {
-      dispatch(updateBuilding(buildingForm as Building));
+      dispatch(updateBuildingThunk({ id: selectedBuilding.id, data: buildingForm as Building }));
     } else {
-      dispatch(addBuilding({ ...buildingForm, id: Math.max(0, ...buildings.map(b => b.id)) + 1 } as Building));
+      dispatch(createBuildingThunk(buildingForm as Building));
     }
     closeBuildingDialogs();
   };
@@ -70,9 +73,9 @@ export const AreasDialogs = () => {
   // Handlers - Location
   const handleSaveLocation = () => {
     if (editLocationDialogOpen && selectedLocation) {
-      dispatch(updateLocation(locationForm as Location));
+      dispatch(updateLocationThunk({ id: selectedLocation.id, data: locationForm as Location }));
     } else {
-      dispatch(addLocation({ ...locationForm, id: Math.max(0, ...locations.map(l => l.id)) + 1 } as Location));
+      dispatch(createLocationThunk(locationForm as Location));
     }
     closeLocationDialogs();
   };
@@ -99,7 +102,7 @@ export const AreasDialogs = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Xóa Cơ sở</DialogTitle></DialogHeader>
           <p>Xác nhận xóa {selectedCampus?.name}?</p>
-          <DialogFooter><Button variant="outline" onClick={closeCampusDialogs}>Hủy</Button><Button variant="destructive" onClick={() => { dispatch(removeCampus(selectedCampus!.id)); closeCampusDialogs(); }}>Xóa</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={closeCampusDialogs}>Hủy</Button><Button variant="destructive" onClick={() => { dispatch(deleteCampusThunk(selectedCampus!.id)); closeCampusDialogs(); }}>Xóa</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -116,7 +119,8 @@ export const AreasDialogs = () => {
             </Select>
             <Input placeholder="Tên tòa nhà" value={buildingForm.name || ''} onChange={e => setBuildingForm({...buildingForm, name: e.target.value})} />
             <Input placeholder="Mã tòa nhà (VD: C, E)" value={buildingForm.code || ''} onChange={e => setBuildingForm({...buildingForm, code: e.target.value})} />
-            <Input type="number" placeholder="Số tầng" value={buildingForm.floors || ''} onChange={e => setBuildingForm({...buildingForm, floors: Number(e.target.value)})} />
+            <Input type="number" placeholder="Số tầng" value={buildingForm.totalFloors || ''} onChange={e => setBuildingForm({...buildingForm, totalFloors: Number(e.target.value)})} />
+            <Input placeholder="Mô tả" value={buildingForm.description || ''} onChange={e => setBuildingForm({...buildingForm, description: e.target.value})} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeBuildingDialogs}>Hủy</Button>
@@ -128,7 +132,7 @@ export const AreasDialogs = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Xóa Tòa nhà</DialogTitle></DialogHeader>
           <p>Xác nhận xóa {selectedBuilding?.name}?</p>
-          <DialogFooter><Button variant="outline" onClick={closeBuildingDialogs}>Hủy</Button><Button variant="destructive" onClick={() => { dispatch(removeBuilding(selectedBuilding!.id)); closeBuildingDialogs(); }}>Xóa</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={closeBuildingDialogs}>Hủy</Button><Button variant="destructive" onClick={() => { dispatch(deleteBuildingThunk(selectedBuilding!.id)); closeBuildingDialogs(); }}>Xóa</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -145,6 +149,8 @@ export const AreasDialogs = () => {
             </Select>
             <Input placeholder="Tên địa điểm" value={locationForm.name || ''} onChange={e => setLocationForm({...locationForm, name: e.target.value})} />
             <Input placeholder="Mã địa điểm (VD: C31)" value={locationForm.code || ''} onChange={e => setLocationForm({...locationForm, code: e.target.value})} />
+            <Input type="number" placeholder="Tầng (VD: 1)" value={locationForm.floorNumber || ''} onChange={e => setLocationForm({...locationForm, floorNumber: Number(e.target.value)})} />
+            <Input placeholder="Mô tả (Optional)" value={locationForm.description || ''} onChange={e => setLocationForm({...locationForm, description: e.target.value})} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeLocationDialogs}>Hủy</Button>
@@ -156,7 +162,7 @@ export const AreasDialogs = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Xóa Địa điểm</DialogTitle></DialogHeader>
           <p>Xác nhận xóa {selectedLocation?.name}?</p>
-          <DialogFooter><Button variant="outline" onClick={closeLocationDialogs}>Hủy</Button><Button variant="destructive" onClick={() => { dispatch(removeLocation(selectedLocation!.id)); closeLocationDialogs(); }}>Xóa</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={closeLocationDialogs}>Hủy</Button><Button variant="destructive" onClick={() => { dispatch(deleteLocationThunk(selectedLocation!.id)); closeLocationDialogs(); }}>Xóa</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </>

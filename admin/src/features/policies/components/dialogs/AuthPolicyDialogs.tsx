@@ -14,8 +14,7 @@ import {
 } from '../../slices/authPoliciesSlice';
 import { 
   AuthPolicy, AuthMethod, AuthUserType,
-  authUserTypeOptions, authMethodOptions, 
-  initialControllers, initialAPs
+  authUserTypeOptions, authMethodOptions
 } from '@/data/mockData';
 
 export const AuthPolicyDialogs = () => {
@@ -24,6 +23,9 @@ export const AuthPolicyDialogs = () => {
     addAuthPolicyDialogOpen, editAuthPolicyDialogOpen, deleteAuthPolicyDialogOpen, 
     selectedAuthPolicy, authPolicyForm, validationError, data: authPolicies
   } = useSelector((state: RootState) => state.policies.authPolicies);
+
+  // Lấy danh sách Controllers và APs thực tế từ hệ thống cài đặt
+  const { controllers, aps } = useSelector((state: RootState) => state.settings.devices);
 
   const validateAuthPolicy = (policy: Partial<AuthPolicy>) => {
     if (!policy.name?.trim()) return "Vui lòng nhập tên chính sách.";
@@ -185,7 +187,7 @@ export const AuthPolicyDialogs = () => {
         <div className="border rounded-md p-3 max-h-48 overflow-y-auto mt-2 bg-white">
           <div>
             <h5 className="font-semibold text-sm mb-2 text-gray-700 sticky top-0 bg-white">Controllers</h5>
-            {initialControllers.map(ctrl => (
+            {controllers.map(ctrl => (
               <div key={ctrl.id} className="flex items-center space-x-2 ml-2 mb-1">
                 <Checkbox 
                    id={isEdit ? `edit-ctrl-${ctrl.id}` : `ctrl-${ctrl.id}`}
@@ -201,20 +203,20 @@ export const AuthPolicyDialogs = () => {
                    }}
                 />
                 <Label htmlFor={isEdit ? `edit-ctrl-${ctrl.id}` : `ctrl-${ctrl.id}`} className="text-sm font-normal cursor-pointer">
-                  {ctrl.name} <span className="text-gray-500 text-xs">({ctrl.ipAddress})</span>
+                  {ctrl.nasIdentifier || (ctrl as any).name} <span className="text-gray-500 text-xs">({ctrl.ipAddress})</span>
                 </Label>
               </div>
             ))}
           </div>
           <div className="mt-3">
             <h5 className="font-semibold text-sm mb-2 text-gray-700 sticky top-0 bg-white">Access Points</h5>
-            {initialAPs.map(ap => (
-              <div key={ap.id} className="flex items-center space-x-2 ml-2 mb-1">
+            {aps.map(ap => (
+              <div key={ap.macAddress} className="flex items-center space-x-2 ml-2 mb-1">
                 <Checkbox 
-                   id={isEdit ? `edit-ap-${ap.id}` : `ap-${ap.id}`}
-                   checked={authPolicyForm.appliedAreas?.includes(`ap:${ap.id}`)}
+                   id={isEdit ? `edit-ap-${ap.macAddress}` : `ap-${ap.macAddress}`}
+                   checked={authPolicyForm.appliedAreas?.includes(`ap:${ap.macAddress}`)}
                    onCheckedChange={(checked) => {
-                      const val = `ap:${ap.id}`;
+                      const val = `ap:${ap.macAddress}`;
                       const current = authPolicyForm.appliedAreas || [];
                       if (checked) {
                         dispatch(setAuthPolicyForm({...authPolicyForm, appliedAreas: [...current, val]}));
@@ -223,8 +225,8 @@ export const AuthPolicyDialogs = () => {
                       }
                    }}
                 />
-                <Label htmlFor={isEdit ? `edit-ap-${ap.id}` : `ap-${ap.id}`} className="text-sm font-normal cursor-pointer">
-                  {ap.name} <span className="text-gray-500 text-xs">- {ap.location}</span>
+                <Label htmlFor={isEdit ? `edit-ap-${ap.macAddress}` : `ap-${ap.macAddress}`} className="text-sm font-normal cursor-pointer">
+                  {ap.name} <span className="text-gray-500 text-xs">- {ap.name}</span>
                 </Label>
               </div>
             ))}

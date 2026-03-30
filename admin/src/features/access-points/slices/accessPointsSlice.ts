@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AP, Controller } from '../types';
 import { fetchAPs, fetchControllers } from '../api/accessPointsApi';
+import { Campus, Building } from '@/features/settings/types';
 
 export const getAPs = createAsyncThunk('accessPoints/fetchAPs', async () => {
   return await fetchAPs();
@@ -10,11 +11,24 @@ export const getControllers = createAsyncThunk('accessPoints/fetchControllers', 
   return await fetchControllers();
 });
 
+export const getCampuses = createAsyncThunk('accessPoints/fetchCampuses', async () => {
+  const { areasApi } = await import('@/features/settings/api/areasApi');
+  return await areasApi.getCampuses();
+});
+
+export const getBuildings = createAsyncThunk('accessPoints/fetchBuildings', async () => {
+  const { areasApi } = await import('@/features/settings/api/areasApi');
+  return await areasApi.getBuildings();
+});
+
 interface AccessPointsState {
   aps: AP[];
   controllers: Controller[];
+  campuses: Campus[];
+  buildings: Building[];
   apsLoading: boolean;
   controllersLoading: boolean;
+  locationsLoading: boolean;
   error: string | null;
   // Filters
   searchTerm: string;
@@ -28,13 +42,16 @@ interface AccessPointsState {
 const initialState: AccessPointsState = {
   aps: [],
   controllers: [],
+  campuses: [],
+  buildings: [],
   apsLoading: false,
   controllersLoading: false,
+  locationsLoading: false,
   error: null,
   searchTerm: '',
-  selectedBuilding: 'All',
-  selectedCampus: 'Dĩ An',
-  selectedArea: 'Nhà A',
+  selectedBuilding: 'all',
+  selectedCampus: 'all',
+  selectedArea: 'all',
   selectedControllerFilter: null,
   showControllerSection: false,
 };
@@ -87,6 +104,30 @@ const accessPointsSlice = createSlice({
       .addCase(getControllers.rejected, (state, action) => {
         state.controllersLoading = false;
         state.error = action.error.message || 'Failed to fetch Controllers';
+      })
+      .addCase(getCampuses.pending, (state) => {
+        state.locationsLoading = true;
+        state.error = null;
+      })
+      .addCase(getCampuses.fulfilled, (state, action) => {
+        state.locationsLoading = false;
+        state.campuses = action.payload;
+      })
+      .addCase(getCampuses.rejected, (state, action) => {
+        state.locationsLoading = false;
+        state.error = action.error.message || 'Failed to fetch Campuses';
+      })
+      .addCase(getBuildings.pending, (state) => {
+        state.locationsLoading = true;
+        state.error = null;
+      })
+      .addCase(getBuildings.fulfilled, (state, action) => {
+        state.locationsLoading = false;
+        state.buildings = action.payload;
+      })
+      .addCase(getBuildings.rejected, (state, action) => {
+        state.locationsLoading = false;
+        state.error = action.error.message || 'Failed to fetch Buildings';
       });
   },
 });

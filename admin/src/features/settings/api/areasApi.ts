@@ -1,27 +1,62 @@
+import axios from 'axios';
 import { Campus, Building, Location } from '../types';
+import { API_BASE_URL } from '@/config/api';
 
-const INITIAL_CAMPUSES: Campus[] = [
-  { id: 1, name: 'Cơ sở Nguyễn Văn Cừ', code: 'NVC', address: '227 Nguyễn Văn Cừ, Quận 5' },
-  { id: 2, name: 'Cơ sở Linh Trung', code: 'LT', address: 'Linh Trung, Thủ Đức' },
-];
-
-const INITIAL_BUILDINGS: Building[] = [
-  { id: 1, campusId: 1, name: 'Tòa nhà C', code: 'NVC-C', floors: 5, description: 'Tòa nhà văn phòng khoa CNTT' },
-  { id: 2, campusId: 1, name: 'Tòa nhà E', code: 'NVC-E', floors: 11, description: 'Tòa nhà điều hành' },
-  { id: 3, campusId: 2, name: 'Nhà học D1', code: 'LT-D1', floors: 3 },
-  { id: 4, campusId: 2, name: 'Nhà điều hành LT', code: 'LT-DH', floors: 4 },
-];
-
-const INITIAL_LOCATIONS: Location[] = [
-  { id: 1, buildingId: 1, name: 'Phòng Server C11', code: 'C11', description: 'Server core mạng NVC' },
-  { id: 2, buildingId: 1, name: 'Phòng Lab C31', code: 'C31', description: 'Phòng Lab Mạng máy tính' },
-  { id: 3, buildingId: 3, name: 'Giảng đường D1', code: 'D11', description: 'Giảng đường lớn' },
-];
-
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+interface ApiResponse<T> {
+  statusCode: number;
+  data: T;
+  message: string;
+}
 
 export const areasApi = {
-  getCampuses: async (): Promise<Campus[]> => { await delay(300); return [...INITIAL_CAMPUSES]; },
-  getBuildings: async (): Promise<Building[]> => { await delay(300); return [...INITIAL_BUILDINGS]; },
-  getLocations: async (): Promise<Location[]> => { await delay(300); return [...INITIAL_LOCATIONS]; }
+  // Campuses
+  getCampuses: async (): Promise<Campus[]> => {
+    const response = await axios.get<ApiResponse<Campus[]>>(`${API_BASE_URL}/campus`);
+    return response.data.data;
+  },
+  createCampus: async (data: Omit<Campus, 'id'>): Promise<Campus> => {
+    const response = await axios.post<ApiResponse<Campus>>(`${API_BASE_URL}/campus`, data);
+    return response.data.data;
+  },
+  updateCampus: async (id: number, data: Omit<Campus, 'id'>): Promise<Campus> => {
+    const response = await axios.put<ApiResponse<Campus>>(`${API_BASE_URL}/campus/${id}`, data);
+    return response.data.data;
+  },
+  deleteCampus: async (id: number): Promise<void> => {
+    await axios.delete(`${API_BASE_URL}/campus/${id}`);
+  },
+
+  // Buildings
+  getBuildings: async (): Promise<Building[]> => {
+    const response = await axios.get<ApiResponse<Building[]>>(`${API_BASE_URL}/buildings`);
+    return response.data.data;
+  },
+  createBuilding: async (data: Omit<Building, 'id'>): Promise<Building> => {
+    const response = await axios.post<ApiResponse<Building>>(`${API_BASE_URL}/buildings`, data);
+    return response.data.data;
+  },
+  updateBuilding: async (id: number, data: Omit<Building, 'id'>): Promise<Building> => {
+    const response = await axios.put<ApiResponse<Building>>(`${API_BASE_URL}/buildings/${id}`, data);
+    return response.data.data;
+  },
+  deleteBuilding: async (id: number): Promise<void> => {
+    await axios.delete(`${API_BASE_URL}/buildings/${id}`);
+  },
+
+  // Locations
+  getLocations: async (): Promise<Location[]> => {
+    const response = await axios.get<ApiResponse<Location[]>>(`${API_BASE_URL}/locations`);
+    return response.data.data;
+  },
+  createLocation: async (data: Omit<Location, 'id'>): Promise<Location> => {
+    const response = await axios.post<ApiResponse<Location>>(`${API_BASE_URL}/locations`, data);
+    return response.data.data;
+  },
+  updateLocation: async (id: number, data: Omit<Location, 'id'>): Promise<Location> => {
+    const response = await axios.put<ApiResponse<Location>>(`${API_BASE_URL}/locations/${id}`, data);
+    return response.data.data;
+  },
+  deleteLocation: async (id: number): Promise<void> => {
+    await axios.delete(`${API_BASE_URL}/locations/${id}`);
+  }
 };

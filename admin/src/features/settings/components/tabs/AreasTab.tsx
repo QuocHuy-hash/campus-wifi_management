@@ -166,7 +166,7 @@ export const AreasTab = () => {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{getCampusName(building.campusId)}</td>
                     <td className="px-4 py-3 text-sm text-center">
-                      <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">{building.floors} tầng</span>
+                      <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">{building.totalFloors} tầng</span>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
