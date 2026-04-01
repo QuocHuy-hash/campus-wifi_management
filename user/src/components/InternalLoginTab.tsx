@@ -32,7 +32,7 @@ export default function InternalLoginTab({ isLoading, onSSOLogin }: InternalLogi
         <SocialAuthButton 
           provider="Google"
           icon="/google.png"
-          onClick={() => onSSOLogin('Gmail')}
+          onClick={() => onSSOLogin('google')}
           disabled={isLoading}
           colorClass="text-red-600"
           bgClass="bg-red-100"
@@ -43,7 +43,7 @@ export default function InternalLoginTab({ isLoading, onSSOLogin }: InternalLogi
         <SocialAuthButton 
           provider="Microsoft"
           icon="/microsoft.png"
-          onClick={() => onSSOLogin('Microsoft')}
+          onClick={() => onSSOLogin('azure')}
           disabled={isLoading}
           colorClass="text-blue-600"
           bgClass="bg-blue-100"

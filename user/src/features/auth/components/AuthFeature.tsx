@@ -1,0 +1,638 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { useLocation } from 'wouter';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertCircle } from 'lucide-react';
+import { currentUser, qosPolicies, formatBytes } from '@/data/mockData';
+import hcmusLogo from '@/assets/logo_hcmus.png';
+import InternalLoginTab from '@/components/InternalLoginTab';
+import GuestLoginTab from '@/components/GuestLoginTab';
+import { startOAuth2Login } from '@/features/auth/api/authApi';
+import { getActiveProviders, registerWithOtp, resendEmailOtp, verifyEmailOtp } from '@/features/auth/slices/authSlice';
+import type { ProviderConfig } from '@/features/auth/types';
+import { useAppDispatch } from '@/stores/hooks';
+import type { RootState } from '@/stores/store';
+import TermsDialog from '@/features/auth/components/dialogs/TermsDialog';
+import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
+import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
+
+export default function Login() {
+  const dispatch = useAppDispatch();
+  const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState<'internal' | 'guest'>('guest');
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
+  const [guestModalOpen, setGuestModalOpen] = useState(false);
+  const [guestForm, setGuestForm] = useState({
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [guestAuthMethod, setGuestAuthMethod] = useState<'email' | 'phone'>('email');
+  const [guestStep, setGuestStep] = useState<'form' | 'otp' | 'newpass' | 'success'>('form');
+  const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
+  const [otpError, setOtpError] = useState('');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [guestNewPassword, setGuestNewPassword] = useState('');
+  const [guestConfirmPassword, setGuestConfirmPassword] = useState('');
+  const [showGuestPassword, setShowGuestPassword] = useState(false);
+  const [isSettingGuestPassword, setIsSettingGuestPassword] = useState(false);
+
+  // Standard Login states for returned guests
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  // Forgot password states
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
+  const [forgotMethod, setForgotMethod] = useState<'email' | 'phone'>('email');
+  const [forgotContact, setForgotContact] = useState('');
+  const [forgotStep, setForgotStep] = useState<'form' | 'otp' | 'newpass' | 'success'>('form');
+  const [forgotOtp, setForgotOtp] = useState(['', '', '', '', '', '']);
+  const [forgotOtpError, setForgotOtpError] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isSendingForgotOtp, setIsSendingForgotOtp] = useState(false);
+  const [isVerifyingForgotOtp, setIsVerifyingForgotOtp] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+
+  const authState = useSelector((state: RootState) => state.auth) as {
+    providers: ProviderConfig[];
+    registerLoading: boolean;
+    verifyLoading: boolean;
+    resendLoading: boolean;
+  };
+
+  const { providers, registerLoading, verifyLoading, resendLoading } = authState;
+
+  const studentPolicy = qosPolicies.Student;
+
+  const activeProviderCodes = useMemo(
+    () => providers.filter((provider) => provider.isActive).map((provider) => provider.provider),
+    [providers],
+  );
+
+  useEffect(() => {
+    dispatch(getActiveProviders());
+  }, [dispatch]);
+
+
+
+  const handleSSOLogin = (provider: string) => {
+    if (!agreeTerms) {
+      setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
+      return;
+    }
+    setError('');
+
+    if (provider === 'google' || provider === 'azure') {
+      if (activeProviderCodes.length > 0 && !activeProviderCodes.includes(provider)) {
+        setError('Provider này hiện chưa được kích hoạt trên hệ thống');
+        return;
+      }
+
+      sessionStorage.setItem('oauth2_redirect_back', '/session');
+      startOAuth2Login(provider);
+      return;
+    }
+
+    // Temporary fallback for providers not available in backend OAuth2 yet.
+    setIsLoading(true);
+    setTimeout(() => {
+      const linkedAccount = {
+        type: provider,
+        email: `${provider}.user@gmail.com`,
+        name: `User ${provider}`
+      };
+
+      localStorage.setItem('portalLoggedIn', 'true');
+      localStorage.setItem('portalUser', JSON.stringify({
+        ...currentUser,
+        id: Date.now(),
+        username: linkedAccount.email,
+        fullname: `Người dùng ${provider}`,
+        loginTime: new Date().toISOString(),
+        linkedAccounts: [linkedAccount]
+      }));
+      setLocation('/session');
+    }, 1200);
+  };
+
+  const handleSendOtp = async () => {
+    const contact = guestAuthMethod === 'email' ? guestForm.email : guestForm.phone;
+    if (!contact || !guestForm.password) return;
+    
+    // Validate passwords
+    if (guestForm.password.length < 8) {
+      setOtpError('Mật khẩu phải có ít nhất 8 ký tự');
+      return;
+    }
+    if (guestForm.password !== guestForm.confirmPassword) {
+      setOtpError('Xác nhận mật khẩu không khớp');
+      return;
+    }
+    
+    setOtpError('');
+
+    if (guestAuthMethod === 'phone') {
+      setIsSendingOtp(true);
+      setTimeout(() => {
+        setIsSendingOtp(false);
+        setGuestStep('otp');
+      }, 1200);
+      return;
+    }
+
+    try {
+      await dispatch(
+        registerWithOtp({
+          email: guestForm.email,
+          password: guestForm.password,
+          fullName: guestForm.email.split('@')[0] || 'Guest User',
+        }),
+      ).unwrap();
+      setGuestStep('otp');
+    } catch (apiError) {
+      setOtpError(String(apiError));
+    }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length > 1) return;
+    const newOtp = [...otpCode];
+    newOtp[index] = value;
+    setOtpCode(newOtp);
+    
+    // Auto focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const otp = otpCode.join('');
+    if (otp.length !== 6) {
+      setOtpError('Vui lòng nhập đủ 6 số');
+      return;
+    }
+
+    setOtpError('');
+
+    if (guestAuthMethod === 'phone') {
+      setIsVerifyingOtp(true);
+      setTimeout(() => {
+        setIsVerifyingOtp(false);
+        const guestUsername = guestForm.phone;
+        localStorage.setItem('portalLoggedIn', 'true');
+        localStorage.setItem('portalUser', JSON.stringify({
+          ...currentUser,
+          id: Date.now(),
+          username: guestUsername,
+          fullname: `User ${guestUsername}`,
+          loginTime: new Date().toISOString()
+        }));
+        setGuestModalOpen(false);
+        resetGuestForm();
+        setLocation('/session');
+      }, 1200);
+      return;
+    }
+
+    try {
+      await dispatch(
+        verifyEmailOtp({
+          email: guestForm.email,
+          otp,
+        }),
+      ).unwrap();
+      setGuestStep('success');
+    } catch (apiError) {
+      setOtpError(String(apiError));
+    }
+  };
+
+  const handleSetGuestPassword = () => {
+    // Validate password policy
+    if (!guestNewPassword || guestNewPassword.length < 8) {
+      setOtpError('Mật khẩu phải có ít nhất 8 ký tự');
+      return;
+    }
+    if (!/[A-Z]/.test(guestNewPassword)) {
+      setOtpError('Mật khẩu phải có ít nhất 1 chữ hoa (A-Z)');
+      return;
+    }
+    if (!/[a-z]/.test(guestNewPassword)) {
+      setOtpError('Mật khẩu phải có ít nhất 1 chữ thường (a-z)');
+      return;
+    }
+    if (!/[0-9]/.test(guestNewPassword)) {
+      setOtpError('Mật khẩu phải có ít nhất 1 số (0-9)');
+      return;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(guestNewPassword)) {
+      setOtpError('Mật khẩu phải có ít nhất 1 ký tự đặc biệt');
+      return;
+    }
+    if (guestNewPassword !== guestConfirmPassword) {
+      setOtpError('Xác nhận mật khẩu không khớp');
+      return;
+    }
+    
+    setIsSettingGuestPassword(true);
+    setOtpError('');
+    
+    setTimeout(() => {
+      setIsSettingGuestPassword(false);
+      setGuestStep('success');
+    }, 1500);
+  };
+
+  const handleResendOtp = async () => {
+    setOtpCode(['', '', '', '', '', '']);
+    setOtpError('');
+
+    if (guestAuthMethod === 'phone') {
+      setIsSendingOtp(true);
+      setTimeout(() => {
+        setIsSendingOtp(false);
+      }, 1200);
+      return;
+    }
+
+    try {
+      await dispatch(resendEmailOtp({ email: guestForm.email })).unwrap();
+    } catch (apiError) {
+      setOtpError(String(apiError));
+    }
+  };
+
+  const resetGuestForm = () => {
+    setGuestForm({ email: '', phone: '', password: '', confirmPassword: '' });
+    setGuestAuthMethod('email');
+    setGuestStep('form');
+    setOtpCode(['', '', '', '', '', '']);
+    setOtpError('');
+  };
+
+  const handleUseGuestCredentials = () => {
+    const guestUsername = guestAuthMethod === 'email' ? guestForm.email : guestForm.phone;
+    setGuestModalOpen(false);
+    setIsLoading(true);
+    setTimeout(() => {
+      localStorage.setItem('portalLoggedIn', 'true');
+      localStorage.setItem('portalUser', JSON.stringify({ 
+        ...currentUser,
+        username: guestUsername,
+        loginTime: new Date().toISOString()
+      }));
+      resetGuestForm();
+      setLocation('/session');
+    }, 1000);
+  };
+
+  const handleStandardLogin = () => {
+    setIsLoading(true);
+    setError('');
+    
+    // Mock standard login logic
+    if (loginUsername && loginPassword) {
+      setTimeout(() => {
+        localStorage.setItem('portalLoggedIn', 'true');
+        localStorage.setItem('portalUser', JSON.stringify({ 
+          ...currentUser,
+          username: loginUsername,
+          loginTime: new Date().toISOString()
+        }));
+        setLocation('/session');
+      }, 1000);
+    } else {
+      setIsLoading(false);
+      setError('Vui lòng nhập tài khoản và mật khẩu');
+    }
+  };
+
+  // Forgot password handlers
+  const handleSendForgotOtp = () => {
+    if (!forgotContact) return;
+    setIsSendingForgotOtp(true);
+    setForgotOtpError('');
+    setTimeout(() => {
+      setIsSendingForgotOtp(false);
+      setForgotStep('otp');
+    }, 1500);
+  };
+
+  const handleForgotOtpChange = (index: number, value: string) => {
+    if (value.length > 1) return;
+    const newOtp = [...forgotOtp];
+    newOtp[index] = value;
+    setForgotOtp(newOtp);
+    if (value && index < 5) {
+      document.getElementById(`forgot-otp-${index + 1}`)?.focus();
+    }
+  };
+
+  const handleForgotOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !forgotOtp[index] && index > 0) {
+      document.getElementById(`forgot-otp-${index - 1}`)?.focus();
+    }
+  };
+
+  const handleVerifyForgotOtp = () => {
+    const otp = forgotOtp.join('');
+    if (otp.length !== 6) {
+      setForgotOtpError('Vui lòng nhập đủ 6 số');
+      return;
+    }
+    setIsVerifyingForgotOtp(true);
+    setForgotOtpError('');
+    setTimeout(() => {
+      setIsVerifyingForgotOtp(false);
+      setForgotStep('newpass');
+    }, 1500);
+  };
+
+  const handleResendForgotOtp = () => {
+    setForgotOtp(['', '', '', '', '', '']);
+    setIsSendingForgotOtp(true);
+    setTimeout(() => setIsSendingForgotOtp(false), 1500);
+  };
+
+  const handleResetPassword = () => {
+    // Validate password policy
+    if (!newPassword || newPassword.length < 8) {
+      setForgotOtpError('Mật khẩu phải có ít nhất 8 ký tự');
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      setForgotOtpError('Mật khẩu phải có ít nhất 1 chữ hoa (A-Z)');
+      return;
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      setForgotOtpError('Mật khẩu phải có ít nhất 1 chữ thường (a-z)');
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      setForgotOtpError('Mật khẩu phải có ít nhất 1 số (0-9)');
+      return;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+      setForgotOtpError('Mật khẩu phải có ít nhất 1 ký tự đặc biệt');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setForgotOtpError('Xác nhận mật khẩu không khớp');
+      return;
+    }
+    setIsResettingPassword(true);
+    setForgotOtpError('');
+    setTimeout(() => {
+      setIsResettingPassword(false);
+      setForgotStep('success');
+    }, 1500);
+  };
+
+  const resetForgotForm = () => {
+    setForgotContact('');
+    setForgotMethod('email');
+    setForgotStep('form');
+    setForgotOtp(['', '', '', '', '', '']);
+    setForgotOtpError('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setShowNewPassword(false);
+  };
+
+  const handleUseForgotCredentials = () => {
+    setForgotModalOpen(false);
+    setIsLoading(true);
+    setTimeout(() => {
+      localStorage.setItem('portalLoggedIn', 'true');
+      localStorage.setItem('portalUser', JSON.stringify({ 
+        ...currentUser,
+        username: forgotContact,
+        loginTime: new Date().toISOString()
+      }));
+      resetForgotForm();
+      setLocation('/session');
+    }, 1000);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="relative w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <img src={hcmusLogo} alt="HCMUS Logo" className="w-18 h-18 object-contain" />
+            <p className="text-gray-600 font-sans">Trường Đại học KHTN - ĐHQG HCM</p>
+          </div>
+        </div>
+
+        {/* Login Card */}
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <div className="p-6">
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
+                <AlertCircle size={16} />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
+            {/* Segmented Control */}
+            <div className="flex p-1 bg-gray-100 rounded-xl">
+              <button
+                onClick={() => setActiveTab('internal')}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  activeTab === 'internal'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Cán bộ / Sinh viên
+              </button>
+              <button
+                onClick={() => setActiveTab('guest')}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  activeTab === 'guest'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Khách
+              </button>
+            </div>
+
+            {activeTab === 'internal' ? (
+              <InternalLoginTab 
+                isLoading={isLoading} 
+                onSSOLogin={handleSSOLogin} 
+              />
+            ) : (
+              <GuestLoginTab 
+                isLoading={isLoading}
+                onSSOLogin={handleSSOLogin}
+                onOpenGuestModal={() => setGuestModalOpen(true)}
+                username={loginUsername}
+                onUsernameChange={setLoginUsername}
+                password={loginPassword}
+                onPasswordChange={setLoginPassword}
+                showPassword={showLoginPassword}
+                onTogglePassword={() => setShowLoginPassword(!showLoginPassword)}
+                onLogin={handleStandardLogin}
+                onOpenForgotModal={() => setForgotModalOpen(true)}
+              />
+            )}
+
+            {/* Terms Checkbox */}
+            <div className="flex items-start space-x-3 pt-4 border-t border-gray-100 mt-2">
+              <Checkbox 
+                id="terms" 
+                checked={agreeTerms}
+                onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
+                className="mt-0.5 rounded"
+              />
+              <Label htmlFor="terms" className="text-sm text-gray-600 cursor-pointer leading-relaxed">
+                Tôi đồng ý với{' '}
+                <button 
+                  type="button"
+                  onClick={() => setTermsModalOpen(true)}
+                  className="text-blue-600 hover:underline font-medium"
+                >
+                  Điều khoản sử dụng WiFi
+                </button>
+              </Label>
+            </div>
+          </div>
+        </div>
+
+        {/* Policy Info */}
+        {/* <div className="mt-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-medium">Chính sách sử dụng</p>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-2">
+                <Clock size={18} className="text-blue-600" />
+              </div>
+              <p className="text-gray-900 font-semibold">{studentPolicy.session_timeout / 3600}h</p>
+              <p className="text-gray-500 text-xs">mỗi phiên</p>
+            </div>
+            <div className="text-center">
+              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-2">
+                <Gauge size={18} className="text-blue-600" />
+              </div>
+              <p className="text-gray-900 font-semibold">{studentPolicy.bandwidth_limit} Mbps</p>
+              <p className="text-gray-500 text-xs">băng thông</p>
+            </div>
+            <div className="text-center">
+              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-2">
+                <HardDrive size={18} className="text-blue-600" />
+              </div>
+              <p className="text-gray-900 font-semibold">{formatBytes(studentPolicy.quota_daily)}</p>
+              <p className="text-gray-500 text-xs">hạn ngạch/ngày</p>
+            </div>
+          </div>
+        </div> */}
+
+        {/* Footer */}
+        <p className="text-center text-gray-400 text-xs mt-6">
+          © 2026 HCMUS - Trường Đại học Khoa học Tự nhiên
+        </p>
+      </div>
+
+      <TermsDialog
+        open={termsModalOpen}
+        sessionTimeoutHours={studentPolicy.session_timeout / 3600}
+        bandwidthRange={`${qosPolicies.Student.bandwidth_limit}-${qosPolicies.Teacher.bandwidth_limit}`}
+        dailyQuota={formatBytes(studentPolicy.quota_daily)}
+        onOpenChange={setTermsModalOpen}
+        onAccept={() => {
+          setTermsModalOpen(false);
+          setAgreeTerms(true);
+        }}
+      />
+
+      <GuestRegistrationDialog
+        open={guestModalOpen}
+        guestStep={guestStep}
+        guestAuthMethod={guestAuthMethod}
+        guestForm={guestForm}
+        otpCode={otpCode}
+        otpError={otpError}
+        guestNewPassword={guestNewPassword}
+        guestConfirmPassword={guestConfirmPassword}
+        showGuestPassword={showGuestPassword}
+        isSendingOtp={isSendingOtp}
+        isVerifyingOtp={isVerifyingOtp}
+        isSettingGuestPassword={isSettingGuestPassword}
+        registerLoading={registerLoading}
+        verifyLoading={verifyLoading}
+        resendLoading={resendLoading}
+        onOpenChange={(open) => {
+          setGuestModalOpen(open);
+          if (!open) resetGuestForm();
+        }}
+        onBackStep={() => setGuestStep(guestStep === 'newpass' ? 'otp' : 'form')}
+        onSetGuestAuthMethod={setGuestAuthMethod}
+        onSetGuestForm={setGuestForm}
+        onSetShowGuestPassword={setShowGuestPassword}
+        onSendOtp={handleSendOtp}
+        onOtpChange={handleOtpChange}
+        onOtpKeyDown={handleOtpKeyDown}
+        onVerifyOtp={handleVerifyOtp}
+        onResendOtp={handleResendOtp}
+        onSetGuestNewPassword={setGuestNewPassword}
+        onSetGuestConfirmPassword={setGuestConfirmPassword}
+        onSetGuestPassword={handleSetGuestPassword}
+        onUseGuestCredentials={handleUseGuestCredentials}
+      />
+
+      <ForgotPasswordDialog
+        open={forgotModalOpen}
+        method={forgotMethod}
+        contact={forgotContact}
+        step={forgotStep}
+        otp={forgotOtp}
+        otpError={forgotOtpError}
+        newPassword={newPassword}
+        confirmNewPassword={confirmNewPassword}
+        showNewPassword={showNewPassword}
+        isSendingOtp={isSendingForgotOtp}
+        isVerifyingOtp={isVerifyingForgotOtp}
+        isResettingPassword={isResettingPassword}
+        onOpenChange={(open) => {
+          setForgotModalOpen(open);
+          if (!open) resetForgotForm();
+        }}
+        onBackStep={() => setForgotStep(forgotStep === 'newpass' ? 'otp' : 'form')}
+        onSetMethod={setForgotMethod}
+        onSetContact={setForgotContact}
+        onSendOtp={handleSendForgotOtp}
+        onOtpChange={handleForgotOtpChange}
+        onOtpKeyDown={handleForgotOtpKeyDown}
+        onVerifyOtp={handleVerifyForgotOtp}
+        onResendOtp={handleResendForgotOtp}
+        onSetNewPassword={setNewPassword}
+        onSetConfirmNewPassword={setConfirmNewPassword}
+        onSetShowNewPassword={setShowNewPassword}
+        onResetPassword={handleResetPassword}
+        onUseForgotCredentials={handleUseForgotCredentials}
+      />
+    </div>
+  );
+}

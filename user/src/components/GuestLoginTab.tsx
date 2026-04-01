@@ -144,7 +144,7 @@ export default function GuestLoginTab({
         <SocialAuthButton 
           provider="Google"
           icon="/google.png"
-          onClick={() => onSSOLogin('Gmail')}
+          onClick={() => onSSOLogin('google')}
           disabled={isLoading}
           colorClass="text-red-600"
           bgClass=""
@@ -153,7 +153,7 @@ export default function GuestLoginTab({
         <SocialAuthButton 
           provider="Microsoft"
           icon="/microsoft.png"
-          onClick={() => onSSOLogin('Microsoft')}
+          onClick={() => onSSOLogin('azure')}
           disabled={isLoading}
           colorClass="text-blue-600"
           bgClass=""
@@ -162,7 +162,7 @@ export default function GuestLoginTab({
         <SocialAuthButton 
           provider="Facebook"
           icon="/facebook.png"
-          onClick={() => onSSOLogin('Facebook')}
+          onClick={() => onSSOLogin('facebook')}
           disabled={isLoading}
           colorClass="text-blue-700"
           bgClass=""
