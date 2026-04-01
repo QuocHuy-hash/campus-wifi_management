@@ -8,7 +8,7 @@ import { currentUser, qosPolicies, formatBytes } from '@/data/mockData';
 import hcmusLogo from '@/assets/logo_hcmus.png';
 import InternalLoginTab from '@/components/InternalLoginTab';
 import GuestLoginTab from '@/components/GuestLoginTab';
-import { startOAuth2Login } from '@/features/auth/api/authApi';
+import { loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
 import { getActiveProviders, registerWithOtp, resendEmailOtp, verifyEmailOtp } from '@/features/auth/slices/authSlice';
 import type { ProviderConfig } from '@/features/auth/types';
 import { useAppDispatch } from '@/stores/hooks';
@@ -16,6 +16,7 @@ import type { RootState } from '@/stores/store';
 import TermsDialog from '@/features/auth/components/dialogs/TermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
+import { STORAGE_KEYS } from '@/constants/appKeys';
 
 export default function Login() {
   const dispatch = useAppDispatch();
@@ -82,6 +83,29 @@ export default function Login() {
   useEffect(() => {
     dispatch(getActiveProviders());
   }, [dispatch]);
+
+  const getLoginErrorMessage = (apiError: unknown): string => {
+    if (typeof apiError === 'object' && apiError !== null) {
+      const maybeAxios = apiError as {
+        response?: { status?: number; data?: { message?: string } };
+        message?: string;
+      };
+
+      if (maybeAxios.response?.status === 401) {
+        return 'Tài khoản hoặc mật khẩu không đúng';
+      }
+
+      if (maybeAxios.response?.data?.message) {
+        return maybeAxios.response.data.message;
+      }
+
+      if (maybeAxios.message) {
+        return maybeAxios.message;
+      }
+    }
+
+    return 'Đăng nhập thất bại. Vui lòng thử lại.';
+  };
 
 
 
@@ -305,24 +329,43 @@ export default function Login() {
     }, 1000);
   };
 
-  const handleStandardLogin = () => {
+  const handleStandardLogin = async () => {
     setIsLoading(true);
     setError('');
-    
-    // Mock standard login logic
-    if (loginUsername && loginPassword) {
-      setTimeout(() => {
-        localStorage.setItem('portalLoggedIn', 'true');
-        localStorage.setItem('portalUser', JSON.stringify({ 
-          ...currentUser,
-          username: loginUsername,
-          loginTime: new Date().toISOString()
-        }));
-        setLocation('/session');
-      }, 1000);
-    } else {
+
+    if (!loginUsername || !loginPassword) {
       setIsLoading(false);
       setError('Vui lòng nhập tài khoản và mật khẩu');
+      return;
+    }
+
+    try {
+      const result = await loginWithPassword({
+        email: loginUsername,
+        password: loginPassword,
+      });
+
+      localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
+      localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
+
+      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
+      localStorage.setItem(
+        STORAGE_KEYS.portalUser,
+        JSON.stringify({
+          ...currentUser,
+          username: loginUsername,
+          email: loginUsername,
+          role: (result.roles && result.roles.length > 0 ? result.roles[0] : currentUser.role),
+          loginTime: new Date().toISOString(),
+        }),
+      );
+
+      setLocation('/session');
+    } catch (apiError) {
+      const message = getLoginErrorMessage(apiError);
+      setError(message);
+      window.alert(message);
+      setIsLoading(false);
     }
   };
 
@@ -496,6 +539,7 @@ export default function Login() {
                 onTogglePassword={() => setShowLoginPassword(!showLoginPassword)}
                 onLogin={handleStandardLogin}
                 onOpenForgotModal={() => setForgotModalOpen(true)}
+                loginError={activeTab === 'guest' ? error : ''}
               />
             )}
 

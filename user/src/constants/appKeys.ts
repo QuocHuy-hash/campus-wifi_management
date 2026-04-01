@@ -6,7 +6,7 @@ export const STORAGE_KEYS = {
 } as const;
 
 export const HTTP_CONFIG = {
-  timeout: 15000,
+  timeout: 30000,
 } as const;
 
 export const API_HEADERS = {

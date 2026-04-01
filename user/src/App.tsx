@@ -7,6 +7,7 @@ import History from "./pages/History";
 import Account from "./pages/Account";
 import ModalShowcase from "./pages/ModalShowcase";
 import Login from "./pages/Login";
+import OAuthSuccess from "./pages/OAuthSuccess";
 
 function isAuthenticated() {
   return localStorage.getItem("portalLoggedIn") === "true";
@@ -27,6 +28,7 @@ function Router() {
         <Redirect to={isAuthenticated() ? "/session" : "/login"} />
       </Route>
       <Route path="/login" component={Login} />
+      <Route path="/auth/success" component={OAuthSuccess} />
       <Route path="/session">
         <ProtectedRoute component={Session} />
       </Route>

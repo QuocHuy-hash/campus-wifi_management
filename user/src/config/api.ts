@@ -3,4 +3,4 @@
  * Centralized configuration for API endpoints
  */
 
-export const API_BASE_URL = 'https://user-3426.nport.link/api/v1';
+export const API_BASE_URL = 'https://42ad-14-191-221-9.ngrok-free.app';

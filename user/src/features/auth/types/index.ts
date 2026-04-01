@@ -41,6 +41,17 @@ export interface VerifyEmailResult {
   notice: string;
 }
 
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface LoginResult {
+  accessToken: string;
+  refreshToken: string;
+  roles: string[];
+}
+
 export interface ResendOtpPayload {
   email: string;
 }

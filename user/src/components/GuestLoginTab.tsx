@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { UserPlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import SocialAuthButton from './SocialAuthButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 interface GuestLoginTabProps {
   isLoading: boolean;
@@ -18,6 +17,7 @@ interface GuestLoginTabProps {
   onTogglePassword: () => void;
   onLogin: () => void;
   onOpenForgotModal: () => void;
+  loginError?: string;
 }
 
 export default function GuestLoginTab({ 
@@ -31,7 +31,8 @@ export default function GuestLoginTab({
   showPassword,
   onTogglePassword,
   onLogin,
-  onOpenForgotModal
+  onOpenForgotModal,
+  loginError,
 }: GuestLoginTabProps) {
   const [helpModalOpen, setHelpModalOpen] = useState(false);
 
@@ -100,6 +101,12 @@ export default function GuestLoginTab({
               Quên mật khẩu?
             </button>
           </div>
+          {loginError && (
+            <div className="mt-2 p-2.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2 text-red-600">
+              <AlertCircle size={14} />
+              <span className="text-sm">{loginError}</span>
+            </div>
+          )}
         </div>
 
         <button 

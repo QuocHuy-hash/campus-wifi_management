@@ -2,6 +2,8 @@ import apiClient from "@/config/axios";
 import { API_BASE_URL } from "@/config/api";
 import {
   type ApiEnvelope,
+  type LoginPayload,
+  type LoginResult,
   type ProviderConfig,
   type RegisterPayload,
   type RegisterResult,
@@ -42,6 +44,15 @@ export async function resendOtp(payload: ResendOtpPayload): Promise<void> {
   await apiClient.post("/api/v1/auth/resend-otp", payload);
 }
 
+export async function loginWithPassword(payload: LoginPayload): Promise<LoginResult> {
+  const response = await apiClient.post<ApiEnvelope<LoginResult>>(
+    "/api/v1/auth/login",
+    payload,
+  );
+
+  return response.data.data;
+}
+
 export function startOAuth2Login(provider: string): void {
-  window.location.href = `${API_BASE_URL}/api/v1/auth/oauth2/authorize/${provider}`;
+  window.location.href = `${API_BASE_URL}/api/v1/oauth2/${provider}`;
 }
