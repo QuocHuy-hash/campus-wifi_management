@@ -36,6 +36,30 @@ const toApiPolicyType = (type?: WifiPolicy['type']): string => {
   return (type || 'bandwidth').toUpperCase();
 };
 
+const ROLE_TO_UI_MAP: Record<string, string> = {
+  user: 'Sinh viên',
+  student: 'Sinh viên',
+  staff: 'Cán bộ',
+  teacher: 'Cán bộ',
+  admin: 'Cán bộ',
+  guest: 'Khách',
+};
+
+const ROLE_TO_API_MAP: Record<string, string> = {
+  'Sinh viên': 'user',
+  'Cán bộ': 'employee',
+  'Khách': 'guest',
+};
+
+const normalizeRole = (role: string): string => {
+  const key = role.trim().toLowerCase();
+  return ROLE_TO_UI_MAP[key] || role;
+};
+
+const denormalizeRole = (role: string): string => {
+  return ROLE_TO_API_MAP[role] || role;
+};
+
 const normalizeUnit = (value: string | undefined, fallback: string): string => {
   const normalized = (value || fallback).toLowerCase();
 
@@ -66,7 +90,7 @@ const normalizeWifiPolicy = (policy: WifiPolicy): WifiPolicy => {
   return {
     ...policy,
     type: toUiPolicyType((policy as unknown as { type?: string }).type),
-    applyToRoles: Array.isArray(policy.applyToRoles) ? policy.applyToRoles : [],
+    applyToRoles: Array.isArray(policy.applyToRoles) ? policy.applyToRoles.map(normalizeRole) : [],
     auditMaxSessionTimeUnit: normalizeUnit(policy.auditMaxSessionTimeUnit, 'hour') as 'minute' | 'hour',
     accountingIntervalUnit: normalizeUnit(policy.accountingIntervalUnit, 'second') as 'second' | 'minute',
     logRetentionUnit: normalizeUnit(policy.logRetentionUnit, 'month') as 'month' | 'year',
@@ -80,7 +104,7 @@ const serializeWifiPolicy = (policy: Omit<WifiPolicy, 'id'>): Record<string, unk
   return {
     ...policy,
     type: toApiPolicyType(policy.type),
-    applyToRoles: policy.applyToRoles ?? [],
+    applyToRoles: (policy.applyToRoles ?? []).map(denormalizeRole),
     auditMaxSessionTimeUnit: denormalizeUnit(policy.auditMaxSessionTimeUnit),
     accountingIntervalUnit: denormalizeUnit(policy.accountingIntervalUnit),
     logRetentionUnit: denormalizeUnit(policy.logRetentionUnit),

@@ -9,18 +9,17 @@ export const BandwidthPolicyTab = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { data: policies, filterRole, filterArea, filterTime, filterSearch } = useSelector((state: RootState) => state.policies.policies);
   
-  const filteredPolicies = policies.filter((p: WifiPolicy) => {
-    if (p.type !== 'bandwidth') return false;
-    if (filterRole !== 'all' && !p.applyToRoles.includes(filterRole)) return false;
-    if (filterArea !== 'all' && (!p.applyToArea || p.applyToArea === '' || !p.applyToArea.includes(filterArea))) return false;
-    if (filterTime !== 'all' && (!p.applyByTime || p.applyByTime === '' || p.applyByTime !== filterTime)) return false;
-    if (filterSearch) {
-      const searchLower = filterSearch.toLowerCase();
-      if (!p.name.toLowerCase().includes(searchLower) && !p.description.toLowerCase().includes(searchLower)) return false;
-    }
-    return true;
-  });
-
+  // const filteredPolicies = policies.filter((p: WifiPolicy) => {
+  //   if (p.type !== 'bandwidth') return false;
+  //   if (filterRole !== 'all' && !p.applyToRoles.includes(filterRole)) return false;
+  //   if (filterArea !== 'all' && (!p.applyToArea || p.applyToArea === '' || !p.applyToArea.includes(filterArea))) return false;
+  //   if (filterTime !== 'all' && (!p.applyByTime || p.applyByTime === '' || p.applyByTime !== filterTime)) return false;
+  //   if (filterSearch) {
+  //     const searchLower = filterSearch.toLowerCase();
+  //     if (!p.name.toLowerCase().includes(searchLower) && !p.description.toLowerCase().includes(searchLower)) return false;
+  //   }
+  //   return true;
+  // });
   const handleEditPolicy = (policy: WifiPolicy) => {
     dispatch(setSelectedPolicy(policy));
     dispatch(setPolicyForm(policy));
@@ -46,7 +45,7 @@ export const BandwidthPolicyTab = () => {
           </tr>
         </thead>
         <tbody>
-          {filteredPolicies.map((policy, index) => (
+          {policies.map((policy, index) => (
             <tr
               key={policy.id}
               className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
@@ -82,7 +81,7 @@ export const BandwidthPolicyTab = () => {
               </td>
             </tr>
           ))}
-          {filteredPolicies.length === 0 && (
+          {policies.length === 0 && (
             <tr>
               <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                 <p>Chưa có chính sách băng thông nào</p>

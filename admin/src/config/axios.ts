@@ -19,6 +19,7 @@ export const initializeAxios = (): void => {
   axios.defaults.timeout = HTTP_CONFIG.DEFAULT_TIMEOUT_MS;
   axios.defaults.headers.common.Accept = HTTP_CONFIG.DEFAULT_HEADERS.Accept;
   axios.defaults.headers.common['Content-Type'] = HTTP_CONFIG.DEFAULT_HEADERS['Content-Type'];
+  axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
   axios.interceptors.request.use((config) => {
     const token = getStoredAuthToken();

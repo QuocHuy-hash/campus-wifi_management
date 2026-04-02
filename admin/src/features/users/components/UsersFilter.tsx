@@ -28,7 +28,7 @@ export function UsersFilter() {
           className={selectedRole === null ? 'bg-blue-600 hover:bg-blue-700' : ''}
         >
           {USER_UI_TEXT.FILTER_ALL}
-        </Button>
+        {/* </Button>
         {USER_ROLES.map((role) => (
           <Button
             key={role}
@@ -38,7 +38,22 @@ export function UsersFilter() {
           >
             {role}
           </Button>
-        ))}
+        ))} */}
+ </Button>
+        
+          <Button
+          >
+          Sinh viên
+          </Button>
+       <Button
+           
+          >
+          Giảng viên
+          </Button>
+ <Button
+          >
+          Khách
+          </Button>
       </div>
     </Card>
   );

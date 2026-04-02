@@ -25,6 +25,45 @@ export const PolicyDialogs = () => {
 
   const [areaLocations, setAreaLocations] = useState<AreaLocation[]>([]);
 
+  const roleAliases: Record<string, string[]> = {
+    'Sinh viên': ['Sinh viên', 'user', 'student'],
+    'Cán bộ': ['Cán bộ', 'employee', 'teacher', 'admin'],
+    'Khách': ['Khách', 'guest'],
+  };
+
+  const timeOptions = [
+    { value: 'all', label: '24/7' },
+    { value: '6:00-22:00', label: '6:00 - 22:00 (Giờ học)' },
+    { value: '8:00-17:00', label: '8:00 - 17:00 (Giờ hành chính)' },
+    { value: '18:00-6:00', label: '18:00 - 6:00 (Ngoài giờ)' },
+    { value: 'T2-T6', label: 'Thứ 2 - Thứ 6' },
+    { value: 'T7-CN', label: 'Thứ 7 - Chủ nhật' },
+  ];
+
+  const selectedApplyTime = policyForm.applyByTime || 'all';
+  const hasCustomTimeOption =
+    selectedApplyTime !== 'all' && !timeOptions.some((item) => item.value === selectedApplyTime);
+
+  const hasRoleSelected = (targetRole: string): boolean => {
+    const selectedRoles = policyForm.applyToRoles || [];
+    const aliases = roleAliases[targetRole] || [targetRole];
+
+    return selectedRoles.some((selectedRole) => aliases.includes(selectedRole));
+  };
+
+  const toggleRole = (targetRole: string, checked: boolean): void => {
+    const selectedRoles = policyForm.applyToRoles || [];
+    const aliases = roleAliases[targetRole] || [targetRole];
+
+    if (checked) {
+      const next = [...selectedRoles.filter((role) => !aliases.includes(role)), targetRole];
+      dispatch(setPolicyForm({ ...policyForm, applyToRoles: next }));
+      return;
+    }
+
+    dispatch(setPolicyForm({ ...policyForm, applyToRoles: selectedRoles.filter((role) => !aliases.includes(role)) }));
+  };
+
   useEffect(() => {
     const locations: AreaLocation[] = [];
     initialBuildings.forEach(building => {
@@ -500,15 +539,8 @@ export const PolicyDialogs = () => {
             <div key={role} className="flex items-center space-x-2">
               <Checkbox
                 id={isEdit ? `edit-role-${role}` : `role-${role}`}
-                checked={policyForm.applyToRoles?.includes(role)}
-                onCheckedChange={(checked) => {
-                  const currentRoles = policyForm.applyToRoles || [];
-                  if (checked) {
-                    dispatch(setPolicyForm({ ...policyForm, applyToRoles: [...currentRoles, role] }));
-                  } else {
-                    dispatch(setPolicyForm({ ...policyForm, applyToRoles: currentRoles.filter(r => r !== role) }));
-                  }
-                }}
+                checked={hasRoleSelected(role)}
+                onCheckedChange={(checked) => toggleRole(role, Boolean(checked))}
               />
               <Label htmlFor={isEdit ? `edit-role-${role}` : `role-${role}`} className="text-sm">{role}</Label>
             </div>
@@ -539,19 +571,19 @@ export const PolicyDialogs = () => {
         <div>
           <Label htmlFor={isEdit ? "edit-policy-time" : "policy-time"}>Áp dụng theo Thời gian</Label>
           <Select
-            value={policyForm.applyByTime || 'all'}
+            value={selectedApplyTime}
             onValueChange={(value) => dispatch(setPolicyForm({ ...policyForm, applyByTime: value === 'all' ? '' : value }))}
           >
             <SelectTrigger>
               <SelectValue placeholder="Chọn thời gian" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">24/7</SelectItem>
-              <SelectItem value="6:00-22:00">6:00 - 22:00 (Giờ học)</SelectItem>
-              <SelectItem value="8:00-17:00">8:00 - 17:00 (Giờ hành chính)</SelectItem>
-              <SelectItem value="18:00-6:00">18:00 - 6:00 (Ngoài giờ)</SelectItem>
-              <SelectItem value="T2-T6">Thứ 2 - Thứ 6</SelectItem>
-              <SelectItem value="T7-CN">Thứ 7 - Chủ nhật</SelectItem>
+              {timeOptions.map((timeOption) => (
+                <SelectItem key={timeOption.value} value={timeOption.value}>{timeOption.label}</SelectItem>
+              ))}
+              {hasCustomTimeOption && (
+                <SelectItem value={selectedApplyTime}>{selectedApplyTime}</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
