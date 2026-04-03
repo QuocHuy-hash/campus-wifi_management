@@ -40,10 +40,10 @@ const mockAPAccessData: APAccessData[] = [
 ];
 
 const mockViolationData: ViolationData[] = [
-  { time: '10:23', user: '10015@student', type: 'Đăng nhập sai', severity: 'high' },
-  { time: '11:45', user: '10016@student', type: 'Quá tải băng thông', severity: 'medium' },
-  { time: '14:30', user: 'Unknown', type: 'Giả mạo MAC', severity: 'high' },
-  { time: '09:15', user: '10017@student', type: 'Truy cập bị chặn', severity: 'low' },
+  { time: '2026-01-15 10:30:00', user: '10015@student', type: 'Đăng nhập sai', severity: 'high' },
+  { time: '2026-01-15 11:45:00', user: '10016@student', type: 'Quá tải băng thông', severity: 'medium' },
+  { time: '2026-01-15 14:30:00', user: 'Unknown', type: 'Giả mạo MAC', severity: 'high' },
+  { time: '2026-01-15 09:15:00', user: '10017@student', type: 'Truy cập bị chặn', severity: 'low' },
 ];
 
 const mockSessionData: SessionData[] = [

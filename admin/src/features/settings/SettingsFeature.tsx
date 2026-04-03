@@ -16,6 +16,8 @@ import { DevicesTab } from './components/tabs/DevicesTab';
 import { IntegrationsTab } from './components/tabs/IntegrationsTab';
 import { SecurityTab } from './components/tabs/SecurityTab';
 import { LogsTab } from './components/tabs/LogsTab';
+import { SystemOverviewTab } from './components/tabs/SystemOverviewTab';
+import { AlertsConfigTab } from './components/tabs/AlertsConfigTab';
 
 import { AdminDialogs } from './components/dialogs/AdminDialogs';
 import { AreasDialogs } from './components/dialogs/AreasDialogs';
@@ -28,7 +30,7 @@ export const SettingsFeature = () => {
   const dispatch = useDispatch<AppDispatch>();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
-  const currentTab = searchParams.get('tab') || 'access';
+  const currentTab = searchParams.get('tab') || 'overview';
 
   useEffect(() => {
     dispatch(fetchAdmins());
@@ -43,6 +45,8 @@ export const SettingsFeature = () => {
 
   const renderContent = () => {
     switch (currentTab) {
+      case 'overview':
+        return <SystemOverviewTab />;
       case 'access':
         return <SecurityTab />;
       case 'users':
@@ -57,8 +61,10 @@ export const SettingsFeature = () => {
         return <SecurityTab />;
       case 'logs':
         return <LogsTab />;
+      case 'alerts':
+        return <AlertsConfigTab />;
       default:
-        return <SecurityTab />;
+        return <SystemOverviewTab />;
     }
   };
 

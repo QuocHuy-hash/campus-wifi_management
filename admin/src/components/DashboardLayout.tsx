@@ -46,10 +46,13 @@ const menuItems: MenuItem[] = [
     label: 'Báo cáo', 
     path: '/reports',
     subItems: [
+      { label: 'Tổng thể', path: '/reports?tab=overview' },
       { label: 'Người dùng', path: '/reports?tab=users' },
       { label: 'Băng thông', path: '/reports?tab=bandwidth' },
       { label: 'Hạ tầng WiFi', path: '/reports?tab=infrastructure' },
       { label: 'Vi phạm', path: '/reports?tab=violations' },
+      { label: 'Phiên theo thời gian', path: '/reports?tab=session-timeline' },
+      { label: 'Sự cố user & WiFi', path: '/reports?tab=user-network-incidents' },
       { label: 'Sự cố', path: '/reports?tab=incidents' },
       { label: 'Nhật ký', path: '/reports?tab=logs' },
     ]
@@ -58,12 +61,14 @@ const menuItems: MenuItem[] = [
     label: 'Cài đặt', 
     path: '/settings',
     subItems: [
+      { label: 'Tổng thể', path: '/settings?tab=overview' },
       { label: 'Phân quyền & Nhóm', path: '/settings?tab=access' },
       { label: 'Quản trị viên', path: '/settings?tab=users' },
       { label: 'Khu vực & Tòa nhà', path: '/settings?tab=areas' },
       { label: 'Thiết bị Điểm phát', path: '/settings?tab=devices' },
       { label: 'Tích hợp hệ thống', path: '/settings?tab=technical' },
       { label: 'Bảo mật & Truy cập', path: '/settings?tab=security' },
+      { label: 'Cảnh báo sự cố WiFi', path: '/settings?tab=alerts' },
       { label: 'Nhật ký hệ thống', path: '/settings?tab=logs' },
     ]
   },

@@ -10,12 +10,15 @@ import { ViolationsReportTab } from './tabs/ViolationsReportTab';
 import { SessionsReportTab } from './tabs/SessionsReportTab';
 import { IncidentsReportTab } from './tabs/IncidentsReportTab';
 import { LogsReportTab } from './tabs/LogsReportTab';
+import { OverviewReportTab } from './tabs/OverviewReportTab';
+import { SessionTimelineReportTab } from './tabs/SessionTimelineReportTab';
+import { UserNetworkIncidentsReportTab } from './tabs/UserNetworkIncidentsReportTab';
 
 export const ReportsFeature = () => {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
-  const activeTab = searchParams.get('tab') || 'users';
+  const activeTab = searchParams.get('tab') || 'overview';
 
   const handleTabChange = (value: string) => {
     setLocation(`/reports?tab=${value}`);
@@ -30,11 +33,15 @@ export const ReportsFeature = () => {
         </div>
       </div>
 
-      {activeTab !== 'users' && <ReportsFilterBar />}
+      {activeTab !== 'users' && activeTab !== 'overview' && <ReportsFilterBar />}
 
       <Card className="overflow-hidden">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           {/* Main Content Areas mapped exactly to the URL query param */}
+          <TabsContent value="overview" className="p-0 m-0">
+            <OverviewReportTab />
+          </TabsContent>
+
           <TabsContent value="users" className="p-2 m-0">
             <UsersReportTab />
           </TabsContent>
@@ -53,6 +60,14 @@ export const ReportsFeature = () => {
           
           <TabsContent value="sessions" className="p-6 m-0">
             <SessionsReportTab />
+          </TabsContent>
+
+          <TabsContent value="session-timeline" className="p-6 m-0">
+            <SessionTimelineReportTab />
+          </TabsContent>
+
+          <TabsContent value="user-network-incidents" className="p-6 m-0">
+            <UserNetworkIncidentsReportTab />
           </TabsContent>
           
           <TabsContent value="incidents" className="p-6 m-0">
