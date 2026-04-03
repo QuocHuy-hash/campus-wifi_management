@@ -1,11 +1,11 @@
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Edit, Trash2, Eye, Shield, Mail, Globe, Facebook } from 'lucide-react';
+import { Search, Edit, Trash2, Eye, Shield, Mail, Globe } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { setSearchTerm, openDialog } from '../slices/usersSlice';
 import { useMemo } from 'react';
-import { getUserRoleBadgeClass, USER_DIALOG_KEYS, USER_UI_TEXT } from '@/features/users/constants';
+import { getUserRoleBadgeClass, getUserRoleLabel, USER_DIALOG_KEYS, USER_UI_TEXT } from '@/features/users/constants';
 
 export function UsersTable() {
   const dispatch = useAppDispatch();

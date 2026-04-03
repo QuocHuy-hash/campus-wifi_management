@@ -9,14 +9,14 @@ import type {
   ProviderConfig,
   RegisterPayload,
   RegisterResult,
-  VerifyEmailPayload,
-  VerifyEmailResult,
+  VerifyOtpPayload,
+  VerifyOtpResult,
 } from "@/features/auth/types";
 
 interface AuthState {
   providers: ProviderConfig[];
   providersLoading: boolean;
-  otpEmail: string;
+  otpIdentifier: string;
   registerLoading: boolean;
   verifyLoading: boolean;
   resendLoading: boolean;
@@ -26,7 +26,7 @@ interface AuthState {
 const initialState: AuthState = {
   providers: [],
   providersLoading: false,
-  otpEmail: "",
+  otpIdentifier: "",
   registerLoading: false,
   verifyLoading: false,
   resendLoading: false,
@@ -70,7 +70,7 @@ export const registerWithOtp = createAsyncThunk<RegisterResult, RegisterPayload>
   },
 );
 
-export const verifyEmailOtp = createAsyncThunk<VerifyEmailResult, VerifyEmailPayload>(
+export const verifyEmailOtp = createAsyncThunk<VerifyOtpResult, VerifyOtpPayload>(
   "auth/verifyEmailOtp",
   async (payload, { rejectWithValue }) => {
     try {
@@ -81,7 +81,7 @@ export const verifyEmailOtp = createAsyncThunk<VerifyEmailResult, VerifyEmailPay
   },
 );
 
-export const resendEmailOtp = createAsyncThunk<void, { email: string }>(
+export const resendEmailOtp = createAsyncThunk<void, { identifier: string }>(
   "auth/resendEmailOtp",
   async (payload, { rejectWithValue }) => {
     try {
@@ -100,7 +100,7 @@ const authSlice = createSlice({
       state.error = null;
     },
     setOtpEmail: (state, action: { payload: string }) => {
-      state.otpEmail = action.payload;
+      state.otpIdentifier = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -122,7 +122,7 @@ const authSlice = createSlice({
       })
       .addCase(registerWithOtp.fulfilled, (state, action) => {
         state.registerLoading = false;
-        state.otpEmail = action.payload.email;
+        state.otpIdentifier = action.payload.email || "";
       })
       .addCase(registerWithOtp.rejected, (state, action) => {
         state.registerLoading = false;

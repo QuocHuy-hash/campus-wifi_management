@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useLocation, Link } from 'wouter';
+import {  Link } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +61,6 @@ function getStatusBadge(session: RadiusSession, compact = false) {
 const ITEMS_PER_PAGE = 20;
 
 export default function HistoryPage() {
-  const [, setLocation] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedSession, setSelectedSession] = useState<RadiusSession | null>(null);

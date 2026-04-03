@@ -1,23 +1,59 @@
-import axios from "axios";
-import { API_BASE_URL } from "@/config/api";
-import { HTTP_CONFIG, STORAGE_KEYS } from "@/constants/appKeys";
+import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
+import { API_HEADERS, HTTP_CONFIG, STORAGE_KEYS } from '@/constants/appKeys';
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: HTTP_CONFIG.timeout,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+let hasInitialized = false;
 
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem(STORAGE_KEYS.accessToken);
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+const getStoredAuthToken = (): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
   }
 
-  return config;
-});
+  return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+};
 
-export default apiClient;
+export const initializeAxios = (): void => {
+  if (hasInitialized) {
+    return;
+  }
+
+  axios.defaults.baseURL = API_BASE_URL;
+  axios.defaults.timeout = HTTP_CONFIG.DEFAULT_TIMEOUT_MS;
+  axios.defaults.headers.common.Accept = HTTP_CONFIG.DEFAULT_HEADERS.Accept;
+  axios.defaults.headers.common['Content-Type'] = HTTP_CONFIG.DEFAULT_HEADERS['Content-Type'];
+  axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
+
+  axios.interceptors.request.use((config) => {
+    const token = getStoredAuthToken();
+
+    if (token) {
+      config.headers = config.headers ?? {};
+      config.headers[API_HEADERS.AUTHORIZATION] = `Bearer ${token}`;
+    }
+
+    return config;
+  });
+
+  hasInitialized = true;
+};
+
+export const setAxiosHeader = (key: string, value: string): void => {
+  axios.defaults.headers.common[key] = value;
+};
+
+export const removeAxiosHeader = (key: string): void => {
+  delete axios.defaults.headers.common[key];
+};
+
+export const setAxiosAuthToken = (token: string | null): void => {
+  if (token) {
+    setAxiosHeader(API_HEADERS.AUTHORIZATION, `Bearer ${token}`);
+    return;
+  }
+
+  removeAxiosHeader(API_HEADERS.AUTHORIZATION);
+};
+
+initializeAxios();
+
+export default axios;

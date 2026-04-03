@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,7 +11,7 @@ import { Search, Download, RefreshCw, Eye, Ban, Wifi, Laptop, Smartphone, Monito
 import { RootState, AppDispatch } from '@/stores/store';
 import { 
   fetchUsersReport, fetchSessionsReport,
-  setUserSearchTerm, setUserGroupFilter, setUserRoleFilter, setUserCurrentPage,
+  setUserSearchTerm, setUserGroupFilter, setUserRoleFilter, toggleWifiUserStatus, setUserCurrentPage,
   setSessionTimeRange, setSessionUsernameFilter, setSessionIpFilter, setSessionMacFilter, 
   setSessionSsidFilter, setSessionStatusFilter, setSessionTerminateFilter, setSessionCurrentPage,
   setSessionCampusFilter, setSessionBuildingFilter, setSessionIdentityFilter,
@@ -29,6 +30,7 @@ const initialCampuses = [
 export const UsersReportTab = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [userManagementTab, setUserManagementTab] = useState('wifi-users');
+  const [confirmToggleUser, setConfirmToggleUser] = useState<{ id: number; username: string; status: 'active' | 'blocked' } | null>(null);
 
   const {
     users: mockWifiUsers, sessions: mockUserSessions, status,
@@ -213,6 +215,7 @@ export const UsersReportTab = () => {
                                 variant="ghost" 
                                 size="sm" 
                                 title={user.status === 'active' ? 'Tạm khóa truy cập' : 'Mở khóa truy cập'}
+                                onClick={() => setConfirmToggleUser({ id: user.id, username: user.username, status: user.status })}
                               >
                                 <Ban size={16} className={user.status === 'active' ? 'text-red-600' : 'text-green-600'} />
                               </Button>
@@ -510,6 +513,34 @@ export const UsersReportTab = () => {
           </TabsContent>
         </div>
       </Tabs>
+
+      <AlertDialog open={!!confirmToggleUser} onOpenChange={(open) => !open && setConfirmToggleUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmToggleUser?.status === 'active' ? 'Xác nhận tạm khóa truy cập' : 'Xác nhận mở khóa truy cập'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmToggleUser?.status === 'active'
+                ? `Bạn có chắc muốn tạm khóa truy cập của user ${confirmToggleUser.username}?`
+                : `Bạn có chắc muốn mở khóa truy cập của user ${confirmToggleUser?.username}?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!confirmToggleUser) return;
+                dispatch(toggleWifiUserStatus(confirmToggleUser.id));
+                setConfirmToggleUser(null);
+              }}
+              className={confirmToggleUser?.status === 'active' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
+            >
+              {confirmToggleUser?.status === 'active' ? 'Tạm khóa' : 'Mở khóa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

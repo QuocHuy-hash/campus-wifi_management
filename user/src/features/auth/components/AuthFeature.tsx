@@ -8,7 +8,7 @@ import { currentUser, qosPolicies, formatBytes } from '@/data/mockData';
 import hcmusLogo from '@/assets/logo_hcmus.png';
 import InternalLoginTab from '@/components/InternalLoginTab';
 import GuestLoginTab from '@/components/GuestLoginTab';
-import { loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
+import { getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
 import { getActiveProviders, registerWithOtp, resendEmailOtp, verifyEmailOtp } from '@/features/auth/slices/authSlice';
 import type { ProviderConfig } from '@/features/auth/types';
 import { useAppDispatch } from '@/stores/hooks';
@@ -38,8 +38,8 @@ export default function Login() {
   const [guestStep, setGuestStep] = useState<'form' | 'otp' | 'newpass' | 'success'>('form');
   const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
   const [otpError, setOtpError] = useState('');
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isSendingOtp] = useState(false);
+  const [isVerifyingOtp] = useState(false);
   const [guestNewPassword, setGuestNewPassword] = useState('');
   const [guestConfirmPassword, setGuestConfirmPassword] = useState('');
   const [showGuestPassword, setShowGuestPassword] = useState(false);
@@ -107,6 +107,27 @@ export default function Login() {
     return 'Đăng nhập thất bại. Vui lòng thử lại.';
   };
 
+  const getGuestIdentifier = () =>
+    guestAuthMethod === 'email' ? guestForm.email.trim() : guestForm.phone.trim();
+
+  const persistSession = async (identifier: string, fallbackRole?: string) => {
+    const profile = await getMeProfile();
+    localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
+    localStorage.setItem(
+      STORAGE_KEYS.portalUser,
+      JSON.stringify({
+        id: profile.id,
+        username: profile.username || identifier,
+        fullname: profile.fullName || identifier,
+        email: profile.email || identifier,
+        role: fallbackRole || 'CLIENT',
+        status: profile.status,
+        avatarUrl: profile.avatarUrl,
+        loginTime: profile.lastLoginAt || new Date().toISOString(),
+      }),
+    );
+  };
+
 
 
   const handleSSOLogin = (provider: string) => {
@@ -150,7 +171,7 @@ export default function Login() {
   };
 
   const handleSendOtp = async () => {
-    const contact = guestAuthMethod === 'email' ? guestForm.email : guestForm.phone;
+    const contact = getGuestIdentifier();
     if (!contact || !guestForm.password) return;
     
     // Validate passwords
@@ -165,21 +186,11 @@ export default function Login() {
     
     setOtpError('');
 
-    if (guestAuthMethod === 'phone') {
-      setIsSendingOtp(true);
-      setTimeout(() => {
-        setIsSendingOtp(false);
-        setGuestStep('otp');
-      }, 1200);
-      return;
-    }
-
     try {
       await dispatch(
         registerWithOtp({
-          email: guestForm.email,
+          identifier: contact,
           password: guestForm.password,
-          fullName: guestForm.email.split('@')[0] || 'Guest User',
         }),
       ).unwrap();
       setGuestStep('otp');
@@ -217,30 +228,10 @@ export default function Login() {
 
     setOtpError('');
 
-    if (guestAuthMethod === 'phone') {
-      setIsVerifyingOtp(true);
-      setTimeout(() => {
-        setIsVerifyingOtp(false);
-        const guestUsername = guestForm.phone;
-        localStorage.setItem('portalLoggedIn', 'true');
-        localStorage.setItem('portalUser', JSON.stringify({
-          ...currentUser,
-          id: Date.now(),
-          username: guestUsername,
-          fullname: `User ${guestUsername}`,
-          loginTime: new Date().toISOString()
-        }));
-        setGuestModalOpen(false);
-        resetGuestForm();
-        setLocation('/session');
-      }, 1200);
-      return;
-    }
-
     try {
       await dispatch(
         verifyEmailOtp({
-          email: guestForm.email,
+          identifier: getGuestIdentifier(),
           otp,
         }),
       ).unwrap();
@@ -290,16 +281,8 @@ export default function Login() {
     setOtpCode(['', '', '', '', '', '']);
     setOtpError('');
 
-    if (guestAuthMethod === 'phone') {
-      setIsSendingOtp(true);
-      setTimeout(() => {
-        setIsSendingOtp(false);
-      }, 1200);
-      return;
-    }
-
     try {
-      await dispatch(resendEmailOtp({ email: guestForm.email })).unwrap();
+      await dispatch(resendEmailOtp({ identifier: getGuestIdentifier() })).unwrap();
     } catch (apiError) {
       setOtpError(String(apiError));
     }
@@ -314,19 +297,27 @@ export default function Login() {
   };
 
   const handleUseGuestCredentials = () => {
-    const guestUsername = guestAuthMethod === 'email' ? guestForm.email : guestForm.phone;
+    const guestIdentifier = getGuestIdentifier();
     setGuestModalOpen(false);
     setIsLoading(true);
-    setTimeout(() => {
-      localStorage.setItem('portalLoggedIn', 'true');
-      localStorage.setItem('portalUser', JSON.stringify({ 
-        ...currentUser,
-        username: guestUsername,
-        loginTime: new Date().toISOString()
-      }));
-      resetGuestForm();
-      setLocation('/session');
-    }, 1000);
+    setError('');
+
+    loginWithPassword({
+      identifier: guestIdentifier,
+      password: guestForm.password,
+    })
+      .then(async (result) => {
+        localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
+        localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
+        await persistSession(guestIdentifier, result.roles?.[0]);
+        resetGuestForm();
+        setLocation('/session');
+      })
+      .catch((apiError) => {
+        const message = getLoginErrorMessage(apiError);
+        setError(message);
+        setIsLoading(false);
+      });
   };
 
   const handleStandardLogin = async () => {
@@ -341,30 +332,18 @@ export default function Login() {
 
     try {
       const result = await loginWithPassword({
-        email: loginUsername,
+        identifier: loginUsername,
         password: loginPassword,
       });
 
       localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
       localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
-
-      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
-      localStorage.setItem(
-        STORAGE_KEYS.portalUser,
-        JSON.stringify({
-          ...currentUser,
-          username: loginUsername,
-          email: loginUsername,
-          role: (result.roles && result.roles.length > 0 ? result.roles[0] : currentUser.role),
-          loginTime: new Date().toISOString(),
-        }),
-      );
+      await persistSession(loginUsername, result.roles?.[0]);
 
       setLocation('/session');
     } catch (apiError) {
       const message = getLoginErrorMessage(apiError);
       setError(message);
-      window.alert(message);
       setIsLoading(false);
     }
   };

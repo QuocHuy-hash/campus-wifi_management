@@ -4,17 +4,23 @@ import {
   type ApiEnvelope,
   type LoginPayload,
   type LoginResult,
+  type MeResponse,
   type ProviderConfig,
   type RegisterPayload,
   type RegisterResult,
   type ResendOtpPayload,
-  type VerifyEmailPayload,
-  type VerifyEmailResult,
+  type VerifyOtpPayload,
+  type VerifyOtpResult,
 } from "@/features/auth/types";
+
+// Endpoints
+const PROVIDERS_ENDPOINT = `/providers-config`;
+const AUTH_ENDPOINT = `/auth`;
+const OAUTH2_ENDPOINT = `/oauth2`;
 
 export async function fetchActiveProviders(): Promise<ProviderConfig[]> {
   const response = await apiClient.get<ApiEnvelope<ProviderConfig[]>>(
-    "/api/v1/providers-config?isActive=true",
+    `${PROVIDERS_ENDPOINT}?isActive=true`,
   );
 
   return response.data.data || [];
@@ -22,7 +28,7 @@ export async function fetchActiveProviders(): Promise<ProviderConfig[]> {
 
 export async function registerUser(payload: RegisterPayload): Promise<RegisterResult> {
   const response = await apiClient.post<ApiEnvelope<RegisterResult>>(
-    "/api/v1/auth/register",
+    `${AUTH_ENDPOINT}/register`,
     payload,
   );
 
@@ -30,10 +36,10 @@ export async function registerUser(payload: RegisterPayload): Promise<RegisterRe
 }
 
 export async function verifyUserEmail(
-  payload: VerifyEmailPayload,
-): Promise<VerifyEmailResult> {
-  const response = await apiClient.post<ApiEnvelope<VerifyEmailResult>>(
-    "/api/v1/auth/verify-email",
+  payload: VerifyOtpPayload,
+): Promise<VerifyOtpResult> {
+  const response = await apiClient.post<ApiEnvelope<VerifyOtpResult>>(
+    `${AUTH_ENDPOINT}/verify-otp`,
     payload,
   );
 
@@ -41,18 +47,28 @@ export async function verifyUserEmail(
 }
 
 export async function resendOtp(payload: ResendOtpPayload): Promise<void> {
-  await apiClient.post("/api/v1/auth/resend-otp", payload);
+  await apiClient.post(`${AUTH_ENDPOINT}/resend-otp`, payload);
 }
 
 export async function loginWithPassword(payload: LoginPayload): Promise<LoginResult> {
+  // Keep both `identifier` and `email` for backward compatibility while backend migrates.
   const response = await apiClient.post<ApiEnvelope<LoginResult>>(
-    "/api/v1/auth/login",
-    payload,
+    `${AUTH_ENDPOINT}/login`,
+    {
+      identifier: payload.identifier,
+      email: payload.identifier,
+      password: payload.password,
+    },
   );
 
   return response.data.data;
 }
 
+export async function getMeProfile(): Promise<MeResponse> {
+  const response = await apiClient.get<ApiEnvelope<MeResponse>>(`${AUTH_ENDPOINT}/me`);
+  return response.data.data;
+}
+
 export function startOAuth2Login(provider: string): void {
-  window.location.href = `${API_BASE_URL}/api/v1/oauth2/${provider}`;
+  window.location.href = `${API_BASE_URL}${OAUTH2_ENDPOINT}/${provider}`;
 }

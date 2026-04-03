@@ -14,35 +14,34 @@ export interface ProviderConfig {
 }
 
 export interface RegisterPayload {
-  email: string;
+  identifier: string;
   password: string;
-  fullName: string;
 }
 
 export interface RegisterResult {
   id: number;
-  email: string;
+  email: string | null;
   fullName: string;
-  status: string;
+  status: "PENDING" | "ACTIVE" | "INACTIVE" | "SUSPENDED";
   emailVerified: boolean;
   createdAt: string;
   notice: string;
 }
 
-export interface VerifyEmailPayload {
-  email: string;
+export interface VerifyOtpPayload {
+  identifier: string;
   otp: string;
 }
 
-export interface VerifyEmailResult {
-  email: string;
-  status: string;
-  emailVerified: boolean;
-  notice: string;
+export interface VerifyOtpResult {
+  identifier: string;
+  status: "ACTIVE" | "PENDING" | "INACTIVE" | "SUSPENDED";
+  verified: boolean;
+  message: string;
 }
 
 export interface LoginPayload {
-  email: string;
+  identifier: string;
   password: string;
 }
 
@@ -53,7 +52,31 @@ export interface LoginResult {
 }
 
 export interface ResendOtpPayload {
-  email: string;
+  identifier: string;
+}
+
+export interface LinkedProvider {
+  provider: string;
+  providerEmail: string | null;
+  avatarUrl: string | null;
+  isActive: boolean;
+  linkedAt: string;
+  lastUsedAt: string | null;
+}
+
+export interface MeResponse {
+  id: number;
+  username: string;
+  email: string | null;
+  phone: string | null;
+  fullName: string;
+  avatarUrl: string | null;
+  status: "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING";
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+  linkedProviders: LinkedProvider[];
 }
 
 export interface ApiErrorBody {

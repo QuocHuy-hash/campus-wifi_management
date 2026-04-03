@@ -3,7 +3,8 @@ import { API_BASE_URL } from '@/config/api';
 import { AuthPolicy, WifiPolicy } from '@/data/mockData';
 
 interface ApiResponse<T> {
-  statusCode: number;
+  statusCode?: number;
+  code?: number;
   data: T;
   message: string;
 }
@@ -87,24 +88,84 @@ const denormalizeUnit = (value: string | undefined): string | undefined => {
 };
 
 const normalizeWifiPolicy = (policy: WifiPolicy): WifiPolicy => {
+  const { detail: nestedDetail, ...policyWithoutDetail } = (policy as WifiPolicy & { detail?: Partial<WifiPolicy> });
+  const detail = nestedDetail && typeof nestedDetail === 'object' ? nestedDetail : {};
+
   return {
-    ...policy,
-    type: toUiPolicyType((policy as unknown as { type?: string }).type),
-    applyToRoles: Array.isArray(policy.applyToRoles) ? policy.applyToRoles.map(normalizeRole) : [],
-    auditMaxSessionTimeUnit: normalizeUnit(policy.auditMaxSessionTimeUnit, 'hour') as 'minute' | 'hour',
-    accountingIntervalUnit: normalizeUnit(policy.accountingIntervalUnit, 'second') as 'second' | 'minute',
-    logRetentionUnit: normalizeUnit(policy.logRetentionUnit, 'month') as 'month' | 'year',
-    macCacheTimeUnit: normalizeUnit(policy.macCacheTimeUnit, 'hour') as 'hour' | 'day',
-    reAuthIntervalUnit: normalizeUnit(policy.reAuthIntervalUnit, 'day') as 'hour' | 'day',
-    auditMaxDataUsageUnit: (policy.auditMaxDataUsageUnit || 'MB').toUpperCase() as 'MB' | 'GB',
+    ...policyWithoutDetail,
+    ...(detail as Partial<WifiPolicy>),
+    type: toUiPolicyType((policyWithoutDetail as unknown as { type?: string }).type),
+    applyToRoles: Array.isArray(policyWithoutDetail.applyToRoles)
+      ? policyWithoutDetail.applyToRoles.map(normalizeRole)
+      : [],
+    auditMaxSessionTimeUnit: normalizeUnit(
+      (detail as Partial<WifiPolicy>).auditMaxSessionTimeUnit ?? policyWithoutDetail.auditMaxSessionTimeUnit,
+      'hour'
+    ) as 'minute' | 'hour',
+    accountingIntervalUnit: normalizeUnit(
+      (detail as Partial<WifiPolicy>).accountingIntervalUnit ?? policyWithoutDetail.accountingIntervalUnit,
+      'second'
+    ) as 'second' | 'minute',
+    logRetentionUnit: normalizeUnit(
+      (detail as Partial<WifiPolicy>).logRetentionUnit ?? policyWithoutDetail.logRetentionUnit,
+      'month'
+    ) as 'month' | 'year',
+    macCacheTimeUnit: normalizeUnit(
+      (detail as Partial<WifiPolicy>).macCacheTimeUnit ?? policyWithoutDetail.macCacheTimeUnit,
+      'hour'
+    ) as 'hour' | 'day',
+    reAuthIntervalUnit: normalizeUnit(
+      (detail as Partial<WifiPolicy>).reAuthIntervalUnit ?? policyWithoutDetail.reAuthIntervalUnit,
+      'day'
+    ) as 'hour' | 'day',
+    auditMaxDataUsageUnit: (
+      (detail as Partial<WifiPolicy>).auditMaxDataUsageUnit || policyWithoutDetail.auditMaxDataUsageUnit || 'MB'
+    ).toUpperCase() as 'MB' | 'GB',
   };
 };
 
 const serializeWifiPolicy = (policy: Omit<WifiPolicy, 'id'>): Record<string, unknown> => {
+  const detail: Record<string, unknown> = {};
+
+  if (typeof policy.downloadLimit === 'number') detail.downloadLimit = policy.downloadLimit;
+  if (typeof policy.uploadLimit === 'number') detail.uploadLimit = policy.uploadLimit;
+  if (typeof policy.maxSessionTime === 'number') detail.maxSessionTime = policy.maxSessionTime;
+  if (typeof policy.maxSessionData === 'number') detail.maxSessionData = policy.maxSessionData;
+  if (typeof policy.vlanId === 'number') detail.vlanId = policy.vlanId;
+  if (typeof policy.maxDailyData === 'number') detail.maxDailyData = policy.maxDailyData;
+  if (typeof policy.idleTimeout === 'number') detail.idleTimeout = policy.idleTimeout;
+  if (typeof policy.autoReLogin === 'boolean') detail.autoReLogin = policy.autoReLogin;
+  if (typeof policy.bindMacAddress === 'boolean') detail.bindMacAddress = policy.bindMacAddress;
+  if (typeof policy.isActive === 'boolean') detail.isActive = policy.isActive;
+
+  if (typeof policy.auditMaxSessionTime === 'number') detail.auditMaxSessionTime = policy.auditMaxSessionTime;
+  if (policy.auditMaxSessionTimeUnit) detail.auditMaxSessionTimeUnit = denormalizeUnit(policy.auditMaxSessionTimeUnit);
+  if (typeof policy.auditMaxDataUsage === 'number') detail.auditMaxDataUsage = policy.auditMaxDataUsage;
+  if (policy.auditMaxDataUsageUnit) detail.auditMaxDataUsageUnit = policy.auditMaxDataUsageUnit;
+  if (typeof policy.accountingInterval === 'number') detail.accountingInterval = policy.accountingInterval;
+  if (policy.accountingIntervalUnit) detail.accountingIntervalUnit = denormalizeUnit(policy.accountingIntervalUnit);
+  if (typeof policy.logRetentionPeriod === 'number') detail.logRetentionPeriod = policy.logRetentionPeriod;
+  if (policy.logRetentionUnit) detail.logRetentionUnit = denormalizeUnit(policy.logRetentionUnit);
+  if (policy.disconnectAction) detail.disconnectAction = policy.disconnectAction;
+
+  if (typeof policy.maxConcurrentDevices === 'number') detail.maxConcurrentDevices = policy.maxConcurrentDevices;
+  if (typeof policy.macCachingEnabled === 'boolean') detail.macCachingEnabled = policy.macCachingEnabled;
+  if (typeof policy.macCacheTime === 'number') detail.macCacheTime = policy.macCacheTime;
+  if (policy.macCacheTimeUnit) detail.macCacheTimeUnit = denormalizeUnit(policy.macCacheTimeUnit);
+  if (typeof policy.reAuthInterval === 'number') detail.reAuthInterval = policy.reAuthInterval;
+  if (policy.reAuthIntervalUnit) detail.reAuthIntervalUnit = denormalizeUnit(policy.reAuthIntervalUnit);
+  if (typeof policy.allowUserMacManagement === 'boolean') detail.allowUserMacManagement = policy.allowUserMacManagement;
+  if (typeof policy.retryLimit === 'number') detail.retryLimit = policy.retryLimit;
+
   return {
-    ...policy,
     type: toApiPolicyType(policy.type),
+    name: policy.name,
+    description: policy.description,
+    isActive: policy.isActive,
     applyToRoles: (policy.applyToRoles ?? []).map(denormalizeRole),
+    applyToArea: policy.applyToArea,
+    applyByTime: policy.applyByTime,
+    detail,
     auditMaxSessionTimeUnit: denormalizeUnit(policy.auditMaxSessionTimeUnit),
     accountingIntervalUnit: denormalizeUnit(policy.accountingIntervalUnit),
     logRetentionUnit: denormalizeUnit(policy.logRetentionUnit),

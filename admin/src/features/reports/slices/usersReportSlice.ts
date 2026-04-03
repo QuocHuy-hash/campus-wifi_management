@@ -70,6 +70,11 @@ const usersReportSlice = createSlice({
     setUserSearchTerm: (state, action: PayloadAction<string>) => { state.userSearchTerm = action.payload; state.userCurrentPage = 1; },
     setUserGroupFilter: (state, action: PayloadAction<string>) => { state.userGroupFilter = action.payload; state.userCurrentPage = 1; },
     setUserRoleFilter: (state, action: PayloadAction<string>) => { state.userRoleFilter = action.payload; state.userCurrentPage = 1; },
+    toggleWifiUserStatus: (state, action: PayloadAction<number>) => {
+      const targetUser = state.users.find((user) => user.id === action.payload);
+      if (!targetUser) return;
+      targetUser.status = targetUser.status === 'active' ? 'blocked' : 'active';
+    },
     setUserCurrentPage: (state, action: PayloadAction<number>) => { state.userCurrentPage = action.payload; },
     resetUserFilters: (state) => {
       state.userSearchTerm = '';
@@ -120,7 +125,7 @@ const usersReportSlice = createSlice({
 });
 
 export const { 
-  setUserSearchTerm, setUserGroupFilter, setUserRoleFilter, setUserCurrentPage, resetUserFilters,
+  setUserSearchTerm, setUserGroupFilter, setUserRoleFilter, toggleWifiUserStatus, setUserCurrentPage, resetUserFilters,
   setSessionTimeRange, setSessionUsernameFilter, setSessionIpFilter, setSessionMacFilter, 
   setSessionSsidFilter, setSessionStatusFilter, setSessionTerminateFilter, setSessionCurrentPage,
   setSelectedUserForSessions, resetSessionFilters,

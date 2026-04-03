@@ -9,6 +9,10 @@ import { closeDialog, addNewUser } from '../../slices/usersSlice';
 import { User } from '../../types';
 import { ACCOUNT_STATUSES, USER_DIALOG_KEYS, USER_ROLES } from '@/features/users/constants';
 
+type AddUserForm = Partial<User> & {
+  password: string;
+};
+
 export function AddUserDialog() {
   const dispatch = useAppDispatch();
   const { dialogs, policies } = useAppSelector(state => state.users);
@@ -26,11 +30,12 @@ export function AddUserDialog() {
     auditPolicy: '',
     securityPolicy: '',
     email: '',
+    password: '',
     name: '',
     unit: '',
   };
 
-  const [addForm, setAddForm] = useState<Partial<User>>(defaultForm);
+  const [addForm, setAddForm] = useState<AddUserForm>(defaultForm);
 
   // Set defaults when policies load
   useEffect(() => {
@@ -72,6 +77,15 @@ export function AddUserDialog() {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+ <div>
+            <Label htmlFor="add-name">Họ tên</Label>
+            <Input 
+              id="add-name" 
+              value={addForm.name || ''} 
+              onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+              placeholder="Nguyễn Văn A"
+            />
+          </div>
           <div>
             <Label htmlFor="add-email">Email</Label>
             <Input 
@@ -82,14 +96,16 @@ export function AddUserDialog() {
             />
           </div>
           <div>
-            <Label htmlFor="add-name">Họ tên</Label>
-            <Input 
-              id="add-name" 
-              value={addForm.name || ''} 
-              onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-              placeholder="Nguyễn Văn A"
+            <Label htmlFor="add-password">Mật khẩu</Label>
+            <Input
+              id="add-password"
+              type="password"
+              value={addForm.password}
+              onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
+              placeholder="Nhập mật khẩu"
             />
           </div>
+         
           <div>
             <Label htmlFor="add-unit">Đơn vị</Label>
             <Input 

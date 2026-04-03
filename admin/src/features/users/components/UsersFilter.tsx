@@ -2,12 +2,17 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
-import { setSelectedRole, openDialog } from '../slices/usersSlice';
-import { USER_DIALOG_KEYS, USER_ROLES, USER_UI_TEXT } from '@/features/users/constants';
+import { getUsers, setSelectedRole, openDialog } from '../slices/usersSlice';
+import { USER_DIALOG_KEYS, USER_ROLES, USER_UI_TEXT, getUserRoleLabel } from '@/features/users/constants';
 
 export function UsersFilter() {
   const dispatch = useAppDispatch();
   const { selectedRole } = useAppSelector(state => state.users);
+
+  const handleRoleChange = (role: string | null) => {
+    dispatch(setSelectedRole(role));
+    dispatch(getUsers(role));
+  };
 
   return (
     <Card className="p-6 bg-white shadow-sm">
@@ -24,36 +29,22 @@ export function UsersFilter() {
       <div className="flex flex-wrap gap-3">
         <Button
           variant={selectedRole === null ? 'default' : 'outline'}
-          onClick={() => dispatch(setSelectedRole(null))}
+          onClick={() => handleRoleChange(null)}
           className={selectedRole === null ? 'bg-blue-600 hover:bg-blue-700' : ''}
         >
           {USER_UI_TEXT.FILTER_ALL}
-        {/* </Button>
+        </Button>
+
         {USER_ROLES.map((role) => (
           <Button
             key={role}
             variant={selectedRole === role ? 'default' : 'outline'}
-            onClick={() => dispatch(setSelectedRole(role))}
+            onClick={() => handleRoleChange(role)}
             className={selectedRole === role ? 'bg-blue-600 hover:bg-blue-700' : ''}
           >
-            {role}
+            {getUserRoleLabel(role)}
           </Button>
-        ))} */}
- </Button>
-        
-          <Button
-          >
-          Sinh viên
-          </Button>
-       <Button
-           
-          >
-          Giảng viên
-          </Button>
- <Button
-          >
-          Khách
-          </Button>
+        ))}
       </div>
     </Card>
   );
