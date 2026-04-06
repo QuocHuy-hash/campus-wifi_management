@@ -33,7 +33,7 @@ const initialState: AuthState = {
   error: null,
 };
 
-function extractErrorMessage(error: unknown): string {
+export function extractErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null) {
     const maybeAxios = error as {
       response?: { data?: { message?: string } };

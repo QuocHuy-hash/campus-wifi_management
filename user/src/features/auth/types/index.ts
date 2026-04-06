@@ -64,6 +64,51 @@ export interface LinkedProvider {
   lastUsedAt: string | null;
 }
 
+export interface UserGroup {
+  id: number;
+  name: string;
+  roleName: string;
+}
+
+export interface PolicySession {
+  maxSessionDuration: number | null;
+  idleTimeout: number | null;
+  maxConcurrentSessions: number | null;
+}
+
+export interface PolicyBandwidth {
+  maxDownloadMbps: number | null;
+  maxUploadMbps: number | null;
+}
+
+export interface PolicySecurity {
+  [key: string]: any;
+}
+
+export interface PolicyAuthorization {
+  authType: string | null;
+  allowedMethods: string[] | null;
+}
+
+export interface PolicyAudit {
+  logConnections: boolean;
+  logDisconnections: boolean;
+  logAuthFailures: boolean;
+  retentionDays: number;
+}
+
+export interface UserPolicy {
+  id: number;
+  name: string;
+  type: string;
+  isActive: boolean;
+  session: PolicySession | null;
+  bandwidth: PolicyBandwidth | null;
+  security: PolicySecurity | null;
+  authorization: PolicyAuthorization | null;
+  audit: PolicyAudit | null;
+}
+
 export interface MeResponse {
   id: number;
   username: string;
@@ -76,6 +121,9 @@ export interface MeResponse {
   phoneVerified: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  groups: UserGroup[];
+  roles: string[];
+  policies: UserPolicy[];
   linkedProviders: LinkedProvider[];
 }
 

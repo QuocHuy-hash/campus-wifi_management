@@ -1,23 +1,25 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLocation, Link } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { 
-  Wifi, History, Clock, Download, Upload, 
+import {
+  Wifi, History, Clock, Download, Upload,
   Activity, Laptop, Smartphone, Monitor,
   Menu, X, User, HelpCircle, Mail, Building, Shield,
   Gauge, HardDrive, Package, LogOut, Key, Eye, EyeOff, CheckCircle, AlertCircle,
   Globe, Facebook
 } from 'lucide-react';
-import { 
-  mockSessions, 
-  formatBytes, 
+import {
+  formatBytes,
   getTodayUsage,
-  qosPolicies
 } from '@/data/mockData';
+import { useAppDispatch, useAppSelector } from '@/stores/hooks';
+import { getUserProfile, clearProfile } from '@/features/user/slices/userProfileSlice';
+import type { UserPolicy } from '@/features/auth/types';
+import { STORAGE_KEYS } from '@/constants/appKeys';
 
 function getDeviceIcon(deviceType: string, size: number = 16) {
   switch (deviceType) {
@@ -28,8 +30,96 @@ function getDeviceIcon(deviceType: string, size: number = 16) {
   }
 }
 
+interface PolicyDetailShape {
+  downloadLimit?: number;
+  uploadLimit?: number;
+  maxSessionTime?: number;
+  maxSessionDuration?: number;
+  maxConcurrentSessions?: number;
+  authType?: string;
+}
+
+const getPolicyDetail = (policy: UserPolicy | null): PolicyDetailShape => {
+  if (!policy) {
+    return {};
+  }
+
+  const maybeDetail = (policy as UserPolicy & { detail?: PolicyDetailShape }).detail;
+  return maybeDetail || {};
+};
+
+const getPolicyBandwidthText = (policy: UserPolicy | null): string => {
+  if (!policy) {
+    return 'Không giới hạn';
+  }
+
+  const detail = getPolicyDetail(policy);
+  const download = detail.downloadLimit ?? policy.bandwidth?.maxDownloadMbps;
+  const upload = detail.uploadLimit ?? policy.bandwidth?.maxUploadMbps ?? 0;
+
+  if (!download) {
+    return 'Không giới hạn';
+  }
+
+  return `${download} ↓ / ${upload} ↑ Mbps`;
+};
+
+const getPolicySessionHoursText = (policy: UserPolicy | null): string => {
+  if (!policy) {
+    return 'Không giới hạn';
+  }
+
+  const detail = getPolicyDetail(policy);
+  const sessionSeconds = detail.maxSessionTime ?? detail.maxSessionDuration ?? policy.session?.maxSessionDuration;
+
+  if (!sessionSeconds) {
+    return 'Không giới hạn';
+  }
+
+  return `${Math.round(sessionSeconds / 3600)}h`;
+};
+
+const getPolicyDeviceLimitText = (policy: UserPolicy | null): string => {
+  if (!policy) {
+    return 'Không giới hạn';
+  }
+
+  const detail = getPolicyDetail(policy);
+  const maxDevices = detail.maxConcurrentSessions ?? policy.session?.maxConcurrentSessions;
+
+  if (!maxDevices) {
+    return 'Không giới hạn';
+  }
+
+  return `${maxDevices} thiết bị`;
+};
+
+const getPolicyAuthType = (policy: UserPolicy | null): string | null => {
+  if (!policy) {
+    return null;
+  }
+
+  const detail = getPolicyDetail(policy);
+  return detail.authType ?? policy.authorization?.authType ?? null;
+};
+
+const safeParsePortalUser = () => {
+  const userStr = localStorage.getItem('portalUser');
+  if (!userStr) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(userStr);
+  } catch {
+    return null;
+  }
+};
+
 export default function Account() {
   const [, setLocation] = useLocation();
+  const dispatch = useAppDispatch();
+  const { profile, loading, error } = useAppSelector((state) => state.userProfile);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -42,23 +132,28 @@ export default function Account() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  const userStr = localStorage.getItem('portalUser');
-  const user = userStr ? JSON.parse(userStr) : null;
+  // Fetch user profile on mount
+  useEffect(() => {
+    dispatch(getUserProfile());
+  }, [dispatch]);
 
-  const policy = user && user.role ? (qosPolicies[user.role as keyof typeof qosPolicies] || qosPolicies.Student) : qosPolicies.Student;
+  // Fallback to localStorage if profile not loaded yet
+  const fallbackUser = safeParsePortalUser();
+  const user = profile || fallbackUser;
+
+  // Get primary role and policy
+  const primaryRole = user?.roles?.[0] || user?.groups?.[0]?.roleName || 'Unknown';
+  const primaryPolicy = user?.policies?.find((p: UserPolicy) => p.isActive) || user?.policies?.[0] || null;
+  const displayName = user?.fullName || user?.fullname || user?.username || 'Guest';
+  const displayRole = primaryRole !== 'Unknown' ? primaryRole : user?.role || 'Student';
+
   const todayUsage = getTodayUsage();
 
-  const activeSessions = useMemo(() => {
-    return mockSessions.filter(s => s.acctstoptime === null);
-  }, []);
-
-  const totalSessions = mockSessions.length;
-  const totalDownload = mockSessions.reduce((sum, s) => sum + s.acctinputoctets, 0);
-  const totalUpload = mockSessions.reduce((sum, s) => sum + s.acctoutputoctets, 0);
-
   const handleLogout = () => {
+    dispatch(clearProfile());
     localStorage.removeItem('portalLoggedIn');
     localStorage.removeItem('portalUser');
+    localStorage.removeItem(STORAGE_KEYS.accessToken);
     setLocation('/');
   };
 
@@ -125,8 +220,8 @@ export default function Account() {
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-right">
-              <p className="text-xs font-medium text-gray-900">{user?.fullname || 'Guest'}</p>
-              <p className="text-[10px] text-gray-500">{user?.role || 'Student'}</p>
+              <p className="text-xs font-medium text-gray-900">{displayName}</p>
+              <p className="text-[10px] text-gray-500">{displayRole}</p>
             </div>
             <Button 
               variant="ghost" 
@@ -179,21 +274,61 @@ export default function Account() {
 
         {/* Main Content */}
         <main className="flex-1 p-3 md:p-4 w-full">
+          {/* Loading State */}
+          {loading && !user && (
+            <Card className="p-8 text-center border border-gray-200">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                <p className="text-sm text-gray-600">Đang tải thông tin tài khoản...</p>
+              </div>
+            </Card>
+          )}
+
+          {/* Error State */}
+          {error && !user && (
+            <Card className="mb-4 p-4 border border-red-200 bg-red-50">
+              <div className="flex items-start gap-3">
+                <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-800">Lỗi tải thông tin tài khoản</p>
+                  <p className="text-xs text-red-600 mt-1">{error}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-3 h-8 text-xs"
+                    onClick={() => dispatch(getUserProfile())}
+                  >
+                    Thử lại
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Profile Card */}
           <Card className="mb-4 overflow-hidden border border-gray-200">
             <div className="bg-gray-900 text-white p-5">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center text-2xl font-bold">
-                 Nguyễn Văn A
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    (user?.fullName || user?.username || 'User').charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-semibold">{user?.fullName || 'Guest User'}</h2>
                   <p className="text-sm text-gray-400">@{user?.username || 'guest'}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-xs rounded-full">
-                      {user?.role || 'Student'}
+                      {primaryRole}
                     </span>
-                    <span className="px-2 py-0.5 bg-green-500/20 text-green-300 text-xs rounded-full">
-                      Active
+                    <span className={`px-2 py-0.5 text-xs rounded-full ${
+                      user?.status === 'ACTIVE' 
+                        ? 'bg-green-500/20 text-green-300' 
+                        : 'bg-gray-500/20 text-gray-300'
+                    }`}>
+                      {user?.status || 'Unknown'}
                     </span>
                   </div>
                 </div>
@@ -210,31 +345,47 @@ export default function Account() {
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <User size={16} className="text-gray-400" />
                     <div>
-                      <p className="text-[10px] text-gray-500">MSSV / Mã NV</p>
-                      <p className="text-sm font-mono">{user?.mssv || user?.username || 'N/A'}</p>
+                      <p className="text-[10px] text-gray-500">ID</p>
+                      <p className="text-sm font-mono">#{user?.id || 'N/A'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Mail size={16} className="text-gray-400" />
                     <div>
                       <p className="text-[10px] text-gray-500">Email</p>
-                      <p className="text-sm truncate">{user?.email || `${user?.username || 'guest'}@hcmus.edu.vn`}</p>
+                      <p className="text-sm truncate">
+                        {user?.email || 'N/A'}
+                        {user?.emailVerified && (
+                          <CheckCircle size={12} className="inline text-green-500 ml-1" />
+                        )}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Building size={16} className="text-gray-400" />
-                    <div>
-                      <p className="text-[10px] text-gray-500">Khoa / Phòng ban</p>
-                      <p className="text-sm">{user?.department || 'Khoa CNTT'}</p>
+                  {user?.phone && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <Shield size={16} className="text-gray-400" />
+                      <div>
+                        <p className="text-[10px] text-gray-500">Phone</p>
+                        <p className="text-sm">{user.phone}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Shield size={16} className="text-gray-400" />
                     <div>
                       <p className="text-[10px] text-gray-500">Vai trò</p>
-                      <p className="text-sm">{user?.role || 'Student'}</p>
+                      <p className="text-sm">{primaryRole}</p>
                     </div>
                   </div>
+                  {user?.groups && user.groups.length > 0 && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg sm:col-span-2">
+                      <Building size={16} className="text-gray-400" />
+                      <div>
+                        <p className="text-[10px] text-gray-500">Nhóm</p>
+                        <p className="text-sm">{user.groups.map((g: any) => g.name).join(', ')}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -252,19 +403,28 @@ export default function Account() {
                   <Globe size={12} /> Tài khoản liên kết (OAuth)
                 </p>
                 <div className="space-y-2">
-                  {user?.linkedAccounts && user.linkedAccounts.length > 0 ? (
-                    user.linkedAccounts.map((acc: any, idx: number) => (
+                  {user?.linkedProviders && user.linkedProviders.length > 0 ? (
+                    user.linkedProviders.map((provider: any, idx: number) => (
                       <div key={idx} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
-                        {acc.type === 'gmail' && <Mail size={18} className="text-red-500" />}
-                        {acc.type === 'microsoft' && <Globe size={18} className="text-blue-500" />}
-                        {acc.type === 'facebook' && <Facebook size={18} className="text-blue-600" />}
+                        {provider.provider === 'google' && <Mail size={18} className="text-red-500" />}
+                        {provider.provider === 'microsoft' && <Globe size={18} className="text-blue-500" />}
+                        {provider.provider === 'facebook' && <Facebook size={18} className="text-blue-600" />}
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold capitalize">{acc.type}</p>
-                          <p className="text-sm text-gray-600 truncate">{acc.email || acc.id}</p>
+                          <p className="text-xs font-semibold capitalize">{provider.provider}</p>
+                          <p className="text-sm text-gray-600 truncate">{provider.providerEmail || 'N/A'}</p>
+                          {provider.lastUsedAt && (
+                            <p className="text-[10px] text-gray-400">
+                              Sử dụng lần cuối: {new Date(provider.lastUsedAt).toLocaleDateString('vi-VN')}
+                            </p>
+                          )}
                         </div>
-                        <Button variant="ghost" size="sm" className="h-8 text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50">
-                          Gỡ liên kết
-                        </Button>
+                        <span className={`px-2 py-0.5 text-[10px] rounded-full ${
+                          provider.isActive 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {provider.isActive ? 'Đang hoạt động' : 'Không hoạt động'}
+                        </span>
                       </div>
                     ))
                   ) : (
@@ -288,25 +448,37 @@ export default function Account() {
           {/* QoS Policy */}
           <Card className="mb-4 p-4 border border-gray-200">
             <p className="text-xs font-medium text-gray-700 mb-3 flex items-center gap-1.5">
-              <Gauge size={12} /> Chính sách: {user?.role || 'Student'}
+              <Gauge size={12} /> Chính sách: {primaryPolicy?.name || primaryRole}
             </p>
             <div className="grid grid-cols-3 gap-3">
               <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
                 <Gauge size={18} className="mx-auto text-blue-500 mb-1" />
                 <p className="text-[10px] text-gray-500">Băng thông</p>
-                <p className="text-sm font-semibold text-blue-600">{policy.bandwidth_limit} Mbps</p>
+                <p className="text-sm font-semibold text-blue-600">
+                  {getPolicyBandwidthText(primaryPolicy)}
+                </p>
               </div>
               <div className="text-center p-3 bg-violet-50 rounded-lg border border-violet-100">
                 <Clock size={18} className="mx-auto text-violet-500 mb-1" />
                 <p className="text-[10px] text-gray-500">Phiên tối đa</p>
-                <p className="text-sm font-semibold text-violet-600">{policy.session_timeout / 3600}h</p>
+                <p className="text-sm font-semibold text-violet-600">
+                  {getPolicySessionHoursText(primaryPolicy)}
+                </p>
               </div>
               <div className="text-center p-3 bg-emerald-50 rounded-lg border border-emerald-100">
                 <HardDrive size={18} className="mx-auto text-emerald-500 mb-1" />
-                <p className="text-[10px] text-gray-500">Hạn ngạch/ngày</p>
-                <p className="text-sm font-semibold text-emerald-600">{formatBytes(policy.quota_daily)}</p>
+                <p className="text-[10px] text-gray-500">Giới hạn phiên</p>
+                <p className="text-sm font-semibold text-emerald-600">
+                  {getPolicyDeviceLimitText(primaryPolicy)}
+                </p>
               </div>
             </div>
+            {getPolicyAuthType(primaryPolicy) && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <p className="text-[10px] text-gray-500 mb-1">Loại xác thực</p>
+                <p className="text-sm font-medium">{getPolicyAuthType(primaryPolicy)}</p>
+              </div>
+            )}
           </Card>
 
           {/* Usage Stats */}
@@ -314,7 +486,7 @@ export default function Account() {
             <p className="text-xs font-medium text-gray-700 mb-3 flex items-center gap-1.5">
               <Package size={12} /> Thống kê sử dụng
             </p>
-            
+
             {/* Today Usage */}
             <div className="mb-4">
               <p className="text-[10px] text-gray-500 mb-2">Hôm nay</p>
@@ -332,39 +504,36 @@ export default function Account() {
                   <p className="text-xs font-semibold text-violet-600">{formatBytes(todayUsage.total)}</p>
                 </div>
               </div>
-              <div className="mt-2">
-                <div className="flex justify-between text-[10px] text-gray-500 mb-1">
-                  <span>Hạn ngạch</span>
-                  <span>{formatBytes(todayUsage.total)} / {formatBytes(policy.quota_daily)}</span>
+              {primaryPolicy?.bandwidth && (
+                <div className="mt-2">
+                  <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                    <span>Băng thông giới hạn</span>
+                    <span>{getPolicyBandwidthText(primaryPolicy)}</span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full ${
-                      (todayUsage.total / policy.quota_daily) > 0.9 ? 'bg-red-500' :
-                      (todayUsage.total / policy.quota_daily) > 0.7 ? 'bg-amber-500' : 'bg-emerald-500'
-                    }`}
-                    style={{ width: `${Math.min((todayUsage.total / policy.quota_daily) * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Total Stats */}
+            {/* Account Info */}
             <div className="pt-3 border-t border-gray-100">
-              <p className="text-[10px] text-gray-500 mb-2">Tổng (tất cả phiên)</p>
+              <p className="text-[10px] text-gray-500 mb-2">Thông tin tài khoản</p>
               <div className="flex flex-wrap gap-4 text-sm">
                 <span className="flex items-center gap-1.5 text-gray-600">
                   <History size={14} className="text-gray-400" />
-                  {totalSessions} phiên
+                  Tạo: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
                 </span>
-                <span className="flex items-center gap-1.5 text-blue-600">
-                  <Download size={14} />
-                  {formatBytes(totalDownload)}
-                </span>
-                <span className="flex items-center gap-1.5 text-green-600">
-                  <Upload size={14} />
-                  {formatBytes(totalUpload)}
-                </span>
+                {user?.lastLoginAt && (
+                  <span className="flex items-center gap-1.5 text-blue-600">
+                    <Clock size={14} />
+                    Đăng nhập cuối: {new Date(user.lastLoginAt).toLocaleDateString('vi-VN')}
+                  </span>
+                )}
               </div>
             </div>
           </Card>
@@ -375,32 +544,15 @@ export default function Account() {
               <p className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
                 <Laptop size={12} /> Thiết bị đang online
               </p>
-              <span className="text-[10px] text-gray-500">{activeSessions.length} thiết bị</span>
+              <span className="text-[10px] text-gray-500">
+                {primaryPolicy ? `Tối đa: ${getPolicyDeviceLimitText(primaryPolicy)}` : 'Không giới hạn thiết bị'}
+              </span>
             </div>
-            
-            {activeSessions.length > 0 ? (
-              <div className="space-y-2">
-                {activeSessions.map((session) => (
-                  <div key={session.session_id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-9 h-9 bg-white border rounded-lg flex items-center justify-center text-gray-500">
-                      {getDeviceIcon(session.device_type, 16)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{session.device_name}</p>
-                      <p className="text-[10px] text-gray-500">{session.ip_address} • {session.ap_location}</p>
-                    </div>
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] rounded-full">
-                      Online
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <Wifi size={24} className="mx-auto text-gray-300 mb-2" />
-                <p className="text-xs text-gray-500">Không có thiết bị nào đang online</p>
-              </div>
-            )}
+
+            <div className="text-center py-6">
+              <Wifi size={24} className="mx-auto text-gray-300 mb-2" />
+              <p className="text-xs text-gray-500">Không có thiết bị nào đang online</p>
+            </div>
 
             <div className="mt-3 pt-3 border-t border-gray-100">
               <Button variant="outline" size="sm" className="w-full h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50">

@@ -20,5 +20,11 @@ export default defineConfig({
   server: {
     port: 3003,
     host: true,
+    proxy: {
+      '/api': {
+        target:  'https://186c-14-191-91-150.ngrok-free.app',
+        changeOrigin: true,
+      },
+    },
   },
 });

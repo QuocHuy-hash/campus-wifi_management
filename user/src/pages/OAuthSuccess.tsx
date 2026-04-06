@@ -17,7 +17,7 @@ export default function OAuthSuccess() {
     // HttpOnly cookie must be set by backend response headers, not JavaScript.
     // Frontend only persists a minimal app session flag and removes token from URL.
     localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
-
+ localStorage.setItem(STORAGE_KEYS.accessToken, accessToken);
     // if (!localStorage.getItem(STORAGE_KEYS.portalUser)) {
     //   localStorage.setItem(
     //     STORAGE_KEYS.portalUser,
