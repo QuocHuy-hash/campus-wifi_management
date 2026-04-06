@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, EyeOff, Wifi, Lock, User, AlertCircle } from 'lucide-react';
 
 import { RootState, AppDispatch } from '@/stores/store';
-import { loginStart, loginSuccess, loginFailure, clearError } from '../slices/authSlice';
+import { clearError, login } from '../slices/authSlice';
 
 export const LoginFeature = () => {
   const [, setLocation] = useLocation();
@@ -21,35 +21,29 @@ export const LoginFeature = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
+  const [localError, setLocalError] = useState('');
+
   useEffect(() => {
     dispatch(clearError());
+    setLocalError('');
   }, [dispatch]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     dispatch(clearError());
+    setLocalError('');
     
     if (!username || !password) {
-      dispatch(loginFailure('Vui lòng nhập đầy đủ thông tin đăng nhập'));
+      setLocalError('Vui lòng nhập đầy đủ thông tin đăng nhập');
       return;
     }
 
-    dispatch(loginStart());
-    
-    // Simulate login API call
-    setTimeout(() => {
-      if (username === 'admin' && password === 'admin123') {
-        const userData = { 
-          username: 'admin', 
-          role: 'Super Admin',
-          name: 'Quản trị viên'
-        };
-        dispatch(loginSuccess(userData));
-        setLocation('/');
-      } else {
-        dispatch(loginFailure('Tên đăng nhập hoặc mật khẩu không đúng'));
-      }
-    }, 1000);
+    try {
+      await dispatch(login({ identifier: username, password })).unwrap();
+      setLocation('/');
+    } catch (err) {
+      // Lỗi đã được lưu vào Redux state `error`, không cần làm gì thêm
+    }
   };
 
   return (
@@ -72,10 +66,10 @@ export const LoginFeature = () => {
           </div>
 
           {/* Error Alert */}
-          {error && (
+          {(error || localError) && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
               <AlertCircle size={18} />
-              <span className="text-sm">{error}</span>
+              <span className="text-sm">{localError || error}</span>
             </div>
           )}
 

@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useSearch } from 'wouter';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/stores/store';
+import { logout } from '@/features/auth/slices/authSlice';
 import { Menu, X, LogOut, User, ChevronDown, ChevronRight, Settings, Key, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,6 +100,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   };
 
+  const dispatch = useDispatch<AppDispatch>();
+
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
@@ -111,8 +116,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('user');
+    dispatch(logout());
     setLocation('/login');
   };
 

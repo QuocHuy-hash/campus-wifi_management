@@ -5,6 +5,8 @@ import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const apiProxyTarget =
+  process.env.VITE_API_PROXY_TARGET ?? "https://186c-14-191-91-150.ngrok-free.app";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -20,5 +22,15 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    proxy: {
+      "/api": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          "ngrok-skip-browser-warning": "true",
+        },
+      },
+    },
   },
 });

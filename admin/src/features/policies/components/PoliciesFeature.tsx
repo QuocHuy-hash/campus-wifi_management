@@ -43,7 +43,12 @@ export const PoliciesFeature = () => {
   }, [tabFromUrl]);
 
   useEffect(() => {
-    dispatch(loadWifiPolicies());
+    if (activeTab === 'bandwidth' || activeTab === 'audit') {
+      dispatch(loadWifiPolicies(activeTab));
+    }
+  }, [dispatch, activeTab]);
+
+  useEffect(() => {
     dispatch(loadAuthPolicies());
   }, [dispatch]);
 

@@ -184,8 +184,10 @@ const normalizeAuthPolicy = (policy: AuthPolicy): AuthPolicy => {
 };
 
 export const policiesApi = {
-  getWifiPolicies: async (): Promise<WifiPolicy[]> => {
-    const response = await axios.get<ApiResponse<WifiPolicy[]> | WifiPolicy[]>(`${API_BASE_URL}/wifi-policies`);
+  getWifiPolicies: async (type?: 'bandwidth' | 'audit'): Promise<WifiPolicy[]> => {
+    const response = await axios.get<ApiResponse<WifiPolicy[]> | WifiPolicy[]>(`${API_BASE_URL}/wifi-policies`, {
+      params: type ? { type } : undefined,
+    });
     return unwrapData<WifiPolicy[]>(response.data).map(normalizeWifiPolicy);
   },
 

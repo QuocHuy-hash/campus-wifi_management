@@ -3,9 +3,12 @@ import { initialPolicies, WifiPolicy } from '@/data/mockData';
 import { PoliciesState } from '../types';
 import { policiesApi } from '../api/policiesApi';
 
-export const loadWifiPolicies = createAsyncThunk('policies/loadWifiPolicies', async () => {
-  return await policiesApi.getWifiPolicies();
-});
+export const loadWifiPolicies = createAsyncThunk(
+  'policies/loadWifiPolicies',
+  async (type?: 'bandwidth' | 'audit') => {
+    return await policiesApi.getWifiPolicies(type);
+  }
+);
 
 export const createWifiPolicyAsync = createAsyncThunk(
   'policies/createWifiPolicy',

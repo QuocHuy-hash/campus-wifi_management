@@ -1,6 +1,8 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch, useLocation, Redirect } from "wouter";
+import { useSelector } from "react-redux";
+import { RootState } from "@/stores/store";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import DashboardLayout from "./components/DashboardLayout";
@@ -12,15 +14,9 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 
-// Check if admin is logged in
-function isAuthenticated() {
-  // return localStorage.getItem('isLoggedIn') === 'true';
-  return 'true';
-}
-
 function Router() {
   const [location] = useLocation();
-  const authenticated = isAuthenticated();
+  const authenticated = useSelector((state: RootState) => state.auth.isLoggedIn);
   
   if (location === '/login' && authenticated) {
     return <Redirect to="/" />;

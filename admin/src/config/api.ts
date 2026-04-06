@@ -3,4 +3,7 @@
  * Centralized configuration for API endpoints
  */
 
-export const API_BASE_URL = 'https://user-2804.nport.link/api/v1';
+const envBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
+
+// In local dev, default to Vite proxy to avoid CORS issues.
+export const API_BASE_URL = envBaseUrl?.trim() || '/api/v1';
