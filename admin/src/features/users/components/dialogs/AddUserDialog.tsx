@@ -25,10 +25,6 @@ export function AddUserDialog() {
   const defaultForm = {
     role: USER_ROLES[0],
     status: ACCOUNT_STATUSES[0],
-    bandwidthPolicy: '',
-    sessionPolicy: '',
-    auditPolicy: '',
-    securityPolicy: '',
     email: '',
     password: '',
     name: '',
@@ -41,11 +37,7 @@ export function AddUserDialog() {
   useEffect(() => {
     if (dialogs.addOpen) {
       setAddForm({
-        ...defaultForm,
-        bandwidthPolicy: bandwidthPolicies[0]?.name || '',
-        sessionPolicy: sessionPolicies[0]?.name || '',
-        auditPolicy: auditPolicies[0]?.name || '',
-        securityPolicy: securityPolicies[0]?.name || '',
+        ...defaultForm
       });
     }
   }, [dialogs.addOpen, policies]);
@@ -55,16 +47,12 @@ export function AddUserDialog() {
       email: addForm.email || '',
       name: addForm.name || '',
       unit: addForm.unit || '',
-      created: new Date().toISOString().split('T')[0],
       role: addForm.role || USER_ROLES[0],
       status: addForm.status || ACCOUNT_STATUSES[0],
       macAddress: addForm.macAddress || '',
-      bandwidthPolicy: addForm.bandwidthPolicy || '',
-      sessionPolicy: addForm.sessionPolicy || '',
-      auditPolicy: addForm.auditPolicy || '',
-      securityPolicy: addForm.securityPolicy || '',
-      linkedAccounts: [],
-    }));
+      policies: [],
+      linkedProviders: [],
+    } as any));
   };
 
   return (

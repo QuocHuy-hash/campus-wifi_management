@@ -14,7 +14,8 @@ import {
   setAddPolicyDialogOpen, setEditPolicyDialogOpen, setDeletePolicyDialogOpen, 
   setPolicyForm, createWifiPolicyAsync, updateWifiPolicyAsync, deleteWifiPolicyAsync
 } from '../../slices/policiesSlice';
-import { WifiPolicy, AreaLocation, initialCampuses, initialBuildings, getPolicyTypeLabel } from '@/data/mockData';
+import { WifiPolicy, AreaLocation, getPolicyTypeLabel } from '@/data/mockData';
+import { toast } from 'sonner';
 
 export const PolicyDialogs = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -65,22 +66,51 @@ export const PolicyDialogs = () => {
   };
 
   useEffect(() => {
-    const locations: AreaLocation[] = [];
-    initialBuildings.forEach(building => {
-      const campus = initialCampuses.find(c => c.id === building.campusId);
-      if (campus) {
-        locations.push({
-          id: `${campus.code}-${building.code}`,
-          label: `${campus.name} - ${building.name}`,
-          campusName: campus.name,
-          buildingName: building.name,
-        });
-      }
-    });
-    setAreaLocations(locations);
+    // Should be fetched from API instead of mock data
+    setAreaLocations([]);
   }, []);
 
+  const validateForm = () => {
+    if (!policyForm.name?.trim()) {
+      toast.error('Vui lòng nhập tên chính sách');
+      return false;
+    }
+    
+    if (policyForm.type === 'bandwidth' || policyForm.type === 'authorization') {
+      if (!policyForm.downloadLimit || policyForm.downloadLimit < 1) {
+        toast.error('Giới hạn tải xuống phải lớn hơn 0');
+        return false;
+      }
+      if (!policyForm.uploadLimit || policyForm.uploadLimit < 1) {
+        toast.error('Giới hạn tải lên phải lớn hơn 0');
+        return false;
+      }
+    }
+    
+    if (policyForm.type === 'session') {
+      if (!policyForm.maxSessionTime || policyForm.maxSessionTime < 1) {
+        toast.error('Thời gian phiên phải lớn hơn 0');
+        return false;
+      }
+    }
+    
+    if (policyForm.type === 'audit') {
+      if (!policyForm.auditMaxSessionTime || policyForm.auditMaxSessionTime < 1) {
+        toast.error('Giới hạn thời gian phiên kiểm toán phải lớn hơn 0');
+        return false;
+      }
+      if (!policyForm.auditMaxDataUsage || policyForm.auditMaxDataUsage < 1) {
+        toast.error('Giới hạn dung lượng kiểm toán phải lớn hơn 0');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const saveNewPolicy = () => {
+    if (!validateForm()) return;
+
     const newPolicy: Omit<WifiPolicy, 'id'> = {
       name: policyForm.name || '',
       description: policyForm.description || '',
@@ -120,6 +150,8 @@ export const PolicyDialogs = () => {
   };
 
   const saveEditPolicy = () => {
+    if (!validateForm()) return;
+    
     if (selectedPolicy) {
       dispatch(updateWifiPolicyAsync({ ...selectedPolicy, ...policyForm } as WifiPolicy));
     }
@@ -152,38 +184,40 @@ export const PolicyDialogs = () => {
         />
       </div>
       
-      {policyForm.type === 'authorization' && (
-        <div className="flex items-center space-x-2 pb-2">
-           <Switch 
-            id={isEdit ? "edit-policy-active" : "policy-active"}
-            checked={policyForm.isActive}
-            onCheckedChange={(checked) => dispatch(setPolicyForm({ ...policyForm, isActive: checked }))}
-          />
-          <Label htmlFor={isEdit ? "edit-policy-active" : "policy-active"}>Kích hoạt chính sách</Label>
-        </div>
-      )}
+      <div className="flex items-center space-x-2 pb-2">
+         <Switch 
+          id={isEdit ? "edit-policy-active" : "policy-active"}
+          checked={policyForm.isActive === undefined ? true : policyForm.isActive}
+          onCheckedChange={(checked) => dispatch(setPolicyForm({ ...policyForm, isActive: checked }))}
+        />
+        <Label htmlFor={isEdit ? "edit-policy-active" : "policy-active"}>Kích hoạt chính sách</Label>
+      </div>
       
       {policyForm.type === 'bandwidth' && (
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor={isEdit ? "edit-policy-dl" : "policy-dl"}>Giới hạn Tải xuống (Mbps)</Label>
-            <Input
-              id={isEdit ? "edit-policy-dl" : "policy-dl"}
-              type="number"
-              value={policyForm.downloadLimit || ''}
-              onChange={(e) => dispatch(setPolicyForm({ ...policyForm, downloadLimit: Number(e.target.value) }))}
-              placeholder="10"
-            />
+              <Input
+                id={isEdit ? "edit-policy-dl" : "policy-dl"}
+                type="number"
+                min={1}
+                max={10000}
+                value={policyForm.downloadLimit || ''}
+                onChange={(e) => dispatch(setPolicyForm({ ...policyForm, downloadLimit: Number(e.target.value) }))}
+                placeholder="10"
+              />
           </div>
           <div>
             <Label htmlFor={isEdit ? "edit-policy-ul" : "policy-ul"}>Giới hạn Tải lên (Mbps)</Label>
-            <Input
-              id={isEdit ? "edit-policy-ul" : "policy-ul"}
-              type="number"
-              value={policyForm.uploadLimit || ''}
-              onChange={(e) => dispatch(setPolicyForm({ ...policyForm, uploadLimit: Number(e.target.value) }))}
-              placeholder="5"
-            />
+              <Input
+                id={isEdit ? "edit-policy-ul" : "policy-ul"}
+                type="number"
+                min={1}
+                max={10000}
+                value={policyForm.uploadLimit || ''}
+                onChange={(e) => dispatch(setPolicyForm({ ...policyForm, uploadLimit: Number(e.target.value) }))}
+                placeholder="5"
+              />
           </div>
         </div>
       )}
@@ -227,7 +261,7 @@ export const PolicyDialogs = () => {
               />
               <Select
                 value={policyForm.auditMaxSessionTimeUnit || 'hour'}
-                onValueChange={(value: 'minute' | 'hour') => dispatch(setPolicyForm({ ...policyForm, auditMaxSessionTimeUnit: value }))}
+                onValueChange={(value: 'minute' | 'hour' | 'day') => dispatch(setPolicyForm({ ...policyForm, auditMaxSessionTimeUnit: value }))}
               >
                 <SelectTrigger className="w-[120px]">
                   <SelectValue placeholder="Đơn vị" />
@@ -235,6 +269,7 @@ export const PolicyDialogs = () => {
                 <SelectContent>
                   <SelectItem value="minute">Phút</SelectItem>
                   <SelectItem value="hour">Giờ</SelectItem>
+                  <SelectItem value="day">Ngày</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -300,12 +335,13 @@ export const PolicyDialogs = () => {
               />
               <Select
                 value={policyForm.logRetentionUnit || 'month'}
-                onValueChange={(value: 'month' | 'year') => dispatch(setPolicyForm({ ...policyForm, logRetentionUnit: value }))}
+                onValueChange={(value: 'day' | 'month' | 'year') => dispatch(setPolicyForm({ ...policyForm, logRetentionUnit: value }))}
               >
                 <SelectTrigger className="w-[120px]">
                   <SelectValue placeholder="Đơn vị" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="day">Ngày</SelectItem>
                   <SelectItem value="month">Tháng</SelectItem>
                   <SelectItem value="year">Năm</SelectItem>
                 </SelectContent>

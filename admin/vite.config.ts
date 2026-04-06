@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const apiProxyTarget =
-  process.env.VITE_API_PROXY_TARGET ?? "https://186c-14-191-91-150.ngrok-free.app";
+  process.env.VITE_API_PROXY_TARGET ?? "http://192.168.1.16:3030";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

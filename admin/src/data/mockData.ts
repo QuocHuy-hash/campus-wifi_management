@@ -102,13 +102,13 @@ export interface WifiPolicy {
   isActive?: boolean; // Trạng thái Bật/Tắt
   // Audit policy specific fields
   auditMaxSessionTime?: number; // Giới hạn thời gian phiên (phút)
-  auditMaxSessionTimeUnit?: "minute" | "hour";
+  auditMaxSessionTimeUnit?: "minute" | "hour" | "day";
   auditMaxDataUsage?: number; // Giới hạn tổng dung lượng (MB)
   auditMaxDataUsageUnit?: "MB" | "GB";
   accountingInterval?: number; // Chu kỳ ghi nhận (giây)
   accountingIntervalUnit?: "second" | "minute";
   logRetentionPeriod?: number; // Thời gian lưu trữ logs
-  logRetentionUnit?: "month" | "year";
+  logRetentionUnit?: "day" | "month" | "year";
   disconnectAction?: "disconnect" | "reauth" | "notify"; // Hành động ngắt kết nối
   // Security policy specific fields
   maxConcurrentDevices?: number; // Giới hạn thiết bị đồng thời

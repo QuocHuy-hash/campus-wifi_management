@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Edit, Trash2, Eye, Shield, Mail, Globe } from 'lucide-react';
+import { Search, Edit, Trash2, Eye, Shield, Mail, Globe, Facebook } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { setSearchTerm, openDialog } from '../slices/usersSlice';
 import { useMemo } from 'react';
@@ -73,14 +73,14 @@ export function UsersTable() {
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex gap-2">
-                      {user.linkedAccounts?.map((acc, idx) => (
-                        <span key={idx} title={`${acc.type}: ${acc.email || acc.id}`}>
-                          {acc.type === 'gmail' && <Mail size={16} className="text-red-500" />}
-                          {acc.type === 'microsoft' && <Globe size={16} className="text-blue-500" />}
-                          {acc.type === 'facebook' && <Facebook size={16} className="text-blue-600" />}
+                      {user.linkedProviders?.map((acc, idx) => (
+                        <span key={idx} title={`${acc.provider}: ${acc.providerEmail || acc.displayName || 'Linked'}`}>
+                          {(acc.provider === 'gmail' || acc.provider === 'google') && <Mail size={16} className="text-red-500" />}
+                          {(acc.provider === 'microsoft' || acc.provider === 'azure') && <Globe size={16} className="text-blue-500" />}
+                          {acc.provider === 'facebook' && <Facebook size={16} className="text-blue-600" />}
                         </span>
                       ))}
-                      {(!user.linkedAccounts || user.linkedAccounts.length === 0) && (
+                      {(!user.linkedProviders || user.linkedProviders.length === 0) && (
                         <span className="text-gray-300">-</span>
                       )}
                     </div>
@@ -93,10 +93,24 @@ export function UsersTable() {
                       <Button variant="ghost" size="sm" title="Áp chính sách" onClick={() => dispatch(openDialog({ dialog: USER_DIALOG_KEYS.POLICY, user }))}>
                         <Shield size={18} className="text-green-600" />
                       </Button>
-                      <Button variant="ghost" size="sm" title="Chỉnh sửa" onClick={() => dispatch(openDialog({ dialog: USER_DIALOG_KEYS.EDIT, user }))}>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        title="Chỉnh sửa" 
+                        onClick={() => dispatch(openDialog({ dialog: USER_DIALOG_KEYS.EDIT, user }))}
+                        className={user.linkedProviders && user.linkedProviders.length > 0 ? "invisible pointer-events-none" : ""}
+                        disabled={!!(user.linkedProviders && user.linkedProviders.length > 0)}
+                      >
                         <Edit size={18} className="text-amber-600" />
                       </Button>
-                      <Button variant="ghost" size="sm" title="Xóa" onClick={() => dispatch(openDialog({ dialog: USER_DIALOG_KEYS.DELETE, user }))}>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        title="Xóa" 
+                        onClick={() => dispatch(openDialog({ dialog: USER_DIALOG_KEYS.DELETE, user }))}
+                        className={user.linkedProviders && user.linkedProviders.length > 0 ? "invisible pointer-events-none" : ""}
+                        disabled={!!(user.linkedProviders && user.linkedProviders.length > 0)}
+                      >
                         <Trash2 size={18} className="text-red-600" />
                       </Button>
                     </div>

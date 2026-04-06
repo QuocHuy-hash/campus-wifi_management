@@ -61,16 +61,16 @@ export function ViewUserDialog() {
             <div className="col-span-2 border-t pt-4">
               <Label className="text-xs text-gray-500 block mb-2 font-bold uppercase tracking-wider">Tài khoản liên kết</Label>
               <div className="space-y-2">
-                {selectedUser.linkedAccounts && selectedUser.linkedAccounts.length > 0 ? (
-                  selectedUser.linkedAccounts.map((acc, idx) => (
+                {selectedUser.linkedProviders && selectedUser.linkedProviders.length > 0 ? (
+                  selectedUser.linkedProviders.map((acc, idx) => (
                     <div key={idx} className="flex items-center gap-3 p-2 bg-gray-50 rounded border">
-                      {acc.type === 'gmail' && <Mail size={18} className="text-red-500" />}
-                      {acc.type === 'microsoft' && <Globe size={18} className="text-blue-500" />}
-                      {acc.type === 'facebook' && <Facebook size={16} className="text-blue-600" />}
+                      {(acc.provider === 'gmail' || acc.provider === 'google') && <Mail size={18} className="text-red-500" />}
+                      {(acc.provider === 'microsoft' || acc.provider === 'azure') && <Globe size={18} className="text-blue-500" />}
+                      {acc.provider === 'facebook' && <Facebook size={16} className="text-blue-600" />}
                       <div>
-                        <p className="text-xs font-semibold capitalize">{acc.type}</p>
+                        <p className="text-xs font-semibold capitalize">{acc.provider}</p>
                         <p className="text-sm text-gray-600">
-                          {acc.email || acc.id} {acc.name ? `(${acc.name})` : ''}
+                          {acc.providerEmail || 'Linked'}{acc.displayName ? ` (${acc.displayName})` : ''}
                         </p>
                       </div>
                     </div>
@@ -84,10 +84,22 @@ export function ViewUserDialog() {
           <div className="border-t pt-4">
             <Label className="text-xs text-gray-500 block mb-2">Chính sách áp dụng</Label>
             <div className="space-y-2">
-              <p className="text-xs"><span className="font-medium">Băng thông:</span> {selectedUser.bandwidthPolicy}</p>
-              <p className="text-xs"><span className="font-medium">Phiên:</span> {selectedUser.sessionPolicy}</p>
-              <p className="text-xs"><span className="font-medium">Kiểm toán:</span> {selectedUser.auditPolicy}</p>
-              <p className="text-xs"><span className="font-medium">Bảo mật:</span> {selectedUser.securityPolicy}</p>
+              <p className="text-xs">
+                <span className="font-medium">Băng thông:</span>{' '}
+                {selectedUser.policies?.find(p => p.type === 'BANDWIDTH')?.name || 'Chưa gán'}
+              </p>
+              <p className="text-xs">
+                <span className="font-medium">Phiên:</span>{' '}
+                {selectedUser.policies?.find(p => p.type === 'SESSION')?.name || 'Chưa gán'}
+              </p>
+              <p className="text-xs">
+                <span className="font-medium">Kiểm toán/Xác thực:</span>{' '}
+                {selectedUser.policies?.find(p => p.type === 'AUTHORIZATION')?.name || 'Chưa gán'}
+              </p>
+              <p className="text-xs">
+                <span className="font-medium">Bảo mật:</span>{' '}
+                {selectedUser.policies?.find(p => p.type === 'SECURITY')?.name || 'Chưa gán'}
+              </p>
             </div>
           </div>
         </div>

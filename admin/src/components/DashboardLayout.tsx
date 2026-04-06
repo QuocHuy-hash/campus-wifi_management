@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLocation, useSearch } from 'wouter';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/stores/store';
-import { logout } from '@/features/auth/slices/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/stores/store';
+import { logoutThunk } from '@/features/auth/slices/authSlice';
 import { Menu, X, LogOut, User, ChevronDown, ChevronRight, Settings, Key, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,11 +28,7 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-interface UserInfo {
-  username: string;
-  role: string;
-  name: string;
-}
+
 
 interface MenuItem {
   label: string;
@@ -82,8 +78,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const searchString = useSearch();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState<UserInfo | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+
+  const adminUser = useSelector((state: RootState) => state.auth.user);
 
   // Account management dialogs
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
@@ -91,39 +88,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   
   // Form states
-  const [profileForm, setProfileForm] = useState({ name: '', email: '', phone: '' });
+  const [profileForm, setProfileForm] = useState({
+    name: adminUser?.fullName || '',
+    email: adminUser?.email || '',
+    phone: adminUser?.phone || '',
+  });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
   const toggleSubmenu = (path: string) => {
-    setExpandedMenus(prev => 
+    setExpandedMenus(prev =>
       prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
     );
   };
 
   const dispatch = useDispatch<AppDispatch>();
 
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      setProfileForm({ 
-        name: parsedUser.name || '', 
-        email: parsedUser.email || 'admin@hcmus.edu.vn',
-        phone: parsedUser.phone || '0123456789'
-      });
-    }
-  }, []);
-
-  const handleLogout = () => {
-    dispatch(logout());
+  const handleLogout = async () => {
+    await dispatch(logoutThunk());
     setLocation('/login');
   };
 
   const handleSaveProfile = () => {
-    const updatedUser = { ...user, ...profileForm };
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-    setUser(updatedUser as UserInfo);
+    // TODO: connect to PUT /api/admin/profile when available
     setEditProfileOpen(false);
   };
 
@@ -171,8 +157,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 hover:bg-gray-100 rounded-lg px-2 py-1 transition-colors cursor-pointer">
                   <div className="hidden sm:block text-right">
-                    <p className="text-sm font-medium text-gray-900">{user?.name || 'Admin User'}</p>
-                    <p className="text-xs text-gray-500">{user?.role || 'Quản trị viên'}</p>
+                    <p className="text-sm font-medium text-gray-900">{adminUser?.fullName || 'Admin User'}</p>
+                    <p className="text-xs text-gray-500">{adminUser?.userName || 'Quản trị viên'}</p>
                   </div>
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white">
                     <User size={20} />
@@ -183,8 +169,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
-                    <span className="font-medium">{user?.name || 'Admin User'}</span>
-                    <span className="text-xs text-gray-500 font-normal">{user?.role || 'Quản trị viên'}</span>
+                    <span className="font-medium">{adminUser?.fullName || 'Admin User'}</span>
+                    <span className="text-xs text-gray-500 font-normal">{adminUser?.userName || 'Quản trị viên'}</span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -309,29 +295,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="space-y-4 py-4">
             <div className="flex justify-center mb-4">
               <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                {user?.name?.charAt(0) || 'A'}
+                {adminUser?.fullName?.charAt(0) || 'A'}
               </div>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-sm text-gray-500">Họ và tên</span>
-                <span className="text-sm font-medium">{user?.name || 'Admin User'}</span>
+                <span className="text-sm font-medium">{adminUser?.fullName || 'Admin User'}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-sm text-gray-500">Tên đăng nhập</span>
-                <span className="text-sm font-medium">{user?.username || 'admin'}</span>
+                <span className="text-sm font-medium">{adminUser?.userName || 'admin'}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-sm text-gray-500">Email</span>
-                <span className="text-sm font-medium">{profileForm.email}</span>
+                <span className="text-sm font-medium">{adminUser?.email || '—'}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-sm text-gray-500">Số điện thoại</span>
-                <span className="text-sm font-medium">{profileForm.phone}</span>
+                <span className="text-sm font-medium">{adminUser?.phone || '—'}</span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-sm text-gray-500">Vai trò</span>
-                <span className="text-sm font-medium px-2 py-1 bg-blue-100 text-blue-700 rounded">{user?.role || 'Quản trị viên'}</span>
+                <span className="text-sm font-medium px-2 py-1 bg-blue-100 text-blue-700 rounded">Quản trị viên</span>
               </div>
             </div>
           </div>

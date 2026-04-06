@@ -10,7 +10,7 @@ export interface UsersApiEnvelope<T> {
 
 // ─── User list (GET /api/v1/users?role=) ────────────────────────────────────
 
-/** OAuth account linked to a wifi user (V4 unified endpoint) */
+/** OAuth provider linked to a wifi user (V4 unified endpoint) */
 export interface LinkedAccount {
   provider: string;
   providerEmail: string | null;
@@ -18,6 +18,40 @@ export interface LinkedAccount {
   avatarUrl: string | null;
   lastUsedAt: string | null;
   isActive: boolean;
+  linkedAt?: string | null;
+}
+
+/** Policy detail variants */
+export interface BandwidthPolicyDetail {
+  downloadLimit: number;
+  uploadLimit: number;
+}
+export interface SessionPolicyDetail {
+  maxSessionTime: number;
+  maxSessionData: number;
+}
+export interface AuthorizationPolicyDetail {
+  vlanId: number;
+  maxDailyData: number;
+  idleTimeout: number;
+  autoReLogin: boolean;
+  bindMacAddress: boolean;
+}
+export interface SecurityPolicyDetail {
+  maxConcurrentDevices: number;
+  macCachingEnabled: boolean;
+  reAuthInterval: number;
+  allowUserMacManagement: boolean;
+  retryLimit: number;
+}
+
+/** Policy assigned to a user (from GET /api/v1/users) */
+export interface UserPolicy {
+  id: number;
+  name: string;
+  type: 'BANDWIDTH' | 'SESSION' | 'AUTHORIZATION' | 'SECURITY';
+  isActive: boolean;
+  detail: BandwidthPolicyDetail | SessionPolicyDetail | AuthorizationPolicyDetail | SecurityPolicyDetail;
 }
 
 /** WiFi user entity returned by GET /api/v1/users */
@@ -30,11 +64,12 @@ export interface User {
   role: string;
   status: string;
   macAddress: string | null;
-  bandwidthPolicy: string | null;
-  sessionPolicy: string | null;
-  auditPolicy: string | null;
-  securityPolicy: string | null;
-  linkedAccounts: LinkedAccount[];
+  /** Structured policies from API */
+  policies: UserPolicy[];
+  /** OAuth providers linked to this user */
+  linkedProviders: LinkedAccount[];
+  /** @deprecated use linkedProviders */
+  linkedAccounts?: LinkedAccount[];
 }
 
 // ─── Auth/Me (GET /api/v1/auth/me) ──────────────────────────────────────────

@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api';
-import { initialPolicies } from '@/data/mockData';
+import { policiesApi } from '@/features/policies/api/policiesApi';
+
 import {
   User,
+  UserPolicy,
   UsersApiEnvelope,
   WifiPolicy,
   LinkedAccount,
@@ -16,7 +18,25 @@ import {
 const USERS_ENDPOINT = `${API_BASE_URL}/users`;
 const AUTH_ENDPOINT = `${API_BASE_URL}/auth`;
 
-// ─── Internal raw shape returned by GET /api/v1/users ───────────────────────
+// ─── Internal raw shape returned by GET /api/v1/users ───────────────────────────
+interface RawProvider {
+  provider?: string;
+  providerEmail?: string | null;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  lastUsedAt?: string | null;
+  linkedAt?: string | null;
+  isActive?: boolean;
+}
+
+interface RawUserPolicy {
+  id: number;
+  name: string;
+  type: string;
+  isActive: boolean;
+  detail: Record<string, unknown>;
+}
+
 interface UserApiModel {
   id: number;
   email: string;
@@ -28,18 +48,12 @@ interface UserApiModel {
   role: string;
   status: string;
   macAddress?: string | null;
-  bandwidthPolicy?: string | null;
-  sessionPolicy?: string | null;
-  auditPolicy?: string | null;
-  securityPolicy?: string | null;
-  linkedAccounts?: Array<{
-    provider?: string;
-    providerEmail?: string | null;
-    displayName?: string | null;
-    avatarUrl?: string | null;
-    lastUsedAt?: string | null;
-    isActive?: boolean;
-  }>;
+  /** V4 API: structured policy array */
+  policies?: RawUserPolicy[];
+  /** V4 API: OAuth providers */
+  linkedProviders?: RawProvider[];
+  /** Legacy compat */
+  linkedAccounts?: RawProvider[];
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -58,34 +72,40 @@ const extractErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : 'Unknown error';
 };
 
-type RawLinkedAccount = NonNullable<UserApiModel['linkedAccounts']>[number];
-
-const normalizeLinkedAccount = (account: RawLinkedAccount): LinkedAccount => ({
-  provider: account?.provider || 'unknown',
-  providerEmail: account?.providerEmail ?? null,
-  displayName: account?.displayName ?? null,
-  avatarUrl: account?.avatarUrl ?? null,
-  lastUsedAt: account?.lastUsedAt ?? null,
-  isActive: account?.isActive ?? false,
+const normalizeProvider = (p: RawProvider): LinkedAccount => ({
+  provider: p?.provider || 'unknown',
+  providerEmail: p?.providerEmail ?? null,
+  displayName: p?.displayName ?? null,
+  avatarUrl: p?.avatarUrl ?? null,
+  lastUsedAt: p?.lastUsedAt ?? null,
+  linkedAt: p?.linkedAt ?? null,
+  isActive: p?.isActive ?? false,
 });
 
-const normalizeUser = (user: UserApiModel): User => ({
-  id: user.id,
-  email: user.email,
-  name: user.name || user.fullName || '',
-  unit: user.unit ?? '',
-  created: user.created || user.createdAt || '',
-  role: user.role,
-  status: user.status,
-  macAddress: user.macAddress ?? null,
-  bandwidthPolicy: user.bandwidthPolicy ?? null,
-  sessionPolicy: user.sessionPolicy ?? null,
-  auditPolicy: user.auditPolicy ?? null,
-  securityPolicy: user.securityPolicy ?? null,
-  linkedAccounts: Array.isArray(user.linkedAccounts)
-    ? user.linkedAccounts.map(normalizeLinkedAccount)
-    : [],
+const normalizePolicy = (p: RawUserPolicy): UserPolicy => ({
+  id: p.id,
+  name: p.name,
+  type: p.type as UserPolicy['type'],
+  isActive: p.isActive,
+  detail: p.detail as unknown as UserPolicy['detail'],
 });
+
+const normalizeUser = (user: UserApiModel): User => {
+  // Support both linkedProviders (V4) and linkedAccounts (legacy)
+  const rawProviders = user.linkedProviders ?? user.linkedAccounts ?? [];
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name || user.fullName || '',
+    unit: user.unit ?? '',
+    created: user.created || user.createdAt || '',
+    role: user.role,
+    status: user.status,
+    macAddress: user.macAddress ?? null,
+    policies: Array.isArray(user.policies) ? user.policies.map(normalizePolicy) : [],
+    linkedProviders: rawProviders.map(normalizeProvider),
+  };
+};
 
 const serializeUser = (user: Partial<User>) => ({
   email: user.email,
@@ -94,10 +114,8 @@ const serializeUser = (user: Partial<User>) => ({
   role: user.role,
   status: user.status,
   macAddress: user.macAddress,
-  bandwidthPolicy: user.bandwidthPolicy,
-  sessionPolicy: user.sessionPolicy,
-  auditPolicy: user.auditPolicy,
-  securityPolicy: user.securityPolicy,
+  // Send policy IDs if available
+  policyIds: user.policies?.map(p => p.id),
 });
 
 // ─── User CRUD ───────────────────────────────────────────────────────────────
@@ -118,7 +136,13 @@ export const fetchUsers = async (role?: string | null): Promise<User[]> => {
   }
 };
 
-export const fetchPolicies = async (): Promise<WifiPolicy[]> => [...initialPolicies];
+export const fetchPolicies = async (): Promise<WifiPolicy[]> => {
+  try {
+    return await policiesApi.getWifiPolicies();
+  } catch (error) {
+    throw new Error(extractErrorMessage(error));
+  }
+};
 
 export const addUser = async (
   user: Omit<User, 'id' | 'created' | 'linkedAccounts'>,

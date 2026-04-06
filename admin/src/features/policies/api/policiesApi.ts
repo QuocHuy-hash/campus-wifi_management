@@ -101,7 +101,7 @@ const normalizeWifiPolicy = (policy: WifiPolicy): WifiPolicy => {
     auditMaxSessionTimeUnit: normalizeUnit(
       (detail as Partial<WifiPolicy>).auditMaxSessionTimeUnit ?? policyWithoutDetail.auditMaxSessionTimeUnit,
       'hour'
-    ) as 'minute' | 'hour',
+    ) as 'minute' | 'hour' | 'day',
     accountingIntervalUnit: normalizeUnit(
       (detail as Partial<WifiPolicy>).accountingIntervalUnit ?? policyWithoutDetail.accountingIntervalUnit,
       'second'
@@ -109,7 +109,7 @@ const normalizeWifiPolicy = (policy: WifiPolicy): WifiPolicy => {
     logRetentionUnit: normalizeUnit(
       (detail as Partial<WifiPolicy>).logRetentionUnit ?? policyWithoutDetail.logRetentionUnit,
       'month'
-    ) as 'month' | 'year',
+    ) as 'day' | 'month' | 'year',
     macCacheTimeUnit: normalizeUnit(
       (detail as Partial<WifiPolicy>).macCacheTimeUnit ?? policyWithoutDetail.macCacheTimeUnit,
       'hour'
@@ -125,53 +125,45 @@ const normalizeWifiPolicy = (policy: WifiPolicy): WifiPolicy => {
 };
 
 const serializeWifiPolicy = (policy: Omit<WifiPolicy, 'id'>): Record<string, unknown> => {
-  const detail: Record<string, unknown> = {};
-
-  if (typeof policy.downloadLimit === 'number') detail.downloadLimit = policy.downloadLimit;
-  if (typeof policy.uploadLimit === 'number') detail.uploadLimit = policy.uploadLimit;
-  if (typeof policy.maxSessionTime === 'number') detail.maxSessionTime = policy.maxSessionTime;
-  if (typeof policy.maxSessionData === 'number') detail.maxSessionData = policy.maxSessionData;
-  if (typeof policy.vlanId === 'number') detail.vlanId = policy.vlanId;
-  if (typeof policy.maxDailyData === 'number') detail.maxDailyData = policy.maxDailyData;
-  if (typeof policy.idleTimeout === 'number') detail.idleTimeout = policy.idleTimeout;
-  if (typeof policy.autoReLogin === 'boolean') detail.autoReLogin = policy.autoReLogin;
-  if (typeof policy.bindMacAddress === 'boolean') detail.bindMacAddress = policy.bindMacAddress;
-  if (typeof policy.isActive === 'boolean') detail.isActive = policy.isActive;
-
-  if (typeof policy.auditMaxSessionTime === 'number') detail.auditMaxSessionTime = policy.auditMaxSessionTime;
-  if (policy.auditMaxSessionTimeUnit) detail.auditMaxSessionTimeUnit = denormalizeUnit(policy.auditMaxSessionTimeUnit);
-  if (typeof policy.auditMaxDataUsage === 'number') detail.auditMaxDataUsage = policy.auditMaxDataUsage;
-  if (policy.auditMaxDataUsageUnit) detail.auditMaxDataUsageUnit = policy.auditMaxDataUsageUnit;
-  if (typeof policy.accountingInterval === 'number') detail.accountingInterval = policy.accountingInterval;
-  if (policy.accountingIntervalUnit) detail.accountingIntervalUnit = denormalizeUnit(policy.accountingIntervalUnit);
-  if (typeof policy.logRetentionPeriod === 'number') detail.logRetentionPeriod = policy.logRetentionPeriod;
-  if (policy.logRetentionUnit) detail.logRetentionUnit = denormalizeUnit(policy.logRetentionUnit);
-  if (policy.disconnectAction) detail.disconnectAction = policy.disconnectAction;
-
-  if (typeof policy.maxConcurrentDevices === 'number') detail.maxConcurrentDevices = policy.maxConcurrentDevices;
-  if (typeof policy.macCachingEnabled === 'boolean') detail.macCachingEnabled = policy.macCachingEnabled;
-  if (typeof policy.macCacheTime === 'number') detail.macCacheTime = policy.macCacheTime;
-  if (policy.macCacheTimeUnit) detail.macCacheTimeUnit = denormalizeUnit(policy.macCacheTimeUnit);
-  if (typeof policy.reAuthInterval === 'number') detail.reAuthInterval = policy.reAuthInterval;
-  if (policy.reAuthIntervalUnit) detail.reAuthIntervalUnit = denormalizeUnit(policy.reAuthIntervalUnit);
-  if (typeof policy.allowUserMacManagement === 'boolean') detail.allowUserMacManagement = policy.allowUserMacManagement;
-  if (typeof policy.retryLimit === 'number') detail.retryLimit = policy.retryLimit;
-
-  return {
-    type: toApiPolicyType(policy.type),
+  const result: Record<string, unknown> = {
     name: policy.name,
     description: policy.description,
     isActive: policy.isActive,
     applyToRoles: (policy.applyToRoles ?? []).map(denormalizeRole),
     applyToArea: policy.applyToArea,
     applyByTime: policy.applyByTime,
-    detail,
-    auditMaxSessionTimeUnit: denormalizeUnit(policy.auditMaxSessionTimeUnit),
-    accountingIntervalUnit: denormalizeUnit(policy.accountingIntervalUnit),
-    logRetentionUnit: denormalizeUnit(policy.logRetentionUnit),
-    macCacheTimeUnit: denormalizeUnit(policy.macCacheTimeUnit),
-    reAuthIntervalUnit: denormalizeUnit(policy.reAuthIntervalUnit),
   };
+
+  if (typeof policy.downloadLimit === 'number') result.downloadLimit = policy.downloadLimit;
+  if (typeof policy.uploadLimit === 'number') result.uploadLimit = policy.uploadLimit;
+  if (typeof policy.maxSessionTime === 'number') result.maxSessionTime = policy.maxSessionTime;
+  if (typeof policy.maxSessionData === 'number') result.maxSessionData = policy.maxSessionData;
+  if (typeof policy.vlanId === 'number') result.vlanId = policy.vlanId;
+  if (typeof policy.maxDailyData === 'number') result.maxDailyData = policy.maxDailyData;
+  if (typeof policy.idleTimeout === 'number') result.idleTimeout = policy.idleTimeout;
+  if (typeof policy.autoReLogin === 'boolean') result.autoReLogin = policy.autoReLogin;
+  if (typeof policy.bindMacAddress === 'boolean') result.bindMacAddress = policy.bindMacAddress;
+
+  if (typeof policy.auditMaxSessionTime === 'number') result.auditMaxSessionTime = policy.auditMaxSessionTime;
+  if (policy.auditMaxSessionTimeUnit) result.auditMaxSessionTimeUnit = denormalizeUnit(policy.auditMaxSessionTimeUnit);
+  if (typeof policy.auditMaxDataUsage === 'number') result.auditMaxDataUsage = policy.auditMaxDataUsage;
+  if (policy.auditMaxDataUsageUnit) result.auditMaxDataUsageUnit = policy.auditMaxDataUsageUnit;
+  if (typeof policy.accountingInterval === 'number') result.accountingInterval = policy.accountingInterval;
+  if (policy.accountingIntervalUnit) result.accountingIntervalUnit = denormalizeUnit(policy.accountingIntervalUnit);
+  if (typeof policy.logRetentionPeriod === 'number') result.logRetentionPeriod = policy.logRetentionPeriod;
+  if (policy.logRetentionUnit) result.logRetentionUnit = denormalizeUnit(policy.logRetentionUnit);
+  if (policy.disconnectAction) result.disconnectAction = policy.disconnectAction;
+
+  if (typeof policy.maxConcurrentDevices === 'number') result.maxConcurrentDevices = policy.maxConcurrentDevices;
+  if (typeof policy.macCachingEnabled === 'boolean') result.macCachingEnabled = policy.macCachingEnabled;
+  if (typeof policy.macCacheTime === 'number') result.macCacheTime = policy.macCacheTime;
+  if (policy.macCacheTimeUnit) result.macCacheTimeUnit = denormalizeUnit(policy.macCacheTimeUnit);
+  if (typeof policy.reAuthInterval === 'number') result.reAuthInterval = policy.reAuthInterval;
+  if (policy.reAuthIntervalUnit) result.reAuthIntervalUnit = denormalizeUnit(policy.reAuthIntervalUnit);
+  if (typeof policy.allowUserMacManagement === 'boolean') result.allowUserMacManagement = policy.allowUserMacManagement;
+  if (typeof policy.retryLimit === 'number') result.retryLimit = policy.retryLimit;
+
+  return result;
 };
 
 const normalizeAuthPolicy = (policy: AuthPolicy): AuthPolicy => {
@@ -184,7 +176,7 @@ const normalizeAuthPolicy = (policy: AuthPolicy): AuthPolicy => {
 };
 
 export const policiesApi = {
-  getWifiPolicies: async (type?: 'bandwidth' | 'audit'): Promise<WifiPolicy[]> => {
+  getWifiPolicies: async (type?: string): Promise<WifiPolicy[]> => {
     const response = await axios.get<ApiResponse<WifiPolicy[]> | WifiPolicy[]>(`${API_BASE_URL}/wifi-policies`, {
       params: type ? { type } : undefined,
     });
@@ -192,19 +184,27 @@ export const policiesApi = {
   },
 
   createWifiPolicy: async (data: Omit<WifiPolicy, 'id'>): Promise<WifiPolicy> => {
+    const typeUri = (data.type || 'bandwidth').toLowerCase();
     const response = await axios.post<ApiResponse<WifiPolicy> | WifiPolicy>(
-      `${API_BASE_URL}/wifi-policies`,
+      `${API_BASE_URL}/wifi-policies/${typeUri}`,
       serializeWifiPolicy(data)
     );
     return normalizeWifiPolicy(unwrapData<WifiPolicy>(response.data));
   },
 
   updateWifiPolicy: async (id: number, data: Omit<WifiPolicy, 'id'>): Promise<WifiPolicy> => {
+    const typeUri = (data.type || 'bandwidth').toLowerCase();
     const response = await axios.put<ApiResponse<WifiPolicy> | WifiPolicy>(
-      `${API_BASE_URL}/wifi-policies/${id}`,
+      `${API_BASE_URL}/wifi-policies/${typeUri}/${id}`,
       serializeWifiPolicy(data)
     );
-    return normalizeWifiPolicy(unwrapData<WifiPolicy>(response.data));
+    
+    const returnedData = unwrapData<WifiPolicy>(response.data);
+    // Many PUT endpoints return only { code: 200, message: 'Updated successfully' }
+    // As a fallback, reconstruct the policy object to keep local Redux state synchronized
+    const hasFullData = returnedData && typeof returnedData === 'object' && 'id' in returnedData;
+    
+    return normalizeWifiPolicy(hasFullData ? returnedData : ({ ...data, id } as WifiPolicy));
   },
 
   deleteWifiPolicy: async (id: number): Promise<void> => {

@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { initialAuthPolicies, AuthPolicy } from '@/data/mockData';
+import { AuthPolicy } from '@/data/mockData';
 import { AuthPoliciesState } from '../types';
 import { policiesApi } from '../api/policiesApi';
 
@@ -25,7 +25,7 @@ export const deleteAuthPolicyAsync = createAsyncThunk('authPolicies/deleteAuthPo
 });
 
 const initialState: AuthPoliciesState = {
-  data: initialAuthPolicies,
+  data: [],
   status: 'idle',
   error: null,
 

@@ -10,7 +10,7 @@ import {
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { RootState, AppDispatch } from '@/stores/store';
 import { setFilterUnit } from '../slices/dashboardSlice';
-import { accessTrendData, userGroupData, departmentData } from '../types/mockData';
+
 
 const renderCustomLabel = ({ cx, cy, midAngle, outerRadius, name, value }: any) => {
   const RADIAN = Math.PI / 180;
@@ -62,7 +62,7 @@ export const DashboardCharts = () => {
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
-                data={userGroupData}
+                data={[]}
                 cx="50%"
                 cy="50%"
                 labelLine={true}
@@ -71,7 +71,7 @@ export const DashboardCharts = () => {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {userGroupData.map((entry, index) => (
+                {[]?.map((entry: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -86,7 +86,7 @@ export const DashboardCharts = () => {
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
-                data={departmentData}
+                data={[]}
                 cx="50%"
                 cy="50%"
                 labelLine={true}
@@ -95,7 +95,7 @@ export const DashboardCharts = () => {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {departmentData.map((entry, index) => (
+                {[]?.map((entry: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -109,7 +109,7 @@ export const DashboardCharts = () => {
       <Card className="p-4">
         <h3 className="text-sm font-semibold text-[#1e3a5f] mb-4">Số lượt truy cập theo thời gian</h3>
         <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={accessTrendData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+          <LineChart data={[]} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis 
               dataKey="day" 

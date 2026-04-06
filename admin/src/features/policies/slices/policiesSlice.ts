@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { initialPolicies, WifiPolicy } from '@/data/mockData';
+import { WifiPolicy } from '@/data/mockData';
 import { PoliciesState } from '../types';
 import { policiesApi } from '../api/policiesApi';
 
@@ -28,7 +28,7 @@ export const deleteWifiPolicyAsync = createAsyncThunk('policies/deleteWifiPolicy
 });
 
 const initialState: PoliciesState = {
-  data: initialPolicies,
+  data: [],
   status: 'idle',
   error: null,
   
