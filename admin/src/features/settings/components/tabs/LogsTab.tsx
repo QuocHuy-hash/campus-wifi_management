@@ -5,6 +5,7 @@ import { Eye } from 'lucide-react';
 import { AppDispatch, RootState } from '../../../../stores/store';
 import { setLogFilter, setLogDetailDialogOpen, setSelectedLog } from '../../slices/logsSlice';
 import { LogEntry } from '../../types';
+import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
 
 export const LogsTab = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -89,7 +90,7 @@ export const LogsTab = () => {
                     index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                   }`}
                 >
-                  <td className="px-4 py-3 text-sm text-gray-600 font-mono">{log.timestamp}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600 font-mono">{formatDateTime(log.timestamp)}</td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{log.user}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{log.action}</td>
                   <td className="px-4 py-3 text-sm">

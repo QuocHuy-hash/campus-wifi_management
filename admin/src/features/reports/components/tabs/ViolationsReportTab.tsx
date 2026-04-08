@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '@/stores/store';
 import { fetchViolations } from '../../slices/violationsReportSlice';
+import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
 
 export const ViolationsReportTab = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -58,7 +59,7 @@ export const ViolationsReportTab = () => {
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-500">{item.time}</span>
+                <span className="text-sm text-gray-500">{formatDateTime(item.time)}</span>
                 <span className="font-medium">{item.type}</span>
               </div>
               <span className="text-sm text-gray-600">{item.user}</span>

@@ -10,6 +10,7 @@ import { fetchIncidents } from '../../slices/incidentsReportSlice';
 import { fetchSessionsReport } from '../../slices/usersReportSlice';
 import { fetchViolations } from '../../slices/violationsReportSlice';
 import { fetchSystemLogs } from '../../slices/logsReportSlice';
+import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
 
 type Severity = 'critical' | 'warning' | 'info';
 
@@ -439,8 +440,8 @@ export const UserNetworkIncidentsReportTab = () => {
             </thead>
             <tbody className="divide-y">
               {filteredLogs.map((item, idx) => (
-                <tr key={`${item.time}-${idx}`}>
-                  <td className="px-3 py-2">{item.time}</td>
+                <tr key={`${formatDateTime(item.time)}-${idx}`}>
+                  <td className="px-3 py-2">{formatDateTime(item.time)}</td>
                   <td className="px-3 py-2">
                     <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${severityColor[item.severity]}`}>
                       {severityLabel[item.severity]}

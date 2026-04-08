@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { AppDispatch, RootState } from '../../../../stores/store';
 import { setLogDetailDialogOpen, setSelectedLog } from '../../slices/logsSlice';
+import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
 
 export const LogsDialogs = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -24,7 +25,7 @@ export const LogsDialogs = () => {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-start gap-4">
               <div className="text-right text-sm font-medium text-gray-500">Thời gian:</div>
-              <div className="col-span-3 text-sm font-mono text-gray-900 border bg-gray-50 p-2 rounded">{selectedLog.timestamp}</div>
+              <div className="col-span-3 text-sm font-mono text-gray-900 border bg-gray-50 p-2 rounded">{formatDateTime(selectedLog.timestamp)}</div>
             </div>
             <div className="grid grid-cols-4 items-start gap-4">
               <div className="text-right text-sm font-medium text-gray-500">Người dùng:</div>

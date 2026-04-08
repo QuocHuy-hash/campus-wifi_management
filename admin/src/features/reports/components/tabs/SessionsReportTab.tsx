@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { RootState, AppDispatch } from '@/stores/store';
 import { fetchSessionData, setSessionCurrentPage } from '../../slices/sessionsReportSlice';
+import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
 
 const sessionItemsPerPage = 5;
 
@@ -64,8 +65,8 @@ export const SessionsReportTab = () => {
                   </td>
                   <td className="px-4 py-3 text-sm font-mono text-gray-600">{row.macAddress}</td>
                   <td className="px-4 py-3 text-sm font-mono text-gray-600">{row.ipAddress}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{row.startTime}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{row.endTime}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{formatDateTime(row.startTime)}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{formatDateTime(row.endTime)}</td>
                   <td className="px-4 py-3 text-sm text-right font-medium">{row.duration}</td>
                   <td className="px-4 py-3 text-sm text-right font-bold text-[#1e3a5f]">{row.dataUsed.toFixed(2)}</td>
                 </tr>

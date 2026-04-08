@@ -86,9 +86,10 @@ export interface WifiUser {
 
 export interface UserSession {
   sessionId: string;
+  userId: number;
   username: string;
   fullName: string;
-  deviceType: string;
+  deviceType: 'Laptop' | 'Smartphone' | 'Monitor' | 'Tablet' | 'Unknown';
   deviceName: string;
   mac: string;
   ip: string;
@@ -96,13 +97,56 @@ export interface UserSession {
   vlan: string;
   ap: string;
   site: string;
+  campus?: string;
+  building?: string;
+  identity?: string;
   startTime: string;
   stopTime: string;
   duration: string;
   download: string;
   upload: string;
   total: string;
-  terminateCause: string;
+  terminateCause: 'normal' | 'user-request' | 'idle-timeout' | 'hard-timeout' | 'quota-exceeded' | '-';
   status: 'active' | 'completed';
   tags: string[];
+}
+
+// ─── API Response DTOs từ backend (v7) ───────────────────────────────────────
+
+export interface DeviceUserInfo {
+  macAddress: string;
+  deviceType: string;
+  deviceName: string;
+  userId: number;
+  userName: string;
+  userGroup: string;
+}
+
+export interface UserSessionResponse {
+  sessionId: string;
+  ipAddress: string;
+  userId: number;
+  userAgent: string;
+  startTime: string;
+  endTime: string | null;
+  status: 'ACTIVE' | 'ENDED' | 'EXPIRED';
+  createdAt: string;
+  ssid: string;
+  vlan: string;
+  apMac: string;
+  campusId: number | null;
+  buildingId: number | null;
+  roleId: number | null;
+  downloadBytes: number;
+  uploadBytes: number;
+  terminateCause: string | null;
+  deviceUserInfo: DeviceUserInfo;
+}
+
+// ─── Register Device ──────────────────────────────────────────────────────────
+
+export interface RegisterDeviceRequest {
+  deviceMacAddress: string;
+  deviceType: string;
+  deviceName: string;
 }

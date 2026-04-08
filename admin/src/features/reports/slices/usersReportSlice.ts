@@ -1,20 +1,39 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { WifiUser, UserSession } from '../types';
 import { reportsApi } from '../api/reportsApi';
+import { sessionsApi } from '../api/sessionsApi';
 
 export const fetchUsersReport = createAsyncThunk('reportsUsers/fetchUsers', async () => {
   return await reportsApi.fetchWifiUsers();
 });
 
-export const fetchSessionsReport = createAsyncThunk('reportsUsers/fetchSessions', async () => {
-  return await reportsApi.fetchUserSessions();
-});
+export const fetchSessionsReport = createAsyncThunk(
+  'reportsUsers/fetchSessions',
+  async () => sessionsApi.getAllSessions(),
+);
+
+export const registerDevice = createAsyncThunk(
+  'reportsUsers/registerDevice',
+  async (params: {
+    userId: number;
+    deviceMacAddress: string;
+    deviceType: string;
+    deviceName: string;
+  }) => {
+    await sessionsApi.registerDevice(params.userId, {
+      deviceMacAddress: params.deviceMacAddress,
+      deviceType: params.deviceType,
+      deviceName: params.deviceName,
+    });
+  },
+);
 
 export interface UsersReportState {
   users: WifiUser[];
   sessions: UserSession[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
-  
+  registerDeviceStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
+
   // Trạng thái các filter (Chuyên biệt cho tab WiFi Users)
   userSearchTerm: string;
   userGroupFilter: string;
@@ -33,7 +52,7 @@ export interface UsersReportState {
   sessionBuildingFilter: string;
   sessionIdentityFilter: string;
   sessionCurrentPage: number;
-  
+
   selectedUserForSessions: string | null;
 }
 
@@ -41,7 +60,8 @@ const initialState: UsersReportState = {
   users: [],
   sessions: [],
   status: 'idle',
-  
+  registerDeviceStatus: 'idle',
+
   userSearchTerm: '',
   userGroupFilter: 'all',
   userRoleFilter: 'all',
@@ -58,7 +78,7 @@ const initialState: UsersReportState = {
   sessionBuildingFilter: 'all',
   sessionIdentityFilter: '',
   sessionCurrentPage: 1,
-  
+
   selectedUserForSessions: null,
 };
 
@@ -111,25 +131,45 @@ const usersReportSlice = createSlice({
       state.sessionBuildingFilter = 'all';
       state.sessionIdentityFilter = '';
       state.sessionCurrentPage = 1;
-    }
+    },
+    resetRegisterDeviceStatus: (state) => {
+      state.registerDeviceStatus = 'idle';
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(fetchUsersReport.fulfilled, (state, action) => {
       state.users = action.payload;
       state.status = 'succeeded';
     });
+    builder.addCase(fetchSessionsReport.pending, (state) => {
+      state.status = 'loading';
+    });
     builder.addCase(fetchSessionsReport.fulfilled, (state, action) => {
       state.sessions = action.payload;
+      state.status = 'succeeded';
     });
-  }
+    builder.addCase(fetchSessionsReport.rejected, (state) => {
+      state.status = 'failed';
+    });
+    builder.addCase(registerDevice.pending, (state) => {
+      state.registerDeviceStatus = 'loading';
+    });
+    builder.addCase(registerDevice.fulfilled, (state) => {
+      state.registerDeviceStatus = 'succeeded';
+    });
+    builder.addCase(registerDevice.rejected, (state) => {
+      state.registerDeviceStatus = 'failed';
+    });
+  },
 });
 
-export const { 
+export const {
   setUserSearchTerm, setUserGroupFilter, setUserRoleFilter, toggleWifiUserStatus, setUserCurrentPage, resetUserFilters,
-  setSessionTimeRange, setSessionUsernameFilter, setSessionIpFilter, setSessionMacFilter, 
+  setSessionTimeRange, setSessionUsernameFilter, setSessionIpFilter, setSessionMacFilter,
   setSessionSsidFilter, setSessionStatusFilter, setSessionTerminateFilter, setSessionCurrentPage,
   setSelectedUserForSessions, resetSessionFilters,
-  setSessionCampusFilter, setSessionBuildingFilter, setSessionIdentityFilter, resetSidebarSessionFilters
+  setSessionCampusFilter, setSessionBuildingFilter, setSessionIdentityFilter, resetSidebarSessionFilters,
+  resetRegisterDeviceStatus,
 } = usersReportSlice.actions;
 
 export default usersReportSlice.reducer;

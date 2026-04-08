@@ -5,12 +5,15 @@ import { policiesApi } from '@/features/policies/api/policiesApi';
 import {
   User,
   UserPolicy,
+  UserDetail,
   UsersApiEnvelope,
   WifiPolicy,
   LinkedAccount,
   MeResponse,
   ChangePasswordRequest,
   LinkProviderRequest,
+  AssignSinglePolicyRequest,
+  BulkAssignPoliciesRequest,
 } from '../types';
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -43,6 +46,9 @@ interface UserApiModel {
   name?: string;
   fullName?: string;
   unit?: string | null;
+  deviceMacAddress: string | null;
+  deviceType?: string | null;
+  deviceName?: string | null;
   created?: string;
   createdAt?: string;
   role: string;
@@ -54,6 +60,18 @@ interface UserApiModel {
   linkedProviders?: RawProvider[];
   /** Legacy compat */
   linkedAccounts?: RawProvider[];
+}
+
+interface UserDetailApiModel {
+  id: number;
+  username: string;
+  email: string;
+  fullName: string;
+  status: string;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -90,6 +108,18 @@ const normalizePolicy = (p: RawUserPolicy): UserPolicy => ({
   detail: p.detail as unknown as UserPolicy['detail'],
 });
 
+const normalizeUserDetail = (user: UserDetailApiModel): UserDetail => ({
+  id: user.id,
+  username: user.username,
+  email: user.email,
+  fullName: user.fullName,
+  status: user.status,
+  emailVerified: user.emailVerified,
+  phoneVerified: user.phoneVerified,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt,
+});
+
 const normalizeUser = (user: UserApiModel): User => {
   // Support both linkedProviders (V4) and linkedAccounts (legacy)
   const rawProviders = user.linkedProviders ?? user.linkedAccounts ?? [];
@@ -102,6 +132,9 @@ const normalizeUser = (user: UserApiModel): User => {
     role: user.role,
     status: user.status,
     macAddress: user.macAddress ?? null,
+    deviceMacAddress: user.deviceMacAddress ?? null,
+    deviceType: user.deviceType ?? null,
+    deviceName: user.deviceName ?? null,
     policies: Array.isArray(user.policies) ? user.policies.map(normalizePolicy) : [],
     linkedProviders: rawProviders.map(normalizeProvider),
   };
@@ -130,7 +163,36 @@ export const fetchUsers = async (role?: string | null): Promise<User[]> => {
       USERS_ENDPOINT,
       { params: role ? { role } : undefined },
     );
+console.log("Raw response data:", response.data); // Debug log
     return unwrapData<UserApiModel[]>(response.data).map(normalizeUser);
+  } catch (error) {
+    throw new Error(extractErrorMessage(error));
+  }
+};
+
+/**
+ * GET /api/v1/users/{userId}
+ */
+export const fetchUserById = async (userId: number): Promise<UserDetail> => {
+  try {
+    const response = await axios.get<UsersApiEnvelope<UserDetailApiModel> | UserDetailApiModel>(
+      `${USERS_ENDPOINT}/${userId}`,
+    );
+    return normalizeUserDetail(unwrapData<UserDetailApiModel>(response.data));
+  } catch (error) {
+    throw new Error(extractErrorMessage(error));
+  }
+};
+
+/**
+ * GET /api/v1/users/{userId}/groups
+ */
+export const fetchUserGroups = async (userId: number): Promise<number[]> => {
+  try {
+    const response = await axios.get<UsersApiEnvelope<number[]> | number[]>(
+      `${USERS_ENDPOINT}/${userId}/groups`,
+    );
+    return unwrapData<number[]>(response.data);
   } catch (error) {
     throw new Error(extractErrorMessage(error));
   }
@@ -185,6 +247,70 @@ export const assignPolicy = async (userId: number, policyData: Partial<User>): P
       serializeUser(policyData),
     );
     return normalizeUser(unwrapData<UserApiModel>(response.data));
+  } catch (error) {
+    throw new Error(extractErrorMessage(error));
+  }
+};
+
+/**
+ * GET /api/v1/users/{userId}/policies
+ */
+export const fetchUserPolicies = async (userId: number): Promise<UserPolicy[]> => {
+  try {
+    const response = await axios.get<UsersApiEnvelope<RawUserPolicy[]> | RawUserPolicy[]>(
+      `${USERS_ENDPOINT}/${userId}/policies`,
+    );
+    return unwrapData<RawUserPolicy[]>(response.data).map(normalizePolicy);
+  } catch (error) {
+    throw new Error(extractErrorMessage(error));
+  }
+};
+
+/**
+ * POST /api/v1/users/{userId}/policies
+ */
+export const assignSinglePolicyToUser = async (
+  userId: number,
+  data: AssignSinglePolicyRequest,
+): Promise<void> => {
+  try {
+    await axios.post(`${USERS_ENDPOINT}/${userId}/policies`, data);
+  } catch (error) {
+    throw new Error(extractErrorMessage(error));
+  }
+};
+
+/**
+ * POST /api/v1/users/{userId}/policies/bulk
+ */
+export const bulkAssignPoliciesToUser = async (
+  userId: number,
+  data: BulkAssignPoliciesRequest,
+): Promise<void> => {
+  try {
+    await axios.post(`${USERS_ENDPOINT}/${userId}/policies/bulk`, data);
+  } catch (error) {
+    throw new Error(extractErrorMessage(error));
+  }
+};
+
+/**
+ * DELETE /api/v1/users/{userId}/policies/{policyId}
+ */
+export const removePolicyFromUser = async (userId: number, policyId: number): Promise<void> => {
+  try {
+    await axios.delete(`${USERS_ENDPOINT}/${userId}/policies/${policyId}`);
+  } catch (error) {
+    throw new Error(extractErrorMessage(error));
+  }
+};
+
+/**
+ * DELETE /api/v1/users/{userId}/policies
+ */
+export const removeAllPoliciesFromUser = async (userId: number): Promise<void> => {
+  try {
+    await axios.delete(`${USERS_ENDPOINT}/${userId}/policies`);
   } catch (error) {
     throw new Error(extractErrorMessage(error));
   }

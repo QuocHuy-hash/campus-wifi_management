@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchSessionData } from '../../slices/sessionsReportSlice';
+import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
 
 const parseDateTime = (value: string) => {
   const date = new Date(value.replace(' ', 'T'));
@@ -429,7 +430,7 @@ export const SessionTimelineReportTab = () => {
               {analytics.unusualLogins.map((item, idx) => (
                 <tr key={`${item.username}-${idx}`}>
                   <td className="px-3 py-2">{item.username}</td>
-                  <td className="px-3 py-2">{item.startTime}</td>
+                  <td className="px-3 py-2">{formatDateTime(item.startTime)}</td>
                   <td className="px-3 py-2">{item.location}</td>
                 </tr>
               ))}
@@ -461,8 +462,8 @@ export const SessionTimelineReportTab = () => {
                 <tr key={session.id}>
                   <td className="px-3 py-2">{session.username}</td>
                   <td className="px-3 py-2">{session.role}</td>
-                  <td className="px-3 py-2">{session.startTime}</td>
-                  <td className="px-3 py-2">{session.endTime}</td>
+                  <td className="px-3 py-2">{formatDateTime(session.startTime)}</td>
+                  <td className="px-3 py-2">{formatDateTime(session.endTime)}</td>
                   <td className="px-3 py-2 text-right">{session.duration}</td>
                   <td className="px-3 py-2 text-right">{Math.round(parseDurationMinutes(session.duration) * 0.8)}p</td>
                   <td className="px-3 py-2 text-right">{Math.max(0, parseDurationMinutes(session.duration) - Math.round(parseDurationMinutes(session.duration) * 0.8))}p</td>

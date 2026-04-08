@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { setSearchTerm, setSelectedBuilding } from '../slices/accessPointsSlice';
 import { useMemo } from 'react';
+import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
 
 export function APsTable() {
   const dispatch = useAppDispatch();
@@ -13,8 +14,15 @@ export function APsTable() {
     apsLoading,
     searchTerm,
     selectedBuilding,
+    selectedControllerFilter,
+    controllers,
     buildings
   } = useAppSelector(state => state.accessPoints);
+
+  const selectedController = useMemo(
+    () => controllers.find((controller) => controller.nasIdentifier === selectedControllerFilter),
+    [controllers, selectedControllerFilter],
+  );
 
   // Lọc AP theo từ khoá tìm kiếm và bộ lọc đã chọn
   const filteredAPs = useMemo(() => {
@@ -26,9 +34,39 @@ export function APsTable() {
       // Bộ lọc theo building
       const matchesBuilding = selectedBuilding === 'all' || ap.buildingId?.toString() === selectedBuilding;
 
-      return matchesSearch && matchesBuilding;
+      // Bộ lọc theo controller (được chọn ở bảng Controller)
+      const matchesController = (() => {
+        if (!selectedControllerFilter) return true;
+
+        const apWithExtra = ap as typeof ap & {
+          controllerId?: number | string;
+          nasIdentifier?: string;
+          controllerNasIdentifier?: string;
+        };
+
+        const apControllerCandidates = [
+          ap.controller,
+          apWithExtra.nasIdentifier,
+          apWithExtra.controllerNasIdentifier,
+          apWithExtra.controllerId != null ? String(apWithExtra.controllerId) : null,
+        ]
+          .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+          .map((value) => value.trim().toLowerCase());
+
+        const selectedCandidates = [
+          selectedControllerFilter,
+          selectedController?.nasIdentifier,
+          selectedController?.id != null ? String(selectedController.id) : null,
+        ]
+          .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+          .map((value) => value.trim().toLowerCase());
+
+        return apControllerCandidates.some((candidate) => selectedCandidates.includes(candidate));
+      })();
+
+      return matchesSearch && matchesBuilding && matchesController;
     });
-  }, [aps, searchTerm, selectedBuilding]);
+  }, [aps, searchTerm, selectedBuilding, selectedControllerFilter, selectedController]);
 
   return (
     <Card className="p-4">
@@ -94,7 +132,7 @@ export function APsTable() {
                   <td className="px-4 py-3 text-gray-600">{ap.modelName}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{ap.description || '-'}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
-                    {ap.createdAt ? new Date(ap.createdAt).toLocaleDateString('vi-VN') : '-'}
+                    {formatDate(ap.createdAt)}
                   </td>
                 </tr>
               ))}

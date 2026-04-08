@@ -49,9 +49,34 @@ export interface SecurityPolicyDetail {
 export interface UserPolicy {
   id: number;
   name: string;
-  type: 'BANDWIDTH' | 'SESSION' | 'AUTHORIZATION' | 'SECURITY';
+  type: 'BANDWIDTH' | 'SESSION' | 'AUTHORIZATION' | 'AUDIT' | 'SECURITY';
   isActive: boolean;
   detail: BandwidthPolicyDetail | SessionPolicyDetail | AuthorizationPolicyDetail | SecurityPolicyDetail;
+}
+
+/** User detail entity returned by GET /api/v1/users/{userId} */
+export interface UserDetail {
+  id: number;
+  username: string;
+  email: string;
+  fullName: string;
+  status: string;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssignSinglePolicyRequest {
+  policyId: number;
+}
+
+export interface BulkAssignPoliciesRequest {
+  bandwidthPolicyId?: number | null;
+  sessionPolicyId?: number | null;
+  authorizationPolicyId?: number | null;
+  auditPolicyId?: number | null;
+  securityPolicyId?: number | null;
 }
 
 /** WiFi user entity returned by GET /api/v1/users */
@@ -64,6 +89,9 @@ export interface User {
   role: string;
   status: string;
   macAddress: string | null;
+  deviceMacAddress?: string | null;
+  deviceType?: string | null;
+  deviceName?: string | null;
   /** Structured policies from API */
   policies: UserPolicy[];
   /** OAuth providers linked to this user */

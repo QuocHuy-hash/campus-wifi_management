@@ -4,11 +4,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Download, RefreshCw, Eye, Ban, Wifi, Laptop, Smartphone, Monitor, Power, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Download, RefreshCw, Eye, Ban, Wifi, Laptop, Smartphone, Monitor, Power, Tag, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { RootState, AppDispatch } from '@/stores/store';
+import { UserSession } from '../../types';
 import { 
   fetchUsersReport, fetchSessionsReport,
   setUserSearchTerm, setUserGroupFilter, setUserRoleFilter, toggleWifiUserStatus, setUserCurrentPage,
@@ -17,6 +17,8 @@ import {
   setSessionCampusFilter, setSessionBuildingFilter, setSessionIdentityFilter,
   setSelectedUserForSessions, resetUserFilters, resetSessionFilters, resetSidebarSessionFilters
 } from '../../slices/usersReportSlice';
+import { AddDeviceDialog } from '../dialogs/AddDeviceDialog';
+import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
 
 const userItemsPerPage = 5;
 const sessionsItemsPerPage = 5;
@@ -31,6 +33,7 @@ export const UsersReportTab = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [userManagementTab, setUserManagementTab] = useState('wifi-users');
   const [confirmToggleUser, setConfirmToggleUser] = useState<{ id: number; username: string; status: 'active' | 'blocked' } | null>(null);
+  const [selectedSessionForDeviceForm, setSelectedSessionForDeviceForm] = useState<UserSession | null>(null);
 
   const {
     users: mockWifiUsers, sessions: mockUserSessions, status,
@@ -56,6 +59,9 @@ export const UsersReportTab = () => {
   const sessionStartDate = ''; 
   const sessionEndDate = '';
   // Removed setSessionStartDate, setSessionEndDate since they aren't fully implemented in mock
+
+  // userId lấy thẳng từ session (được map từ deviceUserInfo.userId của backend)
+  const selectedDeviceUserId = selectedSessionForDeviceForm?.userId ?? null;
 
   return (
     <div className="space-y-4">
@@ -444,8 +450,8 @@ export const UsersReportTab = () => {
                             <p className="text-xs text-gray-500">{session.site}</p>
                           </td>
                           <td className="px-3 py-2">
-                            <p className="text-xs">{session.startTime}</p>
-                            <p className="text-xs text-gray-500">{session.stopTime}</p>
+                            <p className="text-xs">{formatDateTime(session.startTime)}</p>
+                            <p className="text-xs text-gray-500">{formatDateTime(session.stopTime)}</p>
                           </td>
                           <td className="px-3 py-2 text-right font-medium">{session.duration}</td>
                           <td className="px-3 py-2 text-right">
@@ -467,9 +473,19 @@ export const UsersReportTab = () => {
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex items-center justify-center gap-1">
-                                <Button variant="ghost" size="sm" title="Force Disconnect">
-                                  <Power size={14} className="text-red-600" />
-                                </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Thêm thiết bị"
+                                onClick={() => setSelectedSessionForDeviceForm(session)}
+                                className="h-8 px-2  border-emerald-200 hover:bg-emerald-50"
+                              >
+                                <Plus size={14} className="text-emerald-600" />
+                                {/* <span className="ml-1 text-xs">Thêm</span> */}
+                              </Button>
+                              <Button variant="ghost" size="sm" title="Force Disconnect">
+                                <Power size={14} className="text-red-600" />
+                              </Button>
                               <Button variant="ghost" size="sm" title="Gắn tag">
                                 <Tag size={14} className="text-amber-600" />
                               </Button>
@@ -509,6 +525,12 @@ export const UsersReportTab = () => {
                   </div>
                 </div>
               </Card>
+
+              <AddDeviceDialog
+                session={selectedSessionForDeviceForm}
+                userId={selectedDeviceUserId}
+                onClose={() => setSelectedSessionForDeviceForm(null)}
+              />
             </div>
           </TabsContent>
         </div>

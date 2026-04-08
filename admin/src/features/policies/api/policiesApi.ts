@@ -183,6 +183,13 @@ export const policiesApi = {
     return unwrapData<WifiPolicy[]>(response.data).map(normalizeWifiPolicy);
   },
 
+  getWifiPolicyById: async (id: number): Promise<WifiPolicy> => {
+    const response = await axios.get<ApiResponse<WifiPolicy> | WifiPolicy>(
+      `${API_BASE_URL}/wifi-policies/${id}`,
+    );
+    return normalizeWifiPolicy(unwrapData<WifiPolicy>(response.data));
+  },
+
   createWifiPolicy: async (data: Omit<WifiPolicy, 'id'>): Promise<WifiPolicy> => {
     const typeUri = (data.type || 'bandwidth').toLowerCase();
     const response = await axios.post<ApiResponse<WifiPolicy> | WifiPolicy>(
@@ -214,6 +221,11 @@ export const policiesApi = {
   getAuthPolicies: async (): Promise<AuthPolicy[]> => {
     const response = await axios.get<ApiResponse<AuthPolicy[]> | AuthPolicy[]>(`${API_BASE_URL}/auth-policies`);
     return unwrapData<AuthPolicy[]>(response.data).map(normalizeAuthPolicy);
+  },
+
+  getAuthPolicyById: async (id: number): Promise<AuthPolicy> => {
+    const response = await axios.get<ApiResponse<AuthPolicy> | AuthPolicy>(`${API_BASE_URL}/auth-policies/${id}`);
+    return normalizeAuthPolicy(unwrapData<AuthPolicy>(response.data));
   },
 
   createAuthPolicy: async (data: Omit<AuthPolicy, 'id'>): Promise<AuthPolicy> => {

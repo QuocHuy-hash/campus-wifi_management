@@ -1,11 +1,12 @@
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Edit, Trash2, Eye, Shield, Mail, Globe, Facebook } from 'lucide-react';
+import { Search, Edit, Trash2, Eye, Shield } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { setSearchTerm, openDialog } from '../slices/usersSlice';
 import { useMemo } from 'react';
 import { getUserRoleBadgeClass, getUserRoleLabel, USER_DIALOG_KEYS, USER_UI_TEXT } from '@/features/users/constants';
+import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
 
 export function UsersTable() {
   const dispatch = useAppDispatch();
@@ -46,6 +47,8 @@ export function UsersTable() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Email</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Họ tên</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Đơn vị</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">MAC thiết bị</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Thông tin thiết bị</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Ngày tạo</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Vai trò</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Liên kết</th>
@@ -63,7 +66,9 @@ export function UsersTable() {
                   <td className="px-4 py-3 text-sm text-gray-700">{user.email}</td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{user.name}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{user.unit}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{user.created}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{user.deviceMacAddress ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{user.deviceName && user.deviceType ? `${user.deviceName} (${user.deviceType})` : '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{formatDate(user.created)}</td>
                   <td className="px-4 py-3 text-sm">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getUserRoleBadgeClass(user.role)}`}
@@ -75,9 +80,9 @@ export function UsersTable() {
                     <div className="flex gap-2">
                       {user.linkedProviders?.map((acc, idx) => (
                         <span key={idx} title={`${acc.provider}: ${acc.providerEmail || acc.displayName || 'Linked'}`}>
-                          {(acc.provider === 'gmail' || acc.provider === 'google') && <Mail size={16} className="text-red-500" />}
-                          {(acc.provider === 'microsoft' || acc.provider === 'azure') && <Globe size={16} className="text-blue-500" />}
-                          {acc.provider === 'facebook' && <Facebook size={16} className="text-blue-600" />}
+                          {(acc.provider === 'gmail' || acc.provider === 'google') && <img src="/google.png" alt="Google" className="w-[16px] h-[16px]" />}
+                          {(acc.provider === 'microsoft' || acc.provider === 'azure') && <img src="/microsoft.png" alt="Microsoft" className="w-[16px] h-[16px]" />}
+                          {acc.provider === 'facebook' && <img src="/facebook.png" alt="Facebook" className="w-[16px] h-[16px]" />}
                         </span>
                       ))}
                       {(!user.linkedProviders || user.linkedProviders.length === 0) && (

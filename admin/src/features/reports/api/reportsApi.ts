@@ -72,17 +72,8 @@ const mockWifiUsers: WifiUser[] = [
   { id: 6, username: 'pv.tran', fullName: 'Trần Phương Vy', email: 'pv.tran@hcmus.edu.vn', mssv: '-', group: 'Giảng viên', role: 'Staff', devicesOnline: 2, sessionsToday: 4, sessionsWeek: 20, sessionsMonth: 65, trafficIn: '5.5 GB', trafficOut: '1.8 GB', status: 'active' },
 ];
 
-const mockUserSessions: UserSession[] = [
-  { sessionId: 'SES-2024011501234', username: '21120001', fullName: 'Nguyễn Văn An', deviceType: 'Laptop', deviceName: 'MacBook Pro', mac: 'AA:BB:CC:DD:EE:01', ip: '10.0.1.101', ssid: 'HCMUS-Student', vlan: 'VLAN 100', ap: 'AP-DA-A-01', site: 'Cơ sở Dĩ An - Tòa A', startTime: '2024-01-15 08:30:00', stopTime: '2024-01-15 12:45:00', duration: '4h 15m', download: '1.24 GB', upload: '0.32 GB', total: '1.56 GB', terminateCause: 'normal', status: 'completed', tags: [] },
-  { sessionId: 'SES-2024011501235', username: '21120045', fullName: 'Trần Thị Bình', deviceType: 'Smartphone', deviceName: 'iPhone 14', mac: 'AA:BB:CC:DD:EE:02', ip: '10.0.1.102', ssid: 'HCMUS-Student', vlan: 'VLAN 100', ap: 'AP-DA-B-02', site: 'Cơ sở Dĩ An - Tòa B', startTime: '2024-01-15 09:00:00', stopTime: '-', duration: '3h 25m', download: '0.85 GB', upload: '0.15 GB', total: '1.00 GB', terminateCause: '-', status: 'active', tags: [] },
-  { sessionId: 'SES-2024011501236', username: 'nv.nguyen', fullName: 'Nguyễn Văn Nam', deviceType: 'Laptop', deviceName: 'Dell XPS 15', mac: 'AA:BB:CC:DD:EE:03', ip: '10.0.2.50', ssid: 'HCMUS-Staff', vlan: 'VLAN 200', ap: 'AP-TD-E-01', site: 'Cơ sở Thủ Đức - Tòa E', startTime: '2024-01-15 07:45:00', stopTime: '2024-01-15 18:00:00', duration: '10h 15m', download: '5.52 GB', upload: '1.25 GB', total: '6.77 GB', terminateCause: 'user-request', status: 'completed', tags: [] },
-  { sessionId: 'SES-2024011501237', username: 'guest_event_001', fullName: 'Khách Hội nghị', deviceType: 'Laptop', deviceName: 'Windows Laptop', mac: 'AA:BB:CC:DD:EE:04', ip: '10.0.3.15', ssid: 'HCMUS-Guest', vlan: 'VLAN 300', ap: 'AP-227-G-01', site: 'Cơ sở 227 NVC - Hội trường', startTime: '2024-01-15 14:00:00', stopTime: '2024-01-15 16:00:00', duration: '2h 00m', download: '0.32 GB', upload: '0.05 GB', total: '0.37 GB', terminateCause: 'idle-timeout', status: 'completed', tags: [] },
-  { sessionId: 'SES-2024011501238', username: '20120156', fullName: 'Lê Hoàng Cường', deviceType: 'Smartphone', deviceName: 'Samsung Galaxy S23', mac: 'AA:BB:CC:DD:EE:05', ip: '10.0.1.156', ssid: 'HCMUS-Student', vlan: 'VLAN 100', ap: 'AP-DA-C-03', site: 'Cơ sở Dĩ An - Tòa C', startTime: '2024-01-15 10:15:00', stopTime: '2024-01-15 11:30:00', duration: '1h 15m', download: '2.89 GB', upload: '0.45 GB', total: '3.34 GB', terminateCause: 'quota-exceeded', status: 'completed', tags: ['nghi-ngo-vi-pham'] },
-];
-
 export const reportsApi = {
   fetchWifiUsers: () => Promise.resolve(mockWifiUsers),
-  fetchUserSessions: () => Promise.resolve(mockUserSessions),
   fetchUserReportData: () => Promise.resolve(mockUserReportData),
   fetchBandwidthData: () => Promise.resolve(mockBandwidthData),
   fetchControllers: () => Promise.resolve(mockControllerReportData),
