@@ -9,7 +9,14 @@ import { APsTable } from './components/APsTable';
 
 export function AccessPointsFeature() {
   const dispatch = useAppDispatch();
-  const { showControllerSection } = useAppSelector(state => state.accessPoints);
+  const {
+    showControllerSection,
+    aps,
+    controllers,
+    apsLoading,
+    controllersLoading,
+    locationsLoading,
+  } = useAppSelector(state => state.accessPoints);
 
   // Initial load
   useEffect(() => {
@@ -18,6 +25,16 @@ export function AccessPointsFeature() {
     dispatch(getCampuses());
     dispatch(getBuildings());
   }, [dispatch]);
+
+  const isInitialLoading = (apsLoading || controllersLoading || locationsLoading) && (aps.length === 0 || controllers.length === 0);
+
+  if (isInitialLoading) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-gray-600">
+        Đang tải dữ liệu...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

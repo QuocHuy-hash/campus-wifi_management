@@ -79,10 +79,10 @@ export const SystemOverviewTab = () => {
     {
       key: 'access',
       tab: 'access',
-      title: 'Phân quyền & Bảo mật',
+      title: 'Phân quyền & Nhóm',
       icon: Shield,
       primary: `${summary.totalGroups} nhóm quyền`,
-      secondary: `${summary.totalResources} tài nguyên, ${summary.allowedIps} IP whitelist`,
+      secondary: `${summary.totalResources} tài nguyên được phân quyền`,
       color: 'text-emerald-700 bg-emerald-50',
     },
     {

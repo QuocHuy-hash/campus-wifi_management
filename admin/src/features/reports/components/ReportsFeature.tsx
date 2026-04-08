@@ -1,6 +1,8 @@
 import { useLocation, useSearch } from 'wouter';
+import { useSelector } from 'react-redux';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { RootState } from '@/stores/store';
 
 import { ReportsFilterBar } from './ReportsFilterBar';
 import { UsersReportTab } from './tabs/UsersReportTab';
@@ -16,6 +18,7 @@ import { UserNetworkIncidentsReportTab } from './tabs/UserNetworkIncidentsReport
 
 export const ReportsFeature = () => {
   const [, setLocation] = useLocation();
+  const reports = useSelector((state: RootState) => state.reports);
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const activeTab = searchParams.get('tab') || 'overview';
@@ -23,6 +26,40 @@ export const ReportsFeature = () => {
   const handleTabChange = (value: string) => {
     setLocation(`/reports?tab=${value}`);
   };
+
+  const isCurrentTabLoading = (() => {
+    switch (activeTab) {
+      case 'overview':
+        return [
+          reports.users.status,
+          reports.bandwidth.status,
+          reports.infrastructure.status,
+          reports.violations.status,
+          reports.sessions.status,
+          reports.incidents.status,
+          reports.logs.status,
+        ].some((status) => status === 'loading');
+      case 'users':
+        return reports.users.status === 'loading';
+      case 'bandwidth':
+        return reports.bandwidth.status === 'loading';
+      case 'infrastructure':
+        return reports.infrastructure.status === 'loading';
+      case 'violations':
+        return reports.violations.status === 'loading';
+      case 'sessions':
+      case 'session-timeline':
+        return reports.sessions.status === 'loading';
+      case 'user-network-incidents':
+        return reports.incidents.status === 'loading' || reports.users.status === 'loading' || reports.violations.status === 'loading' || reports.logs.status === 'loading';
+      case 'incidents':
+        return reports.incidents.status === 'loading';
+      case 'logs':
+        return reports.logs.status === 'loading';
+      default:
+        return false;
+    }
+  })();
 
   return (
     <div className="space-y-6">
@@ -35,8 +72,13 @@ export const ReportsFeature = () => {
 
       {activeTab !== 'users' && activeTab !== 'overview' && <ReportsFilterBar />}
 
-      <Card className="overflow-hidden">
-        <Tabs value={activeTab} onValueChange={handleTabChange}>
+      {isCurrentTabLoading ? (
+        <Card className="p-10 text-center text-gray-600">
+          Đang tải dữ liệu...
+        </Card>
+      ) : (
+        <Card className="overflow-hidden">
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
           {/* Main Content Areas mapped exactly to the URL query param */}
           <TabsContent value="overview" className="p-0 m-0">
             <OverviewReportTab />
@@ -77,8 +119,9 @@ export const ReportsFeature = () => {
           <TabsContent value="logs" className="p-6 m-0">
             <LogsReportTab />
           </TabsContent>
-        </Tabs>
-      </Card>
+          </Tabs>
+        </Card>
+      )}
     </div>
   );
 };

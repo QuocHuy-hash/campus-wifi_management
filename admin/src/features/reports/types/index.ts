@@ -84,6 +84,23 @@ export interface WifiUser {
   status: 'active' | 'blocked';
 }
 
+export interface UserReportApiItem {
+  id: number;
+  username: string;
+  fullName: string;
+  email: string;
+  mssv: string;
+  group: string;
+  role: string;
+  devicesOnline: number;
+  sessionsToday: number;
+  sessionsWeek: number;
+  sessionsMonth: number;
+  trafficIn: string;
+  trafficOut: string;
+  status: string;
+}
+
 export interface UserSession {
   sessionId: string;
   userId: number;

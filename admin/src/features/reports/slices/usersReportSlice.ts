@@ -137,9 +137,15 @@ const usersReportSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    builder.addCase(fetchUsersReport.pending, (state) => {
+      state.status = 'loading';
+    });
     builder.addCase(fetchUsersReport.fulfilled, (state, action) => {
       state.users = action.payload;
       state.status = 'succeeded';
+    });
+    builder.addCase(fetchUsersReport.rejected, (state) => {
+      state.status = 'failed';
     });
     builder.addCase(fetchSessionsReport.pending, (state) => {
       state.status = 'loading';

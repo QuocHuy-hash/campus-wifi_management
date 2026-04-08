@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Plus, ShieldAlert, Cpu, Activity, UserCheck, KeySquare, Wifi, Key, FileText, Shield, CheckCircle } from "lucide-react";
 import { useState, useEffect } from 'react';
 import { useSearch } from "wouter";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "@/stores/store";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/stores/store";
 
 import { setAddPolicyDialogOpen, setPolicyForm } from "../slices/policiesSlice";
 import { setAddAuthPolicyDialogOpen, setAuthPolicyForm, setValidationError } from "../slices/authPoliciesSlice";
 import { loadWifiPolicies } from '../slices/policiesSlice';
 import { loadAuthPolicies } from '../slices/authPoliciesSlice';
+import { fetchDevices } from '@/features/settings/slices/devicesSlice';
 
 import { PoliciesFilterBar } from "./PoliciesFilterBar";
 import { PolicyDialogs } from "./dialogs/PolicyDialogs";
@@ -23,6 +24,9 @@ import { AuthorizationPolicyTab } from "./tabs/AuthorizationPolicyTab";
 
 export const PoliciesFeature = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const wifiPoliciesStatus = useSelector((state: RootState) => state.policies.policies.status);
+  const authPoliciesStatus = useSelector((state: RootState) => state.policies.authPolicies.status);
+  const devicesStatus = useSelector((state: RootState) => state.settings.devices.status);
   
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
@@ -43,7 +47,7 @@ export const PoliciesFeature = () => {
   }, [tabFromUrl]);
 
   useEffect(() => {
-    if (activeTab === 'bandwidth' || activeTab === 'audit') {
+    if (activeTab === 'bandwidth' || activeTab === 'audit' || activeTab === 'security' || activeTab === 'authorization') {
       dispatch(loadWifiPolicies(activeTab));
     }
   }, [dispatch, activeTab]);
@@ -51,6 +55,12 @@ export const PoliciesFeature = () => {
   useEffect(() => {
     dispatch(loadAuthPolicies());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (devicesStatus === 'idle') {
+      dispatch(fetchDevices());
+    }
+  }, [dispatch, devicesStatus]);
 
   const handleAddPolicy = (type: string) => {
     if (type === 'auth') {
@@ -63,6 +73,9 @@ export const PoliciesFeature = () => {
     }
   };
 
+  const isCurrentTabLoading =
+    activeTab === 'auth' ? authPoliciesStatus === 'loading' : wifiPoliciesStatus === 'loading';
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -73,8 +86,13 @@ export const PoliciesFeature = () => {
 
       <PoliciesFilterBar />
 
-      <Card className="bg-white shadow-sm">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+      {isCurrentTabLoading ? (
+        <Card className="bg-white shadow-sm p-10 text-center text-gray-600">
+          Đang tải dữ liệu...
+        </Card>
+      ) : (
+        <Card className="bg-white shadow-sm">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
             <div className="grid grid-cols-5 w-full">
               <TabsTrigger 
@@ -186,6 +204,7 @@ export const PoliciesFeature = () => {
             </TabsContent>
           </Tabs>
         </Card>
+      )}
 
         {/* Global Dialogs for Policies Feature */}
         <PolicyDialogs />

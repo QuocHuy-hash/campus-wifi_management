@@ -19,9 +19,9 @@ export const USER_ROLE_LABELS: Record<string, string> = {
 
 export const ACCOUNT_STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Hoạt động',
-  INACTIVE: 'Vô hiệu hóa',
-  PENDING: 'Chờ kích hoạt',
-  SUSPENDED: 'Đã đình chỉ',
+  INACTIVE: 'Không hoạt động',
+  PENDING: 'Không hoạt động',
+  SUSPENDED: 'Không hoạt động',
 };
 
 export const USER_UI_TEXT = {
@@ -38,23 +38,44 @@ const USER_ROLE_BADGE_CLASSES: Record<string, string> = {
 
 const USER_STATUS_BADGE_CLASSES: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-800',
-  DISABLED: 'bg-red-100 text-red-800',
-  PENDING: 'bg-amber-100 text-amber-800',
-  LOCKED: 'bg-slate-100 text-slate-800',
+  INACTIVE: 'bg-slate-100 text-slate-800',
+};
+
+const USER_ROLE_ALIASES: Record<string, string> = {
+  USER: 'STUDENT',
+  STAFF: 'STAFF_TEACHER',
+  GUEST: 'CLIENT',
+  TEACHER: 'STAFF_TEACHER',
+  LECTURER: 'STAFF_TEACHER',
+};
+
+const normalizeUserRole = (role: string): string => {
+  const normalizedRole = role?.trim().toUpperCase().replace(/[\s-]+/g, '_');
+  return USER_ROLE_ALIASES[normalizedRole] || normalizedRole;
+};
+
+const normalizeUserStatus = (status: string): 'ACTIVE' | 'INACTIVE' => {
+  const normalizedStatus = status?.trim().toUpperCase().replace(/[\s-]+/g, '_');
+  const activeStatuses = new Set(['ACTIVE', 'ENABLED', 'ONLINE']);
+  return activeStatuses.has(normalizedStatus) ? 'ACTIVE' : 'INACTIVE';
 };
 
 export const getUserRoleBadgeClass = (role: string): string => {
-  return USER_ROLE_BADGE_CLASSES[role] || 'bg-slate-100 text-slate-800';
+  const canonicalRole = normalizeUserRole(role);
+  return USER_ROLE_BADGE_CLASSES[canonicalRole] || 'bg-slate-100 text-slate-800';
 };
 
 export const getUserRoleLabel = (role: string): string => {
-  return USER_ROLE_LABELS[role] || role;
+  const canonicalRole = normalizeUserRole(role);
+  return USER_ROLE_LABELS[canonicalRole] || role;
 };
 
 export const getUserStatusLabel = (status: string): string => {
-  return ACCOUNT_STATUS_LABELS[status] || status;
+  const normalizedStatus = normalizeUserStatus(status);
+  return ACCOUNT_STATUS_LABELS[normalizedStatus] || 'Không hoạt động';
 };
 
 export const getUserStatusBadgeClass = (status: string): string => {
-  return USER_STATUS_BADGE_CLASSES[status] || 'bg-slate-100 text-slate-800';
+  const normalizedStatus = normalizeUserStatus(status);
+  return USER_STATUS_BADGE_CLASSES[normalizedStatus] || 'bg-slate-100 text-slate-800';
 };

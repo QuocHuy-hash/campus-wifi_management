@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ export const UsersReportTab = () => {
   const [selectedSessionForDeviceForm, setSelectedSessionForDeviceForm] = useState<UserSession | null>(null);
 
   const {
-    users: mockWifiUsers, sessions: mockUserSessions, status,
+    users: wifiUsers, sessions: userSessions, status,
     userSearchTerm, userGroupFilter, userRoleFilter, userCurrentPage,
     sessionTimeRange, sessionUsernameFilter, sessionIpFilter, sessionMacFilter,
     sessionSsidFilter, sessionStatusFilter, sessionTerminateFilter, sessionCurrentPage,
@@ -62,6 +62,64 @@ export const UsersReportTab = () => {
 
   // userId lấy thẳng từ session (được map từ deviceUserInfo.userId của backend)
   const selectedDeviceUserId = selectedSessionForDeviceForm?.userId ?? null;
+
+  const userGroupOptions = useMemo(
+    () => [...new Set(wifiUsers.map((user) => user.group).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [wifiUsers],
+  );
+
+  const userRoleOptions = useMemo(
+    () => [...new Set(wifiUsers.map((user) => user.role).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [wifiUsers],
+  );
+
+  const filteredWifiUsers = useMemo(
+    () => wifiUsers.filter((user) => {
+      const keyword = userSearchTerm.trim().toLowerCase();
+      const matchSearch = keyword === ''
+        || user.username.toLowerCase().includes(keyword)
+        || user.fullName.toLowerCase().includes(keyword)
+        || user.email.toLowerCase().includes(keyword)
+        || user.mssv.toLowerCase().includes(keyword);
+      const matchGroup = userGroupFilter === 'all' || user.group === userGroupFilter;
+      const matchRole = userRoleFilter === 'all' || user.role === userRoleFilter;
+      return matchSearch && matchGroup && matchRole;
+    }),
+    [wifiUsers, userSearchTerm, userGroupFilter, userRoleFilter],
+  );
+
+  const paginatedWifiUsers = useMemo(
+    () => filteredWifiUsers.slice((userCurrentPage - 1) * userItemsPerPage, userCurrentPage * userItemsPerPage),
+    [filteredWifiUsers, userCurrentPage],
+  );
+
+  const filteredUserSessions = useMemo(
+    () => userSessions.filter((session) => {
+      const matchUser = !selectedUserForSessions || session.username === selectedUserForSessions;
+      const matchUsername = sessionUsernameFilter === '' || session.username.toLowerCase().includes(sessionUsernameFilter.toLowerCase());
+      const matchIp = sessionIpFilter === '' || session.ip.includes(sessionIpFilter);
+      const matchMac = sessionMacFilter === '' || session.mac.toLowerCase().includes(sessionMacFilter.toLowerCase());
+      const matchSsid = sessionSsidFilter === 'all' || session.ssid === sessionSsidFilter;
+      const matchStatus = sessionStatusFilter === 'all' || session.status === sessionStatusFilter;
+      const matchTerminate = sessionTerminateFilter === 'all' || session.terminateCause === sessionTerminateFilter;
+      return matchUser && matchUsername && matchIp && matchMac && matchSsid && matchStatus && matchTerminate;
+    }),
+    [
+      userSessions,
+      selectedUserForSessions,
+      sessionUsernameFilter,
+      sessionIpFilter,
+      sessionMacFilter,
+      sessionSsidFilter,
+      sessionStatusFilter,
+      sessionTerminateFilter,
+    ],
+  );
+
+  const paginatedUserSessions = useMemo(
+    () => filteredUserSessions.slice((sessionCurrentPage - 1) * sessionsItemsPerPage, sessionCurrentPage * sessionsItemsPerPage),
+    [filteredUserSessions, sessionCurrentPage],
+  );
 
   return (
     <div className="space-y-4">
@@ -100,9 +158,11 @@ export const UsersReportTab = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tất cả nhóm</SelectItem>
-                      <SelectItem value="Sinh viên">Sinh viên</SelectItem>
-                      <SelectItem value="Giảng viên">Giảng viên/Cán bộ</SelectItem>
-                      <SelectItem value="Khách">Khách truy cập</SelectItem>
+                      {userGroupOptions.map((group) => (
+                        <SelectItem key={group} value={group}>
+                          {group}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Select value={userRoleFilter} onValueChange={(v) => dispatch(setUserRoleFilter(v))}>
@@ -111,9 +171,11 @@ export const UsersReportTab = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tất cả vai trò</SelectItem>
-                      <SelectItem value="User">User</SelectItem>
-                      <SelectItem value="Staff">Staff</SelectItem>
-                      <SelectItem value="Guest">Guest</SelectItem>
+                      {userRoleOptions.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Button size="icon" variant="outline" onClick={() => dispatch(resetUserFilters())}>
@@ -142,18 +204,7 @@ export const UsersReportTab = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {mockWifiUsers
-                        .filter(user => {
-                          const matchSearch = userSearchTerm === '' || 
-                            user.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                            user.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                            user.mssv.toLowerCase().includes(userSearchTerm.toLowerCase());
-                          const matchGroup = userGroupFilter === 'all' || user.group === userGroupFilter;
-                          const matchRole = userRoleFilter === 'all' || user.role === userRoleFilter;
-                          return matchSearch && matchGroup && matchRole;
-                        })
-                        .slice((userCurrentPage - 1) * userItemsPerPage, userCurrentPage * userItemsPerPage)
-                        .map((user) => (
+                      {paginatedWifiUsers.map((user) => (
                         <tr key={user.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3">
                             <div>
@@ -236,7 +287,7 @@ export const UsersReportTab = () => {
                 {/* Pagination */}
                 <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between">
                   <p className="text-sm text-gray-600">
-                    Hiển thị {Math.min((userCurrentPage - 1) * userItemsPerPage + 1, mockWifiUsers.length)} - {Math.min(userCurrentPage * userItemsPerPage, mockWifiUsers.length)} / {mockWifiUsers.length} người dùng
+                    Hiển thị {filteredWifiUsers.length === 0 ? 0 : (userCurrentPage - 1) * userItemsPerPage + 1} - {Math.min(userCurrentPage * userItemsPerPage, filteredWifiUsers.length)} / {filteredWifiUsers.length} người dùng
                   </p>
                   <div className="flex items-center gap-2">
                     <Button 
@@ -253,7 +304,7 @@ export const UsersReportTab = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      disabled={userCurrentPage * userItemsPerPage >= mockWifiUsers.length}
+                      disabled={userCurrentPage * userItemsPerPage >= filteredWifiUsers.length}
                       onClick={() => dispatch(setUserCurrentPage(userCurrentPage + 1))}
                     >
                       <ChevronRight size={16} />
@@ -401,19 +452,7 @@ export const UsersReportTab = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {mockUserSessions
-                        .filter(session => {
-                          const matchUser = !selectedUserForSessions || session.username === selectedUserForSessions;
-                          const matchUsername = sessionUsernameFilter === '' || session.username.toLowerCase().includes(sessionUsernameFilter.toLowerCase());
-                          const matchIp = sessionIpFilter === '' || session.ip.includes(sessionIpFilter);
-                          const matchMac = sessionMacFilter === '' || session.mac.toLowerCase().includes(sessionMacFilter.toLowerCase());
-                          const matchSsid = sessionSsidFilter === 'all' || session.ssid === sessionSsidFilter;
-                          const matchStatus = sessionStatusFilter === 'all' || session.status === sessionStatusFilter;
-                          const matchTerminate = sessionTerminateFilter === 'all' || session.terminateCause === sessionTerminateFilter;
-                          return matchUser && matchUsername && matchIp && matchMac && matchSsid && matchStatus && matchTerminate;
-                        })
-                        .slice((sessionCurrentPage - 1) * sessionsItemsPerPage, sessionCurrentPage * sessionsItemsPerPage)
-                        .map((session) => (
+                      {paginatedUserSessions.map((session) => (
                         <tr key={session.sessionId} className="hover:bg-gray-50">
                           <td className="px-3 py-2">
                             <p className="font-mono text-xs text-gray-600">{session.sessionId}</p>
@@ -500,7 +539,7 @@ export const UsersReportTab = () => {
                 {/* Pagination */}
                 <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between">
                   <p className="text-sm text-gray-600">
-                    Hiển thị {Math.min((sessionCurrentPage - 1) * sessionsItemsPerPage + 1, mockUserSessions.length)} - {Math.min(sessionCurrentPage * sessionsItemsPerPage, mockUserSessions.length)} / {mockUserSessions.length} phiên
+                    Hiển thị {filteredUserSessions.length === 0 ? 0 : (sessionCurrentPage - 1) * sessionsItemsPerPage + 1} - {Math.min(sessionCurrentPage * sessionsItemsPerPage, filteredUserSessions.length)} / {filteredUserSessions.length} phiên
                   </p>
                   <div className="flex items-center gap-2">
                     <Button 
@@ -517,7 +556,7 @@ export const UsersReportTab = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      disabled={sessionCurrentPage * sessionsItemsPerPage >= mockUserSessions.length}
+                      disabled={sessionCurrentPage * sessionsItemsPerPage >= filteredUserSessions.length}
                       onClick={() => dispatch(setSessionCurrentPage(sessionCurrentPage + 1))}
                     >
                       <ChevronRight size={16} />

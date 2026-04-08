@@ -4,7 +4,13 @@ import { Label } from '@/components/ui/label';
 import { Laptop, Smartphone, Monitor, HelpCircle } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
 import { closeDialog } from '../../slices/usersSlice';
-import { getUserRoleBadgeClass, USER_DIALOG_KEYS } from '@/features/users/constants';
+import {
+  getUserRoleBadgeClass,
+  getUserRoleLabel,
+  getUserStatusBadgeClass,
+  getUserStatusLabel,
+  USER_DIALOG_KEYS,
+} from '@/features/users/constants';
 import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
 
 const DeviceIcon = ({ deviceType }: { deviceType: string | null }) => {
@@ -51,17 +57,15 @@ export function ViewUserDialog() {
               <Label className="text-xs text-gray-500">Vai trò</Label>
               <p className="text-sm font-medium">
                 <span className={`inline-block px-2 py-1 rounded-full text-xs ${getUserRoleBadgeClass(selectedUser.role)}`}>
-                  {selectedUser.role}
+                  {getUserRoleLabel(selectedUser.role)}
                 </span>
               </p>
             </div>
             <div>
               <Label className="text-xs text-gray-500">Trạng thái</Label>
               <p className="text-sm font-medium">
-                <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                  selectedUser.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {selectedUser.status}
+                <span className={`inline-block px-2 py-1 rounded-full text-xs ${getUserStatusBadgeClass(selectedUser.status)}`}>
+                  {getUserStatusLabel(selectedUser.status)}
                 </span>
               </p>
             </div>

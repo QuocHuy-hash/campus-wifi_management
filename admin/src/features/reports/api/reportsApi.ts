@@ -1,7 +1,15 @@
+import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
 import { 
   UserReportData, BandwidthData, ControllerReportData, APAccessData, 
-  ViolationData, SessionData, IncidentData, WifiUser, UserSession 
+  ViolationData, SessionData, IncidentData, WifiUser, UserReportApiItem
 } from '../types';
+
+interface ApiResponse<T> {
+  code: number;
+  message: string;
+  data: T;
+}
 
 // Dữ liệu mock (tách từ file Reports.tsx cũ)
 const mockUserReportData: UserReportData[] = [
@@ -63,17 +71,28 @@ const mockIncidentData: IncidentData[] = [
   { ap: 'AP-A1-02', type: 'Nhiệt độ cao', status: 'resolved', priority: 'medium' },
 ];
 
-const mockWifiUsers: WifiUser[] = [
-  { id: 1, username: '21120001', fullName: 'Nguyễn Văn An', email: '21120001@student.hcmus.edu.vn', mssv: '21120001', group: 'Sinh viên', role: 'User', devicesOnline: 2, sessionsToday: 3, sessionsWeek: 15, sessionsMonth: 45, trafficIn: '2.5 GB', trafficOut: '0.8 GB', status: 'active' },
-  { id: 2, username: '21120045', fullName: 'Trần Thị Bình', email: '21120045@student.hcmus.edu.vn', mssv: '21120045', group: 'Sinh viên', role: 'User', devicesOnline: 1, sessionsToday: 2, sessionsWeek: 12, sessionsMonth: 38, trafficIn: '1.8 GB', trafficOut: '0.5 GB', status: 'active' },
-  { id: 3, username: 'nv.nguyen', fullName: 'Nguyễn Văn Nam', email: 'nv.nguyen@hcmus.edu.vn', mssv: '-', group: 'Giảng viên', role: 'Staff', devicesOnline: 3, sessionsToday: 5, sessionsWeek: 25, sessionsMonth: 80, trafficIn: '8.2 GB', trafficOut: '2.1 GB', status: 'active' },
-  { id: 4, username: 'guest_event_001', fullName: 'Khách Hội nghị', email: 'guest@external.com', mssv: '-', group: 'Khách', role: 'Guest', devicesOnline: 1, sessionsToday: 1, sessionsWeek: 2, sessionsMonth: 2, trafficIn: '0.3 GB', trafficOut: '0.1 GB', status: 'active' },
-  { id: 5, username: '20120156', fullName: 'Lê Hoàng Cường', email: '20120156@student.hcmus.edu.vn', mssv: '20120156', group: 'Sinh viên', role: 'User', devicesOnline: 0, sessionsToday: 0, sessionsWeek: 8, sessionsMonth: 32, trafficIn: '1.2 GB', trafficOut: '0.4 GB', status: 'blocked' },
-  { id: 6, username: 'pv.tran', fullName: 'Trần Phương Vy', email: 'pv.tran@hcmus.edu.vn', mssv: '-', group: 'Giảng viên', role: 'Staff', devicesOnline: 2, sessionsToday: 4, sessionsWeek: 20, sessionsMonth: 65, trafficIn: '5.5 GB', trafficOut: '1.8 GB', status: 'active' },
-];
+const mapUserReportItem = (item: UserReportApiItem): WifiUser => ({
+  id: item.id,
+  username: item.username,
+  fullName: item.fullName,
+  email: item.email,
+  mssv: item.mssv,
+  group: item.group,
+  role: item.role,
+  devicesOnline: item.devicesOnline,
+  sessionsToday: item.sessionsToday,
+  sessionsWeek: item.sessionsWeek,
+  sessionsMonth: item.sessionsMonth,
+  trafficIn: item.trafficIn,
+  trafficOut: item.trafficOut,
+  status: item.status.toLowerCase() === 'active' ? 'active' : 'blocked',
+});
 
 export const reportsApi = {
-  fetchWifiUsers: () => Promise.resolve(mockWifiUsers),
+  fetchWifiUsers: async (): Promise<WifiUser[]> => {
+    const response = await axios.get<ApiResponse<UserReportApiItem[]>>(`${API_BASE_URL}/users/report`);
+    return response.data.data.map(mapUserReportItem);
+  },
   fetchUserReportData: () => Promise.resolve(mockUserReportData),
   fetchBandwidthData: () => Promise.resolve(mockBandwidthData),
   fetchControllers: () => Promise.resolve(mockControllerReportData),

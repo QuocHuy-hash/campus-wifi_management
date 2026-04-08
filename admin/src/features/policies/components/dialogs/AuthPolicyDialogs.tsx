@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -19,6 +20,8 @@ import {
 
 export const AuthPolicyDialogs = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const [scopeType, setScopeType] = useState<'controller' | 'ap'>('controller');
+  const [scopeValue, setScopeValue] = useState('');
   const { 
     addAuthPolicyDialogOpen, editAuthPolicyDialogOpen, deleteAuthPolicyDialogOpen, 
     selectedAuthPolicy, authPolicyForm, validationError, data: authPolicies
@@ -26,6 +29,50 @@ export const AuthPolicyDialogs = () => {
 
   // Lấy danh sách Controllers và APs thực tế từ hệ thống cài đặt
   const { controllers, aps } = useSelector((state: RootState) => state.settings.devices);
+  const appliedAreas = authPolicyForm.appliedAreas || [];
+
+  const scopeOptions = useMemo(() => {
+    if (scopeType === 'controller') {
+      return controllers.map((ctrl) => ({
+        value: String(ctrl.id),
+        label: `${ctrl.nasIdentifier || `Controller ${ctrl.id}`} (${ctrl.ipAddress})`,
+      }));
+    }
+
+    return aps.map((ap) => ({
+      value: ap.macAddress,
+      label: `${ap.name} (${ap.macAddress})`,
+    }));
+  }, [scopeType, controllers, aps]);
+
+  const appliedAreaItems = useMemo(() => {
+    const controllerMap = new Map(controllers.map((ctrl) => [String(ctrl.id), `${ctrl.nasIdentifier || `Controller ${ctrl.id}`} (${ctrl.ipAddress})`]));
+    const apMap = new Map(aps.map((ap) => [ap.macAddress, `${ap.name} (${ap.macAddress})`]));
+
+    return appliedAreas.map((item) => {
+      if (item.startsWith('ctrl:')) {
+        const id = item.replace('ctrl:', '');
+        return { key: item, label: `Controller: ${controllerMap.get(id) || id}` };
+      }
+      if (item.startsWith('ap:')) {
+        const mac = item.replace('ap:', '');
+        return { key: item, label: `AP: ${apMap.get(mac) || mac}` };
+      }
+      return { key: item, label: item };
+    });
+  }, [appliedAreas, controllers, aps]);
+
+  const addScopeArea = () => {
+    if (!scopeValue) return;
+    const nextValue = scopeType === 'controller' ? `ctrl:${scopeValue}` : `ap:${scopeValue}`;
+    if (appliedAreas.includes(nextValue)) return;
+    dispatch(setAuthPolicyForm({ ...authPolicyForm, appliedAreas: [...appliedAreas, nextValue] }));
+    setScopeValue('');
+  };
+
+  const removeScopeArea = (value: string) => {
+    dispatch(setAuthPolicyForm({ ...authPolicyForm, appliedAreas: appliedAreas.filter((item) => item !== value) }));
+  };
 
   const validateAuthPolicy = (policy: Partial<AuthPolicy>) => {
     if (!policy.name?.trim()) return "Vui lòng nhập tên chính sách.";
@@ -183,52 +230,61 @@ export const AuthPolicyDialogs = () => {
 
       <div className="pt-2">
         <Label className="mb-2 block">Phạm vi áp dụng (Thiết bị)</Label>
-        <div className="border rounded-md p-3 max-h-48 overflow-y-auto mt-2 bg-white">
-          <div>
-            <h5 className="font-semibold text-sm mb-2 text-gray-700 sticky top-0 bg-white">Controllers</h5>
-            {controllers.map(ctrl => (
-              <div key={ctrl.id} className="flex items-center space-x-2 ml-2 mb-1">
-                <Checkbox 
-                   id={isEdit ? `edit-ctrl-${ctrl.id}` : `ctrl-${ctrl.id}`}
-                   checked={authPolicyForm.appliedAreas?.includes(`ctrl:${ctrl.id}`)}
-                   onCheckedChange={(checked) => {
-                      const val = `ctrl:${ctrl.id}`;
-                      const current = authPolicyForm.appliedAreas || [];
-                      if (checked) {
-                        dispatch(setAuthPolicyForm({...authPolicyForm, appliedAreas: [...current, val]}));
-                      } else {
-                        dispatch(setAuthPolicyForm({...authPolicyForm, appliedAreas: current.filter(x => x !== val)}));
-                      }
-                   }}
-                />
-                <Label htmlFor={isEdit ? `edit-ctrl-${ctrl.id}` : `ctrl-${ctrl.id}`} className="text-sm font-normal cursor-pointer">
-                  {ctrl.nasIdentifier || (ctrl as any).name} <span className="text-gray-500 text-xs">({ctrl.ipAddress})</span>
-                </Label>
-              </div>
-            ))}
+        <div className="border rounded-md p-3 mt-2 bg-white space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-[150px_1fr_auto] gap-2">
+            <Select
+              value={scopeType}
+              onValueChange={(value: 'controller' | 'ap') => {
+                setScopeType(value);
+                setScopeValue('');
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Loại thiết bị" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="controller">Controller</SelectItem>
+                <SelectItem value="ap">Access Point</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={scopeValue} onValueChange={setScopeValue}>
+              <SelectTrigger>
+                <SelectValue placeholder={scopeType === 'controller' ? 'Chọn controller' : 'Chọn access point'} />
+              </SelectTrigger>
+              <SelectContent>
+                {scopeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button type="button" onClick={addScopeArea} disabled={!scopeValue}>
+              Thêm
+            </Button>
           </div>
-          <div className="mt-3">
-            <h5 className="font-semibold text-sm mb-2 text-gray-700 sticky top-0 bg-white">Access Points</h5>
-            {aps.map(ap => (
-              <div key={ap.macAddress} className="flex items-center space-x-2 ml-2 mb-1">
-                <Checkbox 
-                   id={isEdit ? `edit-ap-${ap.macAddress}` : `ap-${ap.macAddress}`}
-                   checked={authPolicyForm.appliedAreas?.includes(`ap:${ap.macAddress}`)}
-                   onCheckedChange={(checked) => {
-                      const val = `ap:${ap.macAddress}`;
-                      const current = authPolicyForm.appliedAreas || [];
-                      if (checked) {
-                        dispatch(setAuthPolicyForm({...authPolicyForm, appliedAreas: [...current, val]}));
-                      } else {
-                        dispatch(setAuthPolicyForm({...authPolicyForm, appliedAreas: current.filter(x => x !== val)}));
-                      }
-                   }}
-                />
-                <Label htmlFor={isEdit ? `edit-ap-${ap.macAddress}` : `ap-${ap.macAddress}`} className="text-sm font-normal cursor-pointer">
-                  {ap.name} <span className="text-gray-500 text-xs">- {ap.name}</span>
-                </Label>
+
+          <div className="min-h-10 rounded-md border border-dashed border-gray-300 p-2">
+            {appliedAreaItems.length === 0 ? (
+              <p className="text-sm text-gray-500">Chưa chọn phạm vi áp dụng.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {appliedAreaItems.map((item) => (
+                  <span key={item.key} className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
+                    {item.label}
+                    <button
+                      type="button"
+                      className="text-gray-500 hover:text-red-600"
+                      onClick={() => removeScopeArea(item.key)}
+                    >
+                      x
+                    </button>
+                  </span>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

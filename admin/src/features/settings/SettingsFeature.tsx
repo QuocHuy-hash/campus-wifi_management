@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useSearch } from 'wouter';
-import { AppDispatch } from '../../stores/store';
+import { AppDispatch, RootState } from '../../stores/store';
 
 import { fetchAdmins, fetchRoles } from './slices/adminSlice';
 import { fetchAreas } from './slices/areasSlice';
@@ -15,6 +15,7 @@ import { AreasTab } from './components/tabs/AreasTab';
 import { DevicesTab } from './components/tabs/DevicesTab';
 import { IntegrationsTab } from './components/tabs/IntegrationsTab';
 import { SecurityTab } from './components/tabs/SecurityTab';
+import { AccessControlTab } from './components/tabs/AccessControlTab';
 import { LogsTab } from './components/tabs/LogsTab';
 import { SystemOverviewTab } from './components/tabs/SystemOverviewTab';
 import { AlertsConfigTab } from './components/tabs/AlertsConfigTab';
@@ -28,6 +29,12 @@ import { LogsDialogs } from './components/dialogs/LogsDialogs';
 
 export const SettingsFeature = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const adminStatus = useSelector((state: RootState) => state.settings.admin.status);
+  const securityStatus = useSelector((state: RootState) => state.settings.security.status);
+  const areasStatus = useSelector((state: RootState) => state.settings.areas.status);
+  const devicesStatus = useSelector((state: RootState) => state.settings.devices.status);
+  const integrationsStatus = useSelector((state: RootState) => state.settings.integrations.status);
+  const logsStatus = useSelector((state: RootState) => state.settings.logs.status);
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const currentTab = searchParams.get('tab') || 'overview';
@@ -43,12 +50,53 @@ export const SettingsFeature = () => {
     dispatch(fetchLogs());
   }, [dispatch]);
 
+  const getCurrentTabLoading = () => {
+    switch (currentTab) {
+      case 'overview':
+        return (
+          adminStatus === 'loading'
+          || securityStatus === 'loading'
+          || areasStatus === 'loading'
+          || devicesStatus === 'loading'
+          || integrationsStatus === 'loading'
+          || logsStatus === 'loading'
+        );
+      case 'access':
+      case 'security':
+        return securityStatus === 'loading';
+      case 'users':
+        return adminStatus === 'loading';
+      case 'areas':
+        return areasStatus === 'loading';
+      case 'devices':
+        return devicesStatus === 'loading';
+      case 'technical':
+        return integrationsStatus === 'loading';
+      case 'logs':
+        return logsStatus === 'loading';
+      default:
+        return false;
+    }
+  };
+
+  const isCurrentTabLoading = getCurrentTabLoading();
+
   const renderContent = () => {
+    if (isCurrentTabLoading) {
+      return (
+        <div className="p-6">
+          <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-gray-600">
+            Đang tải dữ liệu...
+          </div>
+        </div>
+      );
+    }
+
     switch (currentTab) {
       case 'overview':
         return <SystemOverviewTab />;
       case 'access':
-        return <SecurityTab />;
+        return <AccessControlTab />;
       case 'users':
         return <AdminUsersTab />;
       case 'areas':

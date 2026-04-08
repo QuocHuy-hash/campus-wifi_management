@@ -5,7 +5,7 @@ import { policiesApi } from '../api/policiesApi';
 
 export const loadWifiPolicies = createAsyncThunk(
   'policies/loadWifiPolicies',
-  async (type?: 'bandwidth' | 'audit') => {
+  async (type?: 'bandwidth' | 'session' | 'authorization' | 'audit' | 'security') => {
     return await policiesApi.getWifiPolicies(type);
   }
 );

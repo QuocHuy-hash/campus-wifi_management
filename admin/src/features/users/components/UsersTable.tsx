@@ -73,7 +73,7 @@ export function UsersTable() {
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getUserRoleBadgeClass(user.role)}`}
                     >
-                      {user.role}
+                      {getUserRoleLabel(user.role)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
