@@ -51,6 +51,19 @@ export interface LoginResult {
   roles: string[];
 }
 
+export interface CaptivePortalContext {
+  id: string;
+  ap: string;
+  ssid: string;
+  url: string;
+}
+
+export interface AuthorizeDevicePayload extends CaptivePortalContext {
+  provider: string;
+  deviceType: string;
+  deviceName: string;
+}
+
 export interface ResendOtpPayload {
   identifier: string;
 }

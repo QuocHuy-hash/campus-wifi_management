@@ -8,9 +8,9 @@ import { currentUser, qosPolicies, formatBytes } from '@/data/mockData';
 import hcmusLogo from '@/assets/logo_hcmus.png';
 import InternalLoginTab from '@/components/InternalLoginTab';
 import GuestLoginTab from '@/components/GuestLoginTab';
-import { getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
+import { authorizeDevice, getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
 import { getActiveProviders, registerWithOtp, resendEmailOtp, verifyEmailOtp } from '@/features/auth/slices/authSlice';
-import type { ProviderConfig } from '@/features/auth/types';
+import type { CaptivePortalContext, ProviderConfig } from '@/features/auth/types';
 import { useAppDispatch } from '@/stores/hooks';
 import type { RootState } from '@/stores/store';
 import TermsDialog from '@/features/auth/components/dialogs/TermsDialog';
@@ -84,6 +84,29 @@ export default function Login() {
     dispatch(getActiveProviders());
   }, [dispatch]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id')?.trim() || '';
+    const ap = params.get('ap')?.trim() || '';
+    const ssid = params.get('ssid')?.trim() || '';
+    const url = params.get('url')?.trim() || '';
+    const hasAnyCaptiveParam = Boolean(id || ap || ssid || url);
+
+    if (!hasAnyCaptiveParam) {
+      return;
+    }
+
+    if (!id || !ap || !ssid || !url) {
+      sessionStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+      return;
+    }
+
+    sessionStorage.setItem(
+      STORAGE_KEYS.portalCaptiveContext,
+      JSON.stringify({ id, ap, ssid, url } satisfies CaptivePortalContext),
+    );
+  }, []);
+
   const getLoginErrorMessage = (apiError: unknown): string => {
     if (typeof apiError === 'object' && apiError !== null) {
       const maybeAxios = apiError as {
@@ -107,8 +130,71 @@ export default function Login() {
     return 'Đăng nhập thất bại. Vui lòng thử lại.';
   };
 
+  const getAuthorizeErrorMessage = (apiError: unknown): string => {
+    if (typeof apiError === 'object' && apiError !== null) {
+      const maybeAxios = apiError as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+
+      if (maybeAxios.response?.data?.message) {
+        return maybeAxios.response.data.message;
+      }
+
+      if (maybeAxios.message) {
+        return maybeAxios.message;
+      }
+    }
+
+    return 'Xác thực thiết bị thất bại. Vui lòng thử lại.';
+  };
+
   const getGuestIdentifier = () =>
     guestAuthMethod === 'email' ? guestForm.email.trim() : guestForm.phone.trim();
+
+  const getStoredCaptiveContext = (): CaptivePortalContext | null => {
+    const rawContext = sessionStorage.getItem(STORAGE_KEYS.portalCaptiveContext);
+
+    if (!rawContext) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(rawContext) as Partial<CaptivePortalContext>;
+
+      if (!parsed.id || !parsed.ap || !parsed.ssid || !parsed.url) {
+        return null;
+      }
+
+      return {
+        id: parsed.id,
+        ap: parsed.ap,
+        ssid: parsed.ssid,
+        url: parsed.url,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const authorizeDeviceAndRedirect = async (provider: string): Promise<boolean> => {
+    const captiveContext = getStoredCaptiveContext();
+
+    if (!captiveContext) {
+      return false;
+    }
+
+    await authorizeDevice({
+      ...captiveContext,
+      provider,
+      deviceType: 'Laptop',
+      deviceName: 'Acer',
+    });
+
+    sessionStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+    window.location.assign(captiveContext.url);
+    return true;
+  };
 
   const persistSession = async (identifier: string, fallbackRole?: string) => {
     const profile = await getMeProfile();
@@ -143,6 +229,7 @@ export default function Login() {
         return;
       }
 
+      sessionStorage.setItem(STORAGE_KEYS.oauthProvider, provider);
       sessionStorage.setItem('oauth2_redirect_back', '/session');
       startOAuth2Login(provider);
       return;
@@ -150,7 +237,7 @@ export default function Login() {
 
     // Temporary fallback for providers not available in backend OAuth2 yet.
     setIsLoading(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       const linkedAccount = {
         type: provider,
         email: `${provider}.user@gmail.com`,
@@ -166,7 +253,16 @@ export default function Login() {
         loginTime: new Date().toISOString(),
         linkedAccounts: [linkedAccount]
       }));
-      setLocation('/session');
+      try {
+        const redirected = await authorizeDeviceAndRedirect(provider);
+
+        if (!redirected) {
+          setLocation('/session');
+        }
+      } catch (apiError) {
+        setError(getAuthorizeErrorMessage(apiError));
+        setIsLoading(false);
+      }
     }, 1200);
   };
 
@@ -296,28 +392,40 @@ export default function Login() {
     setOtpError('');
   };
 
-  const handleUseGuestCredentials = () => {
+  const handleUseGuestCredentials = async () => {
     const guestIdentifier = getGuestIdentifier();
     setGuestModalOpen(false);
     setIsLoading(true);
     setError('');
 
-    loginWithPassword({
-      identifier: guestIdentifier,
-      password: guestForm.password,
-    })
-      .then(async (result) => {
-        localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
-        localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
-        await persistSession(guestIdentifier, result.roles?.[0]);
-        resetGuestForm();
-        setLocation('/session');
-      })
-      .catch((apiError) => {
-        const message = getLoginErrorMessage(apiError);
-        setError(message);
-        setIsLoading(false);
+    try {
+      const result = await loginWithPassword({
+        identifier: guestIdentifier,
+        password: guestForm.password,
       });
+
+      localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
+      localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
+      await persistSession(guestIdentifier, result.roles?.[0]);
+
+      let redirected = false;
+      try {
+        redirected = await authorizeDeviceAndRedirect('password');
+      } catch (apiError) {
+        setError(getAuthorizeErrorMessage(apiError));
+        setIsLoading(false);
+        return;
+      }
+
+      resetGuestForm();
+
+      if (!redirected) {
+        setLocation('/session');
+      }
+    } catch (apiError) {
+      setError(getLoginErrorMessage(apiError));
+      setIsLoading(false);
+    }
   };
 
   const handleStandardLogin = async () => {
@@ -340,10 +448,20 @@ export default function Login() {
       localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
       await persistSession(loginUsername, result.roles?.[0]);
 
-      setLocation('/session');
+      let redirected = false;
+      try {
+        redirected = await authorizeDeviceAndRedirect('password');
+      } catch (apiError) {
+        setError(getAuthorizeErrorMessage(apiError));
+        setIsLoading(false);
+        return;
+      }
+
+      if (!redirected) {
+        setLocation('/session');
+      }
     } catch (apiError) {
-      const message = getLoginErrorMessage(apiError);
-      setError(message);
+      setError(getLoginErrorMessage(apiError));
       setIsLoading(false);
     }
   };

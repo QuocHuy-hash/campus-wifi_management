@@ -3,6 +3,8 @@ export const STORAGE_KEYS = {
   REFRESH_TOKEN: "refreshToken",
   portalLoggedIn: "portalLoggedIn",
   portalUser: "portalUser",
+  portalCaptiveContext: "portalCaptiveContext",
+  oauthProvider: "oauthProvider",
   accessToken: "accessToken",
   refreshToken: "refreshToken",
 } as const;

@@ -1,6 +1,7 @@
 import apiClient from "@/config/axios";
 import { API_BASE_URL } from "@/config/api";
 import {
+  type AuthorizeDevicePayload,
   type ApiEnvelope,
   type LoginPayload,
   type LoginResult,
@@ -17,6 +18,7 @@ import {
 const PROVIDERS_ENDPOINT = `/providers-config`;
 const AUTH_ENDPOINT = `/auth`;
 const OAUTH2_ENDPOINT = `/oauth2`;
+const AUTHORIZE_DEVICE_ENDPOINT = `/authorize-device`;
 
 export async function fetchActiveProviders(): Promise<ProviderConfig[]> {
   const response = await apiClient.get<ApiEnvelope<ProviderConfig[]>>(
@@ -67,6 +69,10 @@ export async function loginWithPassword(payload: LoginPayload): Promise<LoginRes
 export async function getMeProfile(): Promise<MeResponse> {
   const response = await apiClient.get<ApiEnvelope<MeResponse>>(`${AUTH_ENDPOINT}/me`);
   return response.data.data;
+}
+
+export async function authorizeDevice(payload: AuthorizeDevicePayload): Promise<void> {
+  await apiClient.post(`${AUTHORIZE_DEVICE_ENDPOINT}`, payload);
 }
 
 export function startOAuth2Login(provider: string): void {
