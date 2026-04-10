@@ -56,6 +56,7 @@ export interface CaptivePortalContext {
   ap: string;
   ssid: string;
   url: string;
+  t?: string; // Optional timestamp parameter from controller
 }
 
 export interface AuthorizeDevicePayload extends CaptivePortalContext {

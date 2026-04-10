@@ -85,11 +85,14 @@ export default function Login() {
   }, [dispatch]);
 
   useEffect(() => {
+    // Captive context is now captured in App.tsx before routing to login
+    // This useEffect is kept for backward compatibility if someone navigates directly
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id')?.trim() || '';
     const ap = params.get('ap')?.trim() || '';
     const ssid = params.get('ssid')?.trim() || '';
     const url = params.get('url')?.trim() || '';
+    const t = params.get('t')?.trim() || '';
     const hasAnyCaptiveParam = Boolean(id || ap || ssid || url);
 
     if (!hasAnyCaptiveParam) {
@@ -97,13 +100,13 @@ export default function Login() {
     }
 
     if (!id || !ap || !ssid || !url) {
-      sessionStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+      localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
       return;
     }
 
-    sessionStorage.setItem(
+    localStorage.setItem(
       STORAGE_KEYS.portalCaptiveContext,
-      JSON.stringify({ id, ap, ssid, url } satisfies CaptivePortalContext),
+      JSON.stringify({ id, ap, ssid, url, t } satisfies CaptivePortalContext),
     );
   }, []);
 
@@ -153,7 +156,7 @@ export default function Login() {
     guestAuthMethod === 'email' ? guestForm.email.trim() : guestForm.phone.trim();
 
   const getStoredCaptiveContext = (): CaptivePortalContext | null => {
-    const rawContext = sessionStorage.getItem(STORAGE_KEYS.portalCaptiveContext);
+    const rawContext = localStorage.getItem(STORAGE_KEYS.portalCaptiveContext);
 
     if (!rawContext) {
       return null;
@@ -191,7 +194,7 @@ export default function Login() {
       deviceName: 'Acer',
     });
 
-    sessionStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+    localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
     window.location.assign(captiveContext.url);
     return true;
   };

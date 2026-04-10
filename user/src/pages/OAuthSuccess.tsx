@@ -10,7 +10,7 @@ export default function OAuthSuccess() {
   const [isProcessing, setIsProcessing] = useState(true);
 
   const getStoredCaptiveContext = (): CaptivePortalContext | null => {
-    const rawContext = sessionStorage.getItem(STORAGE_KEYS.portalCaptiveContext);
+    const rawContext = localStorage.getItem(STORAGE_KEYS.portalCaptiveContext);
 
     if (!rawContext) {
       return null;
@@ -66,7 +66,7 @@ export default function OAuthSuccess() {
           deviceName: '',
         });
 
-        sessionStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+        localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
         sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
         window.location.assign(captiveContext.url);
         return;

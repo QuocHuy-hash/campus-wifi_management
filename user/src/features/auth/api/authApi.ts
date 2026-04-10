@@ -21,11 +21,12 @@ const OAUTH2_ENDPOINT = `/oauth2`;
 const AUTHORIZE_DEVICE_ENDPOINT = `/authorize-device`;
 
 export async function fetchActiveProviders(): Promise<ProviderConfig[]> {
-  const response = await apiClient.get<ApiEnvelope<ProviderConfig[]>>(
-    `${PROVIDERS_ENDPOINT}?isActive=true`,
-  );
+  // const response = await apiClient.get<ApiEnvelope<ProviderConfig[]>>(
+  //   `${PROVIDERS_ENDPOINT}?isActive=true`,
+  // );
 
-  return response.data.data || [];
+  // return response.data.data || [];
+  return  [];
 }
 
 export async function registerUser(payload: RegisterPayload): Promise<RegisterResult> {
