@@ -10,13 +10,14 @@ import InternalLoginTab from '@/components/InternalLoginTab';
 import GuestLoginTab from '@/components/GuestLoginTab';
 import { authorizeDevice, getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
 import { getActiveProviders, registerWithOtp, resendEmailOtp, verifyEmailOtp } from '@/features/auth/slices/authSlice';
-import type { CaptivePortalContext, ProviderConfig } from '@/features/auth/types';
+import type {  ProviderConfig } from '@/features/auth/types';
 import { useAppDispatch } from '@/stores/hooks';
 import type { RootState } from '@/stores/store';
 import TermsDialog from '@/features/auth/components/dialogs/TermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
 import { STORAGE_KEYS } from '@/constants/appKeys';
+import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext } from '@/lib/captivePortal';
 
 export default function Login() {
   const dispatch = useAppDispatch();
@@ -84,30 +85,33 @@ export default function Login() {
     dispatch(getActiveProviders());
   }, [dispatch]);
 
+  // FIX: Lưu captive context ngay khi component mount
   useEffect(() => {
-    // Captive context is now captured in App.tsx before routing to login
-    // This useEffect is kept for backward compatibility if someone navigates directly
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id')?.trim() || '';
-    const ap = params.get('ap')?.trim() || '';
-    const ssid = params.get('ssid')?.trim() || '';
-    const url = params.get('url')?.trim() || '';
-    const t = params.get('t')?.trim() || '';
-    const hasAnyCaptiveParam = Boolean(id || ap || ssid || url);
-
-    if (!hasAnyCaptiveParam) {
-      return;
+    // Lấy search params từ URL hiện tại
+    const currentSearch = window.location.search;
+    
+    console.log('🔍 Current URL:', window.location.href);
+    console.log('🔍 Search params:', currentSearch);
+    
+    if (currentSearch) {
+      const captiveContext = extractCaptivePortalContext(currentSearch);
+      console.log('🔍 Extracted context:', captiveContext);
+      
+      if (captiveContext) {
+        saveCaptivePortalContext(captiveContext);
+        console.log('✅ Captive context saved to localStorage');
+      } else {
+        console.warn('⚠️ Failed to extract captive context from URL');
+      }
+    } else {
+      // Kiểm tra xem có context đã lưu không
+      const stored = getCaptivePortalContext('');
+      if (stored) {
+        console.log('✅ Using stored captive context:', stored);
+      } else {
+        console.warn('⚠️ No captive context in URL or localStorage');
+      }
     }
-
-    if (!id || !ap || !ssid || !url) {
-      localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-      return;
-    }
-
-    localStorage.setItem(
-      STORAGE_KEYS.portalCaptiveContext,
-      JSON.stringify({ id, ap, ssid, url, t } satisfies CaptivePortalContext),
-    );
   }, []);
 
   const getLoginErrorMessage = (apiError: unknown): string => {
@@ -133,70 +137,65 @@ export default function Login() {
     return 'Đăng nhập thất bại. Vui lòng thử lại.';
   };
 
-  const getAuthorizeErrorMessage = (apiError: unknown): string => {
-    if (typeof apiError === 'object' && apiError !== null) {
-      const maybeAxios = apiError as {
-        response?: { data?: { message?: string } };
-        message?: string;
-      };
+  // const getAuthorizeErrorMessage = (apiError: unknown): string => {
+  //   if (typeof apiError === 'object' && apiError !== null) {
+  //     const maybeAxios = apiError as {
+  //       response?: { data?: { message?: string } };
+  //       message?: string;
+  //     };
 
-      if (maybeAxios.response?.data?.message) {
-        return maybeAxios.response.data.message;
-      }
+  //     if (maybeAxios.response?.data?.message) {
+  //       return maybeAxios.response.data.message;
+  //     }
 
-      if (maybeAxios.message) {
-        return maybeAxios.message;
-      }
-    }
+  //     if (maybeAxios.message) {
+  //       return maybeAxios.message;
+  //     }
+  //   }
 
-    return 'Xác thực thiết bị thất bại. Vui lòng thử lại.';
-  };
+  //   return 'Xác thực thiết bị thất bại. Vui lòng thử lại.';
+  // };
 
   const getGuestIdentifier = () =>
     guestAuthMethod === 'email' ? guestForm.email.trim() : guestForm.phone.trim();
 
-  const getStoredCaptiveContext = (): CaptivePortalContext | null => {
-    const rawContext = localStorage.getItem(STORAGE_KEYS.portalCaptiveContext);
-
-    if (!rawContext) {
-      return null;
-    }
-
+  // FIX: Sửa lại hàm này để chạy ngầm
+  const authorizeDeviceInBackground = async (provider: string): Promise<void> => {
     try {
-      const parsed = JSON.parse(rawContext) as Partial<CaptivePortalContext>;
+      // Không cần truyền search nữa vì đã lưu trong localStorage
+      const captiveContext = getCaptivePortalContext('');
+      
+      console.log('🔐 Authorizing device...');
+      console.log('🔐 Captive context:', captiveContext);
+      console.log('🔐 Provider:', provider);
 
-      if (!parsed.id || !parsed.ap || !parsed.ssid || !parsed.url) {
-        return null;
+      if (!captiveContext) {
+        console.warn('⚠️ No captive context found, skipping device authorization');
+        return;
       }
 
-      return {
-        id: parsed.id,
-        ap: parsed.ap,
-        ssid: parsed.ssid,
-        url: parsed.url,
-      };
-    } catch {
-      return null;
+      // Gọi API authorize device
+      await authorizeDevice({
+        ...captiveContext,
+        provider,
+        deviceType: 'Laptop',
+        deviceName: 'Acer',
+      });
+
+      console.log('✅ Device authorized successfully');
+
+      // Xóa context sau khi authorize thành công
+      localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+
+      // Nếu có URL redirect, thực hiện redirect
+      if (captiveContext.url) {
+        console.log('🔄 Redirecting to:', captiveContext.url);
+        window.location.assign(captiveContext.url);
+      }
+    } catch (error) {
+      // Log lỗi nhưng không block flow chính
+      console.error('❌ Failed to authorize device (non-blocking):', error);
     }
-  };
-
-  const authorizeDeviceAndRedirect = async (provider: string): Promise<boolean> => {
-    const captiveContext = getStoredCaptiveContext();
-
-    if (!captiveContext) {
-      return false;
-    }
-
-    await authorizeDevice({
-      ...captiveContext,
-      provider,
-      deviceType: 'Laptop',
-      deviceName: 'Acer',
-    });
-
-    localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-    window.location.assign(captiveContext.url);
-    return true;
   };
 
   const persistSession = async (identifier: string, fallbackRole?: string) => {
@@ -217,9 +216,7 @@ export default function Login() {
     );
   };
 
-
-
-  const handleSSOLogin = (provider: string) => {
+  const handleSSOLogin = async (provider: string) => {
     if (!agreeTerms) {
       setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
       return;
@@ -256,16 +253,13 @@ export default function Login() {
         loginTime: new Date().toISOString(),
         linkedAccounts: [linkedAccount]
       }));
-      try {
-        const redirected = await authorizeDeviceAndRedirect(provider);
 
-        if (!redirected) {
-          setLocation('/session');
-        }
-      } catch (apiError) {
-        setError(getAuthorizeErrorMessage(apiError));
-        setIsLoading(false);
-      }
+      // FIX: Gọi authorize device ngầm
+      await authorizeDeviceInBackground(provider);
+
+      // Luôn redirect về /session (nếu không có captive URL)
+      setLocation('/session');
+      setIsLoading(false);
     }, 1200);
   };
 
@@ -411,20 +405,13 @@ export default function Login() {
       localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
       await persistSession(guestIdentifier, result.roles?.[0]);
 
-      let redirected = false;
-      try {
-        redirected = await authorizeDeviceAndRedirect('password');
-      } catch (apiError) {
-        setError(getAuthorizeErrorMessage(apiError));
-        setIsLoading(false);
-        return;
-      }
+      // FIX: Gọi authorize device ngầm
+      await authorizeDeviceInBackground('password');
 
       resetGuestForm();
 
-      if (!redirected) {
-        setLocation('/session');
-      }
+      // Luôn redirect về /session (nếu không có captive URL)
+      setLocation('/session');
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
       setIsLoading(false);
@@ -451,18 +438,11 @@ export default function Login() {
       localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
       await persistSession(loginUsername, result.roles?.[0]);
 
-      let redirected = false;
-      try {
-        redirected = await authorizeDeviceAndRedirect('password');
-      } catch (apiError) {
-        setError(getAuthorizeErrorMessage(apiError));
-        setIsLoading(false);
-        return;
-      }
+      // FIX: Gọi authorize device ngầm
+      await authorizeDeviceInBackground('password');
 
-      if (!redirected) {
-        setLocation('/session');
-      }
+      // Luôn redirect về /session (nếu không có captive URL)
+      setLocation('/session');
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
       setIsLoading(false);
@@ -664,34 +644,6 @@ export default function Login() {
             </div>
           </div>
         </div>
-
-        {/* Policy Info */}
-        {/* <div className="mt-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-medium">Chính sách sử dụng</p>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-2">
-                <Clock size={18} className="text-blue-600" />
-              </div>
-              <p className="text-gray-900 font-semibold">{studentPolicy.session_timeout / 3600}h</p>
-              <p className="text-gray-500 text-xs">mỗi phiên</p>
-            </div>
-            <div className="text-center">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-2">
-                <Gauge size={18} className="text-blue-600" />
-              </div>
-              <p className="text-gray-900 font-semibold">{studentPolicy.bandwidth_limit} Mbps</p>
-              <p className="text-gray-500 text-xs">băng thông</p>
-            </div>
-            <div className="text-center">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-2">
-                <HardDrive size={18} className="text-blue-600" />
-              </div>
-              <p className="text-gray-900 font-semibold">{formatBytes(studentPolicy.quota_daily)}</p>
-              <p className="text-gray-500 text-xs">hạn ngạch/ngày</p>
-            </div>
-          </div>
-        </div> */}
 
         {/* Footer */}
         <p className="text-center text-gray-400 text-xs mt-6">

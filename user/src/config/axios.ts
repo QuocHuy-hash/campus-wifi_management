@@ -3,6 +3,14 @@ import { API_BASE_URL } from '@/config/api';
 import { API_HEADERS, HTTP_CONFIG, STORAGE_KEYS } from '@/constants/appKeys';
 
 let hasInitialized = false;
+const PUBLIC_ENDPOINTS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/verify-otp',
+  '/auth/resend-otp',
+  '/providers-config',
+  '/oauth2/',
+] as const;
 
 const getStoredAuthToken = (): string | null => {
   if (typeof window === 'undefined') {
@@ -12,12 +20,21 @@ const getStoredAuthToken = (): string | null => {
   return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 };
 
+const isPublicRequest = (url?: string): boolean => {
+  if (!url) {
+    return false;
+  }
+
+  return PUBLIC_ENDPOINTS.some((endpoint) => url.includes(endpoint));
+};
+
 export const initializeAxios = (): void => {
   if (hasInitialized) {
     return;
   }
 
   axios.defaults.baseURL = API_BASE_URL;
+  axios.defaults.withCredentials = true;
   axios.defaults.timeout = HTTP_CONFIG.DEFAULT_TIMEOUT_MS;
   axios.defaults.headers.common.Accept = HTTP_CONFIG.DEFAULT_HEADERS.Accept;
   axios.defaults.headers.common['Content-Type'] = HTTP_CONFIG.DEFAULT_HEADERS['Content-Type'];
@@ -25,6 +42,14 @@ export const initializeAxios = (): void => {
 
   axios.interceptors.request.use((config) => {
     const token = getStoredAuthToken();
+
+    if (isPublicRequest(config.url)) {
+      if (config.headers) {
+        delete config.headers[API_HEADERS.AUTHORIZATION];
+      }
+
+      return config;
+    }
 
     if (token) {
       config.headers = config.headers ?? {};

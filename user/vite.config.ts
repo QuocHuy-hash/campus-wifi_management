@@ -6,25 +6,33 @@ import { defineConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "src"),
-    },
-  },
-  build: {
-    outDir: path.resolve(__dirname, "dist"),
-    emptyOutDir: true,
-  },
-  server: {
-    port: 3003,
-    host: true,
-    proxy: {
-      '/api': {
-        target:  'http://192.168.31.230:3030',
-        changeOrigin: true,
+export default defineConfig(() => {
+  const proxyTarget = "https://8143-2001-ee0-50e3-8190-b81b-72f-e54c-8459.ngrok-free.app";
+
+  return {
+    plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "src"),
       },
     },
-  },
+    build: {
+      outDir: path.resolve(__dirname, "dist"),
+      emptyOutDir: true,
+    },
+    server: {
+      port: 3003,
+      host: true,
+      proxy: {
+        "/api": {
+          target: proxyTarget,
+          changeOrigin: true,
+          secure: false,
+          headers: {
+          "ngrok-skip-browser-warning": "true",
+        },
+        },
+      },
+    },
+  };
 });

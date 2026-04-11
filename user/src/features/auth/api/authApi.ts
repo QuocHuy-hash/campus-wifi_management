@@ -15,10 +15,10 @@ import {
 } from "@/features/auth/types";
 
 // Endpoints
-const PROVIDERS_ENDPOINT = `/providers-config`;
+// const PROVIDERS_ENDPOINT = `/providers-config`;
 const AUTH_ENDPOINT = `/auth`;
 const OAUTH2_ENDPOINT = `/oauth2`;
-const AUTHORIZE_DEVICE_ENDPOINT = `/authorize-device`;
+const AUTHORIZE_DEVICE_ENDPOINT = `/users/authorize-device`;
 
 export async function fetchActiveProviders(): Promise<ProviderConfig[]> {
   // const response = await apiClient.get<ApiEnvelope<ProviderConfig[]>>(
@@ -54,12 +54,10 @@ export async function resendOtp(payload: ResendOtpPayload): Promise<void> {
 }
 
 export async function loginWithPassword(payload: LoginPayload): Promise<LoginResult> {
-  // Keep both `identifier` and `email` for backward compatibility while backend migrates.
   const response = await apiClient.post<ApiEnvelope<LoginResult>>(
     `${AUTH_ENDPOINT}/login`,
     {
       identifier: payload.identifier,
-      email: payload.identifier,
       password: payload.password,
     },
   );
@@ -73,7 +71,7 @@ export async function getMeProfile(): Promise<MeResponse> {
 }
 
 export async function authorizeDevice(payload: AuthorizeDevicePayload): Promise<void> {
-  await apiClient.post(`${AUTHORIZE_DEVICE_ENDPOINT}`, payload);
+  await apiClient.put(`${AUTHORIZE_DEVICE_ENDPOINT}`, payload);
 }
 
 export function startOAuth2Login(provider: string): void {

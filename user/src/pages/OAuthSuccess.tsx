@@ -1,38 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { authorizeDevice } from '@/features/auth/api/authApi';
-import type { CaptivePortalContext } from '@/features/auth/types';
+import { authorizeDevice, getMeProfile } from '@/features/auth/api/authApi';
 import { STORAGE_KEYS } from '@/constants/appKeys';
+import { getCaptivePortalContext } from '@/lib/captivePortal';
 
 export default function OAuthSuccess() {
   const [, setLocation] = useLocation();
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(true);
-
-  const getStoredCaptiveContext = (): CaptivePortalContext | null => {
-    const rawContext = localStorage.getItem(STORAGE_KEYS.portalCaptiveContext);
-
-    if (!rawContext) {
-      return null;
-    }
-
-    try {
-      const parsed = JSON.parse(rawContext) as Partial<CaptivePortalContext>;
-
-      if (!parsed.id || !parsed.ap || !parsed.ssid || !parsed.url) {
-        return null;
-      }
-
-      return {
-        id: parsed.id,
-        ap: parsed.ap,
-        ssid: parsed.ssid,
-        url: parsed.url,
-      };
-    } catch {
-      return null;
-    }
-  };
 
   const completeOAuthFlow = useCallback(async () => {
     setIsProcessing(true);
@@ -40,22 +15,49 @@ export default function OAuthSuccess() {
 
     const params = new URLSearchParams(window.location.search);
     const accessToken = params.get('access_token');
+    let hasAuthenticatedSession = Boolean(accessToken || localStorage.getItem(STORAGE_KEYS.accessToken));
 
-    if (!accessToken && !localStorage.getItem(STORAGE_KEYS.accessToken)) {
-      setIsProcessing(false);
-      setLocation('/login');
-      return;
-    }
-
-    // HttpOnly cookie must be set by backend response headers, not JavaScript.
-    // Frontend only persists a minimal app session flag and removes token from URL.
-    localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
     if (accessToken) {
       localStorage.setItem(STORAGE_KEYS.accessToken, accessToken);
     }
 
+    try {
+      const profile = await getMeProfile();
+      hasAuthenticatedSession = true;
+      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
+      localStorage.setItem(
+        STORAGE_KEYS.portalUser,
+        JSON.stringify({
+          id: profile.id,
+          username: profile.username || profile.email || 'oauth2-user',
+          fullname: profile.fullName || profile.username || 'OAuth2 User',
+          email: profile.email || profile.username || 'oauth2-user',
+          role: profile.roles?.[0] || 'CLIENT',
+          status: profile.status,
+          avatarUrl: profile.avatarUrl,
+          loginTime: profile.lastLoginAt || new Date().toISOString(),
+        }),
+      );
+    } catch (apiError) {
+      if (!hasAuthenticatedSession) {
+        setIsProcessing(false);
+        setError(
+          typeof apiError === 'object' &&
+            apiError !== null &&
+            'message' in apiError &&
+            typeof apiError.message === 'string'
+            ? apiError.message
+            : 'Không thể xác nhận phiên đăng nhập từ backend.',
+        );
+        setLocation('/login');
+        return;
+      }
+
+      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
+    }
+
     const provider = sessionStorage.getItem(STORAGE_KEYS.oauthProvider) || 'google';
-    const captiveContext = getStoredCaptiveContext();
+    const captiveContext = getCaptivePortalContext(window.location.search);
 
     if (captiveContext) {
       try {
