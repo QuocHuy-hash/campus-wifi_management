@@ -11,13 +11,15 @@ import Login from "./pages/Login";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import { extractCaptivePortalContext, saveCaptivePortalContext } from "@/lib/captivePortal";
 
+
 function getLoginPathWithSearch() {
   return window.location.search ? `/login${window.location.search}` : "/login";
 }
 
 function persistCaptiveContextFromCurrentUrl() {
-  const captiveContext = extractCaptivePortalContext(window.location.search);
 
+  const captiveContext = extractCaptivePortalContext(window.location.search);
+   
   if (captiveContext) {
     saveCaptivePortalContext(captiveContext);
   }

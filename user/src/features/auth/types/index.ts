@@ -51,6 +51,14 @@ export interface LoginResult {
   roles: string[];
 }
 
+export interface CaptivePortalContext {
+  id: string;
+  ap: string;
+  ssid: string;
+  url: string;
+  t?: string; // Optional timestamp parameter from controller
+}
+
 export interface AuthorizeDevicePayload {
   deviceMac: string;
   apMac: string;

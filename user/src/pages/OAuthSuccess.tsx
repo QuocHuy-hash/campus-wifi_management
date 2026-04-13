@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { authorizeDevice, getMeProfile } from '@/features/auth/api/authApi';
 import { STORAGE_KEYS } from '@/constants/appKeys';
-import { getCaptivePortalContext } from '@/lib/captivePortal';
+import { getCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
 
 export default function OAuthSuccess() {
   const [, setLocation] = useLocation();
@@ -56,21 +56,16 @@ export default function OAuthSuccess() {
       localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
     }
 
-    const provider = sessionStorage.getItem(STORAGE_KEYS.oauthProvider) || 'google';
     const captiveContext = getCaptivePortalContext(window.location.search);
 
     if (captiveContext) {
       try {
-        await authorizeDevice({
-          ...captiveContext,
-          provider,
-          deviceType: '',
-          deviceName: '',
-        });
+        const payload = buildAuthorizeDevicePayload(captiveContext);
+        await authorizeDevice(payload);
 
         localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
         sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
-        window.location.assign(captiveContext.url);
+        window.location.assign(captiveContext.url || '/session');
         return;
       } catch (apiError) {
         const message =

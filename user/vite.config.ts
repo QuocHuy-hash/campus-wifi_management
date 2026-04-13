@@ -7,7 +7,7 @@ import { defineConfig } from "vite";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => {
-  const proxyTarget = "https://8143-2001-ee0-50e3-8190-b81b-72f-e54c-8459.ngrok-free.app";
+  const proxyTarget = "https://spas-exercises-invision-donated.trycloudflare.com";
 
   return {
     plugins: [react(), tailwindcss()],
@@ -28,9 +28,9 @@ export default defineConfig(() => {
           target: proxyTarget,
           changeOrigin: true,
           secure: false,
-          headers: {
-          "ngrok-skip-browser-warning": "true",
-        },
+        //   headers: {
+        //   "ngrok-skip-browser-warning": "true",
+        // },
         },
       },
     },

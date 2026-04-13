@@ -17,7 +17,8 @@ import TermsDialog from '@/features/auth/components/dialogs/TermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
 import { STORAGE_KEYS } from '@/constants/appKeys';
-import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext } from '@/lib/captivePortal';
+import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
+import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
 
 export default function Login() {
   const dispatch = useAppDispatch();
@@ -26,7 +27,6 @@ export default function Login() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
   const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [guestForm, setGuestForm] = useState({
@@ -85,18 +85,22 @@ export default function Login() {
     dispatch(getActiveProviders());
   }, [dispatch]);
 
+  // Initialize axios on component mount
+  useEffect(() => {
+    initializeAxios();
+  }, []);
+
   // FIX: Lưu captive context ngay khi component mount
   useEffect(() => {
-    // Lấy search params từ URL hiện tại
     const currentSearch = window.location.search;
-    
+
     console.log('🔍 Current URL:', window.location.href);
     console.log('🔍 Search params:', currentSearch);
-    
+
     if (currentSearch) {
       const captiveContext = extractCaptivePortalContext(currentSearch);
       console.log('🔍 Extracted context:', captiveContext);
-      
+
       if (captiveContext) {
         saveCaptivePortalContext(captiveContext);
         console.log('✅ Captive context saved to localStorage');
@@ -104,7 +108,6 @@ export default function Login() {
         console.warn('⚠️ Failed to extract captive context from URL');
       }
     } else {
-      // Kiểm tra xem có context đã lưu không
       const stored = getCaptivePortalContext('');
       if (stored) {
         console.log('✅ Using stored captive context:', stored);
@@ -160,60 +163,72 @@ export default function Login() {
     guestAuthMethod === 'email' ? guestForm.email.trim() : guestForm.phone.trim();
 
   // FIX: Sửa lại hàm này để chạy ngầm
-  const authorizeDeviceInBackground = async (provider: string): Promise<void> => {
+  const authorizeDeviceInBackground = async (): Promise<void> => {
     try {
-      // Không cần truyền search nữa vì đã lưu trong localStorage
       const captiveContext = getCaptivePortalContext('');
-      
+
       console.log('🔐 Authorizing device...');
       console.log('🔐 Captive context:', captiveContext);
-      console.log('🔐 Provider:', provider);
 
       if (!captiveContext) {
         console.warn('⚠️ No captive context found, skipping device authorization');
         return;
       }
 
-      // Gọi API authorize device
-      await authorizeDevice({
-        ...captiveContext,
-        provider,
-        deviceType: 'Laptop',
-        deviceName: 'Acer',
-      });
+      const payload = buildAuthorizeDevicePayload(captiveContext);
+      await authorizeDevice(payload);
 
       console.log('✅ Device authorized successfully');
 
-      // Xóa context sau khi authorize thành công
       localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
 
-      // Nếu có URL redirect, thực hiện redirect
       if (captiveContext.url) {
         console.log('🔄 Redirecting to:', captiveContext.url);
         window.location.assign(captiveContext.url);
       }
     } catch (error) {
-      // Log lỗi nhưng không block flow chính
       console.error('❌ Failed to authorize device (non-blocking):', error);
     }
   };
 
   const persistSession = async (identifier: string, fallbackRole?: string) => {
-    const profile = await getMeProfile();
-    localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
-    localStorage.setItem(
-      STORAGE_KEYS.portalUser,
-      JSON.stringify({
-        id: profile.id,
-        username: profile.username || identifier,
-        fullname: profile.fullName || identifier,
-        email: profile.email || identifier,
-        role: fallbackRole || 'CLIENT',
-        status: profile.status,
-        avatarUrl: profile.avatarUrl,
-        loginTime: profile.lastLoginAt || new Date().toISOString(),
-      }),
-    );
+    try {
+      console.log('🔍 Calling getMeProfile...');
+      const profile = await getMeProfile();
+      console.log('✅ getMeProfile success:', profile);
+
+      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
+      localStorage.setItem(
+        STORAGE_KEYS.portalUser,
+        JSON.stringify({
+          id: profile.id,
+          username: profile.username || identifier,
+          fullname: profile.fullName || identifier,
+          email: profile.email || identifier,
+          role: fallbackRole || 'CLIENT',
+          status: profile.status,
+          avatarUrl: profile.avatarUrl,
+          loginTime: profile.lastLoginAt || new Date().toISOString(),
+        }),
+      );
+    } catch (error) {
+      console.error('❌ getMeProfile failed:', error);
+      // Fallback: vẫn lưu session nhưng với data cơ bản
+      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
+      localStorage.setItem(
+        STORAGE_KEYS.portalUser,
+        JSON.stringify({
+          id: 'unknown',
+          username: identifier,
+          fullname: identifier,
+          email: identifier,
+          role: fallbackRole || 'CLIENT',
+          status: 'ACTIVE',
+          avatarUrl: null,
+          loginTime: new Date().toISOString(),
+        }),
+      );
+    }
   };
 
   const handleSSOLogin = async (provider: string) => {
@@ -255,7 +270,7 @@ export default function Login() {
       }));
 
       // FIX: Gọi authorize device ngầm
-      await authorizeDeviceInBackground(provider);
+      await authorizeDeviceInBackground();
 
       // Luôn redirect về /session (nếu không có captive URL)
       setLocation('/session');
@@ -403,10 +418,11 @@ export default function Login() {
 
       localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
       localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
+      setAxiosAuthToken(result.accessToken);
       await persistSession(guestIdentifier, result.roles?.[0]);
 
       // FIX: Gọi authorize device ngầm
-      await authorizeDeviceInBackground('password');
+      await authorizeDeviceInBackground();
 
       resetGuestForm();
 
@@ -436,10 +452,11 @@ export default function Login() {
 
       localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
       localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
+      setAxiosAuthToken(result.accessToken);
       await persistSession(loginUsername, result.roles?.[0]);
 
       // FIX: Gọi authorize device ngầm
-      await authorizeDeviceInBackground('password');
+      await authorizeDeviceInBackground();
 
       // Luôn redirect về /session (nếu không có captive URL)
       setLocation('/session');

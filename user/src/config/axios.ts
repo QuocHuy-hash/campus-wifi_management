@@ -17,7 +17,9 @@ const getStoredAuthToken = (): string | null => {
     return null;
   }
 
-  return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  console.log('🔑 getStoredAuthToken:', token ? 'Token exists' : 'No token');
+  return token;
 };
 
 const isPublicRequest = (url?: string): boolean => {
@@ -38,7 +40,7 @@ export const initializeAxios = (): void => {
   axios.defaults.timeout = HTTP_CONFIG.DEFAULT_TIMEOUT_MS;
   axios.defaults.headers.common.Accept = HTTP_CONFIG.DEFAULT_HEADERS.Accept;
   axios.defaults.headers.common['Content-Type'] = HTTP_CONFIG.DEFAULT_HEADERS['Content-Type'];
-  axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
+  // axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
   axios.interceptors.request.use((config) => {
     const token = getStoredAuthToken();
@@ -47,13 +49,16 @@ export const initializeAxios = (): void => {
       if (config.headers) {
         delete config.headers[API_HEADERS.AUTHORIZATION];
       }
-
+      console.log('🌐 Public request, removing auth header:', config.url);
       return config;
     }
 
     if (token) {
       config.headers = config.headers ?? {};
       config.headers[API_HEADERS.AUTHORIZATION] = `Bearer ${token}`;
+      console.log('🔐 Added auth header to request:', config.url);
+    } else {
+      console.log('⚠️ No token found for request:', config.url);
     }
 
     return config;

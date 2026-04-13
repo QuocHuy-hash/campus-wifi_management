@@ -1,9 +1,8 @@
 import { STORAGE_KEYS } from "@/constants/appKeys";
-import type { CaptivePortalContext } from "@/features/auth/types";
+import type { CaptivePortalContext, AuthorizeDevicePayload } from "@/features/auth/types";
 
 export function extractCaptivePortalContext(search: string): CaptivePortalContext | null {
   const params = new URLSearchParams(search);
-console.log("params:::", Array.from(params.entries()));
   const id = params.get("id")?.trim() || "";
   const ap = params.get("ap")?.trim() || "";
   const ssid = params.get("ssid")?.trim() || "";
@@ -55,4 +54,51 @@ export function getStoredCaptivePortalContext(): CaptivePortalContext | null {
 
 export function getCaptivePortalContext(search: string): CaptivePortalContext | null {
   return getStoredCaptivePortalContext() || extractCaptivePortalContext(search);
+}
+
+export function buildAuthorizeDevicePayload(
+  context: CaptivePortalContext,
+  options?: {
+    deviceType?: string;
+    deviceName?: string;
+    duration?: number;
+  }
+): AuthorizeDevicePayload {
+  return {
+    deviceMac: context.id,
+    apMac: context.ap,
+    ssid: context.ssid,
+    deviceType: options?.deviceType || detectDeviceType(),
+    deviceName: options?.deviceName || detectDeviceName(),
+    userIpAddress: extractClientIp(),
+    userAgent: navigator.userAgent,
+    duration: options?.duration ?? 480,
+  };
+}
+
+function detectDeviceType(): string {
+  const ua = navigator.userAgent;
+  if (/Android/i.test(ua)) return "Android";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Macintosh/i.test(ua)) return "macOS";
+  if (/Linux/i.test(ua)) return "Linux";
+  return "Unknown";
+}
+
+function detectDeviceName(): string {
+  const ua = navigator.userAgent;
+  const androidMatch = ua.match(/Android[^;]*;\s*([^)]*)/);
+  if (androidMatch) {
+    const model = androidMatch[1].trim();
+    if (model && model !== "Linux") return model;
+  }
+  if (/iPhone/i.test(ua)) return "iPhone";
+  if (/iPad/i.test(ua)) return "iPad";
+  if (/Macintosh/i.test(ua)) return "Mac";
+  return "Unknown Device";
+}
+
+function extractClientIp(): string {
+  return "0.0.0.0";
 }
