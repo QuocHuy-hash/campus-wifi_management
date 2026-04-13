@@ -5,8 +5,7 @@ import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const apiProxyTarget =
-  process.env.VITE_API_PROXY_TARGET ?? "http://192.168.1.16:3030";
+const apiProxyTarget =  "https://spas-exercises-invision-donated.trycloudflare.com";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
