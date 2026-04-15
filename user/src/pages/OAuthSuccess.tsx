@@ -3,11 +3,13 @@ import { useLocation } from 'wouter';
 import { authorizeDevice, getMeProfile } from '@/features/auth/api/authApi';
 import { STORAGE_KEYS } from '@/constants/appKeys';
 import { getCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
+import NetworkConnectingScreen from '@/components/NetworkConnectingScreen';
 
 export default function OAuthSuccess() {
   const [, setLocation] = useLocation();
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(true);
+  const [showNetworkConnecting, setShowNetworkConnecting] = useState(false);
 
   const completeOAuthFlow = useCallback(async () => {
     setIsProcessing(true);
@@ -65,7 +67,9 @@ export default function OAuthSuccess() {
 
         localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
         sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
-        window.location.assign(captiveContext.url || '/session');
+        
+        // Show network connecting screen before redirecting
+        setShowNetworkConnecting(true);
         return;
       } catch (apiError) {
         const message =
@@ -115,24 +119,30 @@ export default function OAuthSuccess() {
   }, [completeOAuthFlow]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">
-        {isProcessing ? <p>Đang hoàn tất đăng nhập...</p> : null}
-        {!isProcessing && error ? (
-          <>
-            <p className="text-red-600">{error}</p>
-            <button
-              type="button"
-              className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-              onClick={() => {
-                void completeOAuthFlow();
-              }}
-            >
-              Thử lại xác thực thiết bị
-            </button>
-          </>
-        ) : null}
-      </div>
-    </div>
+    <>
+      {showNetworkConnecting ? (
+        <NetworkConnectingScreen onComplete={() => window.location.assign('/session')} />
+      ) : (
+        <div className="min-h-screen flex items-center justify-center px-4">
+          <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">
+            {isProcessing ? <p>Đang hoàn tất đăng nhập...</p> : null}
+            {!isProcessing && error ? (
+              <>
+                <p className="text-red-600">{error}</p>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() => {
+                    void completeOAuthFlow();
+                  }}
+                >
+                  Thử lại xác thực thiết bị
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

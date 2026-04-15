@@ -47,8 +47,8 @@ export default function Login() {
   const [isSettingGuestPassword, setIsSettingGuestPassword] = useState(false);
 
   // Standard Login states for returned guests
-  const [loginUsername, setLoginUsername] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const [loginUsername, setLoginUsername] = useState('minhnam1810@gmail.com');
+  const [loginPassword, setLoginPassword] = useState('admin123');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   // Forgot password states
@@ -162,7 +162,7 @@ export default function Login() {
   const getGuestIdentifier = () =>
     guestAuthMethod === 'email' ? guestForm.email.trim() : guestForm.phone.trim();
 
-  // FIX: Sửa lại hàm này để chạy ngầm
+  // FIX: Sửa lại hàm này để chạy ngầm - KHÔNG redirect ở đây
   const authorizeDeviceInBackground = async (): Promise<void> => {
     try {
       const captiveContext = getCaptivePortalContext('');
@@ -180,12 +180,8 @@ export default function Login() {
 
       console.log('✅ Device authorized successfully');
 
+      // Xóa context sau khi authorize thành công
       localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-
-      if (captiveContext.url) {
-        console.log('🔄 Redirecting to:', captiveContext.url);
-        window.location.assign(captiveContext.url);
-      }
     } catch (error) {
       console.error('❌ Failed to authorize device (non-blocking):', error);
     }
@@ -269,11 +265,18 @@ export default function Login() {
         linkedAccounts: [linkedAccount]
       }));
 
-      // FIX: Gọi authorize device ngầm
+      // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
+      const hasCaptiveContext = getCaptivePortalContext('');
+      
+      // Gọi authorize device ngầm
       await authorizeDeviceInBackground();
 
-      // Luôn redirect về /session (nếu không có captive URL)
-      setLocation('/session');
+      // Kiểm tra flag đã lưu để quyết định redirect
+      if (hasCaptiveContext) {
+        setLocation('/network-connecting');
+      } else {
+        setLocation('/session');
+      }
       setIsLoading(false);
     }, 1200);
   };
@@ -421,13 +424,20 @@ export default function Login() {
       setAxiosAuthToken(result.accessToken);
       await persistSession(guestIdentifier, result.roles?.[0]);
 
-      // FIX: Gọi authorize device ngầm
+      // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
+      const hasCaptiveContext = getCaptivePortalContext('');
+      
+      // Gọi authorize device ngầm
       await authorizeDeviceInBackground();
 
       resetGuestForm();
 
-      // Luôn redirect về /session (nếu không có captive URL)
-      setLocation('/session');
+      // Kiểm tra flag đã lưu để quyết định redirect
+      if (hasCaptiveContext) {
+        setLocation('/network-connecting');
+      } else {
+        setLocation('/session');
+      }
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
       setIsLoading(false);
@@ -455,11 +465,18 @@ export default function Login() {
       setAxiosAuthToken(result.accessToken);
       await persistSession(loginUsername, result.roles?.[0]);
 
-      // FIX: Gọi authorize device ngầm
+      // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
+      const hasCaptiveContext = getCaptivePortalContext('');
+      
+      // Gọi authorize device ngầm
       await authorizeDeviceInBackground();
 
-      // Luôn redirect về /session (nếu không có captive URL)
-      setLocation('/session');
+      // Kiểm tra flag đã lưu để quyết định redirect
+      if (hasCaptiveContext) {
+        setLocation('/network-connecting');
+      } else {
+        setLocation('/session');
+      }
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
       setIsLoading(false);
@@ -561,15 +578,25 @@ export default function Login() {
   const handleUseForgotCredentials = () => {
     setForgotModalOpen(false);
     setIsLoading(true);
+    
+    // FIX: Lưu flag TRƯỚC khi setTimeout
+    const hasCaptiveContext = getCaptivePortalContext('');
+    
     setTimeout(() => {
       localStorage.setItem('portalLoggedIn', 'true');
-      localStorage.setItem('portalUser', JSON.stringify({ 
+      localStorage.setItem('portalUser', JSON.stringify({
         ...currentUser,
         username: forgotContact,
         loginTime: new Date().toISOString()
       }));
       resetForgotForm();
-      setLocation('/session');
+      
+      // Kiểm tra flag đã lưu để quyết định redirect
+      if (hasCaptiveContext) {
+        setLocation('/network-connecting');
+      } else {
+        setLocation('/session');
+      }
     }, 1000);
   };
 

@@ -9,6 +9,7 @@ import Account from "./pages/Account";
 import ModalShowcase from "./pages/ModalShowcase";
 import Login from "./pages/Login";
 import OAuthSuccess from "./pages/OAuthSuccess";
+import NetworkConnectingScreen from "./components/NetworkConnectingScreen";
 import { extractCaptivePortalContext, saveCaptivePortalContext } from "@/lib/captivePortal";
 
 
@@ -64,6 +65,9 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/auth/success" component={OAuthSuccess} />
+      <Route path="/network-connecting">
+        {() => <NetworkConnectingScreen onComplete={() => window.location.assign('/session')} />}
+      </Route>
       <Route path="/guest*">
         <CaptivePortalHandler />
       </Route>
