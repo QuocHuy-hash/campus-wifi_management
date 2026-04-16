@@ -34,6 +34,7 @@ export const UsersReportTab = () => {
   const [userManagementTab, setUserManagementTab] = useState('wifi-users');
   const [confirmToggleUser, setConfirmToggleUser] = useState<{ id: number; username: string; status: 'active' | 'blocked' } | null>(null);
   const [selectedSessionForDeviceForm, setSelectedSessionForDeviceForm] = useState<UserSession | null>(null);
+  const [confirmForceDisconnectSession, setConfirmForceDisconnectSession] = useState<UserSession | null>(null);
 
   const {
     users: wifiUsers, sessions: userSessions, status,
@@ -522,7 +523,12 @@ export const UsersReportTab = () => {
                                 <Plus size={14} className="text-emerald-600" />
                                 {/* <span className="ml-1 text-xs">Thêm</span> */}
                               </Button>
-                              <Button variant="ghost" size="sm" title="Force Disconnect">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Force Disconnect"
+                                onClick={() => setConfirmForceDisconnectSession(session)}
+                              >
                                 <Power size={14} className="text-red-600" />
                               </Button>
                               <Button variant="ghost" size="sm" title="Gắn tag">
@@ -598,6 +604,33 @@ export const UsersReportTab = () => {
               className={confirmToggleUser?.status === 'active' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
             >
               {confirmToggleUser?.status === 'active' ? 'Tạm khóa' : 'Mở khóa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!confirmForceDisconnectSession}
+        onOpenChange={(open) => !open && setConfirmForceDisconnectSession(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận ngắt kết nối phiên</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmForceDisconnectSession
+                ? `Bạn có chắc muốn Force Disconnect phiên ${confirmForceDisconnectSession.sessionId} của user ${confirmForceDisconnectSession.username}?`
+                : 'Bạn có chắc muốn Force Disconnect phiên này?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmForceDisconnectSession(null);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Xác nhận ngắt
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

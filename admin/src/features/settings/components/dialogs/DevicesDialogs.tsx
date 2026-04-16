@@ -32,9 +32,9 @@ export const DevicesDialogs = () => {
   const { campuses, buildings, locations } = useSelector((state: RootState) => state.settings.areas);
 
   const [controllerForm, setControllerForm] = useState<Partial<Controller & { macAddress?: string; locationName?: string }>>(({ status: 'ONLINE' }) as any);
-  const [apForm, setAPForm] = useState<Partial<AP>>({});
+  const [apForm, setAPForm] = useState<Partial<AP & { buildingId?: number; locationId?: number }>>({});
 
-  // Filter locations: campusId → buildingIds → locations
+  // Filter locations: campusId → buildingIds → locations (for Controller)
   const filteredLocations = useMemo(() => {
     if (!controllerForm.campusId) return [];
     const campusBuildingIds = buildings
@@ -42,6 +42,12 @@ export const DevicesDialogs = () => {
       .map(b => b.id);
     return locations.filter(l => campusBuildingIds.includes(l.buildingId));
   }, [controllerForm.campusId, buildings, locations]);
+
+  // Filter locations by building (for AP)
+  const filteredLocationsForAP = useMemo(() => {
+    if (!apForm.buildingId) return [];
+    return locations.filter(l => l.buildingId === apForm.buildingId);
+  }, [apForm.buildingId, locations]);
 
   useEffect(() => {
     if (editControllerDialogOpen && selectedController) setControllerForm(selectedController);
@@ -140,9 +146,37 @@ export const DevicesDialogs = () => {
             <Field label="Tên Model">
               <Input placeholder="VD: Aruba-AP-515" value={apForm.modelName || ''} onChange={e => setAPForm({...apForm, modelName: e.target.value})} />
             </Field>
-            <Field label="Location ID">
-              <Input type="number" placeholder="VD: 1" value={apForm.locationId || ''} onChange={e => setAPForm({...apForm, locationId: Number(e.target.value)})} />
-            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Tòa nhà">
+                <Select 
+                  value={String(apForm.buildingId || '')} 
+                  onValueChange={v => setAPForm({...apForm, buildingId: Number(v), locationId: undefined})}
+                >
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Chọn tòa nhà" /></SelectTrigger>
+                  <SelectContent>
+                    {buildings.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Vị trí">
+                <Select 
+                  value={String(apForm.locationId || '')} 
+                  onValueChange={v => setAPForm({...apForm, locationId: Number(v)})}
+                  disabled={!apForm.buildingId}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={apForm.buildingId ? 'Chọn vị trí' : 'Chọn tòa nhà trước'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredLocationsForAP.length === 0 ? (
+                      <SelectItem value="__none" disabled>Không có vị trí nào</SelectItem>
+                    ) : (
+                      filteredLocationsForAP.map(l => <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>)
+                    )}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
             <Field label="Mô tả">
               <Input placeholder="Mô tả thêm (tùy chọn)" value={apForm.description || ''} onChange={e => setAPForm({...apForm, description: e.target.value})} />
             </Field>

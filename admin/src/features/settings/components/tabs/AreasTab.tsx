@@ -4,20 +4,39 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Map, MapPin, Building2, Plus, Edit, Trash2, X } from 'lucide-react';
 import { AppDispatch, RootState } from '../../../../stores/store';
-import { 
+import {
   setCampusFilter, setBuildingFilter,
   setAddCampusDialogOpen, setEditCampusDialogOpen, setDeleteCampusDialogOpen, setSelectedCampus,
   setAddBuildingDialogOpen, setEditBuildingDialogOpen, setDeleteBuildingDialogOpen, setSelectedBuilding,
-  setAddLocationDialogOpen, setEditLocationDialogOpen, setDeleteLocationDialogOpen, setSelectedLocation
+  setAddLocationDialogOpen, setEditLocationDialogOpen, setDeleteLocationDialogOpen, setSelectedLocation,
+  fetchAreas
 } from '../../slices/areasSlice';
 import { Campus, Building, Location } from '../../types';
+import { Pagination } from '@/components/ui/pagination';
 
 export const AreasTab = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { 
+  const {
     campuses, buildings, locations,
-    selectedCampusFilter, selectedBuildingFilter
+    selectedCampusFilter, selectedBuildingFilter,
+    campusesPagination, buildingsPagination
   } = useSelector((state: RootState) => state.settings.areas);
+
+  const handleCampusPageChange = (page: number) => {
+    dispatch(fetchAreas({ page, size: campusesPagination?.size || 10 }));
+  };
+
+  const handleCampusPageSizeChange = (size: number) => {
+    dispatch(fetchAreas({ page: 1, size }));
+  };
+
+  const handleBuildingPageChange = (page: number) => {
+    dispatch(fetchAreas({ page, size: buildingsPagination?.size || 10 }));
+  };
+
+  const handleBuildingPageSizeChange = (size: number) => {
+    dispatch(fetchAreas({ page: 1, size }));
+  };
 
   const filteredBuildings = useMemo(() => {
     if (selectedCampusFilter === 'all') return buildings;
@@ -101,6 +120,22 @@ export const AreasTab = () => {
             </div>
           ))}
         </div>
+        
+        {/* Campus Pagination */}
+        {campusesPagination && campusesPagination.pages > 1 && (
+          <div className="mt-4">
+            <Pagination
+              currentPage={campusesPagination.current}
+              pageSize={campusesPagination.size}
+              totalItems={campusesPagination.total}
+              totalPages={campusesPagination.pages}
+              onPageChange={handleCampusPageChange}
+              onPageSizeChange={handleCampusPageSizeChange}
+              showPageSizeSelector={true}
+              showQuickJumper={false}
+            />
+          </div>
+        )}
       </div>
 
       {/* Buildings & Locations Grid */}
@@ -183,6 +218,22 @@ export const AreasTab = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* Buildings Pagination */}
+          {buildingsPagination && buildingsPagination.pages > 1 && (
+            <div className="mt-4">
+              <Pagination
+                currentPage={buildingsPagination.current}
+                pageSize={buildingsPagination.size}
+                totalItems={buildingsPagination.total}
+                totalPages={buildingsPagination.pages}
+                onPageChange={handleBuildingPageChange}
+                onPageSizeChange={handleBuildingPageSizeChange}
+                showPageSizeSelector={true}
+                showQuickJumper={false}
+              />
+            </div>
+          )}
         </div>
 
         {/* Locations Section */}

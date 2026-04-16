@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchSessionData } from '../../slices/sessionsReportSlice';
-import { formatDate, formatDateTime } from '@/utils/dateTimeFormat';
+import { formatDateTime } from '@/utils/dateTimeFormat';
 
 const parseDateTime = (value: string) => {
   const date = new Date(value.replace(' ', 'T'));
@@ -20,6 +20,34 @@ const parseDurationMinutes = (duration: string) => {
   const hours = hourMatch ? Number.parseInt(hourMatch[1], 10) : 0;
   const minutes = minuteMatch ? Number.parseInt(minuteMatch[1], 10) : 0;
   return hours * 60 + minutes;
+};
+
+const parseTrafficToGB = (value: string): number => {
+  const normalized = value.trim().replace(',', '.');
+  const match = normalized.match(/^([\d.]+)\s*(B|KB|MB|GB|TB)$/i);
+  if (!match) return 0;
+
+  const amount = Number.parseFloat(match[1]);
+  if (Number.isNaN(amount)) return 0;
+
+  const unit = match[2].toUpperCase();
+  const factors: Record<string, number> = {
+    B: 1 / (1024 * 1024 * 1024),
+    KB: 1 / (1024 * 1024),
+    MB: 1 / 1024,
+    GB: 1,
+    TB: 1024,
+  };
+  return amount * (factors[unit] ?? 0);
+};
+
+const getSessionGroup = (identity?: string) => identity || 'Chưa gán nhóm';
+
+const getSessionLocation = (campus?: string, building?: string) => {
+  if (campus && building) return `Campus ${campus} - Building ${building}`;
+  if (campus) return `Campus ${campus}`;
+  if (building) return `Building ${building}`;
+  return '-';
 };
 
 const getEndDateTime = (startTime: string, endTime: string, duration: string) => {
@@ -50,7 +78,7 @@ export const SessionTimelineReportTab = () => {
   }, [dispatch, status]);
 
   const availableRoles = useMemo(() => {
-    const roles = Array.from(new Set(sessionData.map((item) => item.role)));
+    const roles = Array.from(new Set(sessionData.map((item) => getSessionGroup(item.identity))));
     return roles.sort((a, b) => a.localeCompare(b));
   }, [sessionData]);
 
@@ -60,16 +88,20 @@ export const SessionTimelineReportTab = () => {
     return sessionData.filter((session) => {
       const date = parseDateTime(session.startTime);
       const hour = date ? date.getHours() : -1;
+      const group = getSessionGroup(session.identity);
+      const location = getSessionLocation(session.campus, session.building);
 
-      const matchesRole = roleFilter === 'all' || session.role === roleFilter;
+      const matchesRole = roleFilter === 'all' || group === roleFilter;
       const matchesHour = hourFilter === 'all' || hour === Number.parseInt(hourFilter, 10);
       const matchesKeyword =
         keyword.length === 0 ||
         session.username.toLowerCase().includes(keyword) ||
+        session.sessionId.toLowerCase().includes(keyword) ||
         session.ap.toLowerCase().includes(keyword) ||
-        session.location.toLowerCase().includes(keyword) ||
-        session.ipAddress.toLowerCase().includes(keyword) ||
-        session.macAddress.toLowerCase().includes(keyword);
+        location.toLowerCase().includes(keyword) ||
+        session.ip.toLowerCase().includes(keyword) ||
+        session.mac.toLowerCase().includes(keyword) ||
+        session.deviceName.toLowerCase().includes(keyword);
 
       return matchesRole && matchesHour && matchesKeyword;
     });
@@ -96,25 +128,29 @@ export const SessionTimelineReportTab = () => {
 
     filteredSessions.forEach((session) => {
       const startDate = parseDateTime(session.startTime);
+      const sessionTotalGb = parseTrafficToGB(session.total);
+      const sessionGroup = getSessionGroup(session.identity);
+      const sessionLocation = getSessionLocation(session.campus, session.building);
+
       if (startDate) {
         const hour = startDate.getHours();
         hourBuckets[hour].count += 1;
-        hourBuckets[hour].dataUsed += session.dataUsed;
+        hourBuckets[hour].dataUsed += sessionTotalGb;
 
         if (hour < 6 || hour >= 22) {
           unusualLogins.push({
             username: session.username,
             startTime: session.startTime,
-            location: session.location,
+            location: sessionLocation,
           });
         }
       }
 
-      if (!roleMap[session.role]) {
-        roleMap[session.role] = { count: 0, dataUsed: 0 };
+      if (!roleMap[sessionGroup]) {
+        roleMap[sessionGroup] = { count: 0, dataUsed: 0 };
       }
-      roleMap[session.role].count += 1;
-      roleMap[session.role].dataUsed += session.dataUsed;
+      roleMap[sessionGroup].count += 1;
+      roleMap[sessionGroup].dataUsed += sessionTotalGb;
 
       const durationMinutes = parseDurationMinutes(session.duration);
       const activeMinutes = Math.round(durationMinutes * 0.8);
@@ -123,9 +159,9 @@ export const SessionTimelineReportTab = () => {
       totalMinutes += durationMinutes;
       totalActiveMinutes += activeMinutes;
       totalIdleMinutes += idleMinutes;
-      totalData += session.dataUsed;
+      totalData += sessionTotalGb;
 
-      const endDate = getEndDateTime(session.startTime, session.endTime, session.duration);
+      const endDate = getEndDateTime(session.startTime, session.stopTime, session.duration);
       if (startDate && endDate) {
         concurrentEvents.push({ time: startDate.getTime(), delta: 1 });
         concurrentEvents.push({ time: endDate.getTime(), delta: -1 });
@@ -143,12 +179,12 @@ export const SessionTimelineReportTab = () => {
 
     const dailyMap: Record<string, { date: string; count: number; dataUsed: number; totalMinutes: number }> = {};
     filteredSessions.forEach((session) => {
-      const dateKey = session.startTime.split(' ')[0] || 'Unknown';
+      const dateKey = session.startTime.split('T')[0] || session.startTime.split(' ')[0] || 'Unknown';
       if (!dailyMap[dateKey]) {
         dailyMap[dateKey] = { date: dateKey, count: 0, dataUsed: 0, totalMinutes: 0 };
       }
       dailyMap[dateKey].count += 1;
-      dailyMap[dateKey].dataUsed += session.dataUsed;
+      dailyMap[dateKey].dataUsed += parseTrafficToGB(session.total);
       dailyMap[dateKey].totalMinutes += parseDurationMinutes(session.duration);
     });
 
@@ -165,7 +201,7 @@ export const SessionTimelineReportTab = () => {
         };
       }
       topUsersMap[session.username].sessions += 1;
-      topUsersMap[session.username].dataUsed += session.dataUsed;
+      topUsersMap[session.username].dataUsed += parseTrafficToGB(session.total);
       topUsersMap[session.username].totalMinutes += parseDurationMinutes(session.duration);
     });
 
@@ -459,22 +495,22 @@ export const SessionTimelineReportTab = () => {
             </thead>
             <tbody className="divide-y">
               {pagedSessions.map((session) => (
-                <tr key={session.id}>
+                <tr key={session.sessionId}>
                   <td className="px-3 py-2">{session.username}</td>
-                  <td className="px-3 py-2">{session.role}</td>
+                  <td className="px-3 py-2">{getSessionGroup(session.identity)}</td>
                   <td className="px-3 py-2">{formatDateTime(session.startTime)}</td>
-                  <td className="px-3 py-2">{formatDateTime(session.endTime)}</td>
+                  <td className="px-3 py-2">{formatDateTime(session.stopTime)}</td>
                   <td className="px-3 py-2 text-right">{session.duration}</td>
                   <td className="px-3 py-2 text-right">{Math.round(parseDurationMinutes(session.duration) * 0.8)}p</td>
                   <td className="px-3 py-2 text-right">{Math.max(0, parseDurationMinutes(session.duration) - Math.round(parseDurationMinutes(session.duration) * 0.8))}p</td>
-                  <td className="px-3 py-2 text-right font-medium">{session.dataUsed.toFixed(2)} GB</td>
+                  <td className="px-3 py-2 text-right font-medium">{parseTrafficToGB(session.total).toFixed(2)} GB</td>
                   <td className="px-3 py-2">
                     <div>{session.ap}</div>
-                    <div className="text-xs text-gray-500">{session.location}</div>
+                    <div className="text-xs text-gray-500">{getSessionLocation(session.campus, session.building)}</div>
                   </td>
                   <td className="px-3 py-2 text-xs">
-                    <div>{session.ipAddress}</div>
-                    <div className="text-gray-500">{session.macAddress}</div>
+                    <div>{session.ip}</div>
+                    <div className="text-gray-500">{session.mac}</div>
                   </td>
                 </tr>
               ))}

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api';
+import { PageResponse } from '@/types/pagination';
 import { 
   UserReportData, BandwidthData, ControllerReportData, APAccessData, 
   ViolationData, SessionData, IncidentData, WifiUser, UserReportApiItem
@@ -90,8 +91,16 @@ const mapUserReportItem = (item: UserReportApiItem): WifiUser => ({
 
 export const reportsApi = {
   fetchWifiUsers: async (): Promise<WifiUser[]> => {
-    const response = await axios.get<ApiResponse<UserReportApiItem[]>>(`${API_BASE_URL}/users/report`);
-    return response.data.data.map(mapUserReportItem);
+    const response = await axios.get<ApiResponse<PageResponse<UserReportApiItem[]>>>(
+      `${API_BASE_URL}/users/report`,
+    );
+    const pageData = response.data.data;
+    // Support both raw array and paginated { records: [] } format from backend
+    const raw: unknown = pageData;
+    const items: UserReportApiItem[] = Array.isArray(raw)
+      ? (raw as UserReportApiItem[])
+      : ((raw as PageResponse<UserReportApiItem>).records ?? []);
+    return items.map(mapUserReportItem);
   },
   fetchUserReportData: () => Promise.resolve(mockUserReportData),
   fetchBandwidthData: () => Promise.resolve(mockBandwidthData),

@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const apiProxyTarget =  "https://spas-exercises-invision-donated.trycloudflare.com";
+const apiProxyTarget =  "https://0cc6-2001-ee0-50e3-8190-8c6-d090-8d97-8677.ngrok-free.app";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

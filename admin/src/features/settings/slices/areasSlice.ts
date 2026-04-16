@@ -1,29 +1,42 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { areasApi } from '../api/areasApi';
 import { Campus, Building, Location } from '../types';
+import { PageResponse } from '@/types/pagination';
 
 interface AreasState {
   campuses: Campus[];
   buildings: Building[];
   locations: Location[];
+  campusesPagination: {
+    current: number;
+    size: number;
+    total: number;
+    pages: number;
+  } | null;
+  buildingsPagination: {
+    current: number;
+    size: number;
+    total: number;
+    pages: number;
+  } | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
-  
+
   // Fillter State
   selectedCampusFilter: number | 'all';
   selectedBuildingFilter: number | 'all';
-  
+
   // Dialog Open States
   addCampusDialogOpen: boolean;
   editCampusDialogOpen: boolean;
   deleteCampusDialogOpen: boolean;
   selectedCampus: Campus | null;
-  
+
   addBuildingDialogOpen: boolean;
   editBuildingDialogOpen: boolean;
   deleteBuildingDialogOpen: boolean;
   selectedBuilding: Building | null;
-  
+
   addLocationDialogOpen: boolean;
   editLocationDialogOpen: boolean;
   deleteLocationDialogOpen: boolean;
@@ -34,22 +47,24 @@ const initialState: AreasState = {
   campuses: [],
   buildings: [],
   locations: [],
+  campusesPagination: null,
+  buildingsPagination: null,
   status: 'idle',
   error: null,
-  
+
   selectedCampusFilter: 'all',
   selectedBuildingFilter: 'all',
-  
+
   addCampusDialogOpen: false,
   editCampusDialogOpen: false,
   deleteCampusDialogOpen: false,
   selectedCampus: null,
-  
+
   addBuildingDialogOpen: false,
   editBuildingDialogOpen: false,
   deleteBuildingDialogOpen: false,
   selectedBuilding: null,
-  
+
   addLocationDialogOpen: false,
   editLocationDialogOpen: false,
   deleteLocationDialogOpen: false,
@@ -57,10 +72,10 @@ const initialState: AreasState = {
 };
 
 // Retrieve Thunk
-export const fetchAreas = createAsyncThunk('settingsAreas/fetchAreas', async () => {
+export const fetchAreas = createAsyncThunk('settingsAreas/fetchAreas', async (params?: { page?: number; size?: number }) => {
   const [campuses, buildings, locations] = await Promise.all([
-    areasApi.getCampuses(),
-    areasApi.getBuildings(),
+    areasApi.getCampuses(params),
+    areasApi.getBuildings(params),
     areasApi.getLocations()
   ]);
   return { campuses, buildings, locations };
@@ -113,8 +128,20 @@ const areasSlice = createSlice({
       .addCase(fetchAreas.pending, (state) => { state.status = 'loading'; })
       .addCase(fetchAreas.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.campuses = action.payload.campuses;
-        state.buildings = action.payload.buildings;
+        state.campuses = action.payload.campuses.records || [];
+        state.campusesPagination = {
+          current: action.payload.campuses.current,
+          size: action.payload.campuses.size,
+          total: action.payload.campuses.total,
+          pages: action.payload.campuses.pages,
+        };
+        state.buildings = action.payload.buildings.records || [];
+        state.buildingsPagination = {
+          current: action.payload.buildings.current,
+          size: action.payload.buildings.size,
+          total: action.payload.buildings.total,
+          pages: action.payload.buildings.pages,
+        };
         state.locations = action.payload.locations;
       })
       .addCase(fetchAreas.rejected, (state, action) => {

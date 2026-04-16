@@ -22,8 +22,8 @@ export function AccessPointsFeature() {
   useEffect(() => {
     dispatch(getAPs());
     dispatch(getControllers());
-    dispatch(getCampuses());
-    dispatch(getBuildings());
+    dispatch(getCampuses({ page: 1, size: 1000 }));
+    dispatch(getBuildings({ page: 1, size: 1000 }));
   }, [dispatch]);
 
   const isInitialLoading = (apsLoading || controllersLoading || locationsLoading) && (aps.length === 0 || controllers.length === 0);

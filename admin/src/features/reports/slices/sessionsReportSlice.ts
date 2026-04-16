@@ -1,13 +1,13 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { SessionData } from '../types';
-import { reportsApi } from '../api/reportsApi';
+import { UserSession } from '../types';
+import { sessionsApi } from '../api/sessionsApi';
 
 export const fetchSessionData = createAsyncThunk('reportsSessions/fetchSessionData', async () => {
-  return await reportsApi.fetchSessionData();
+  return await sessionsApi.getAllSessions();
 });
 
 export interface SessionsReportState {
-  data: SessionData[];
+  data: UserSession[];
   sessionCurrentPage: number;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
 }
@@ -27,9 +27,15 @@ const sessionsReportSlice = createSlice({
     }
   },
   extraReducers: (builder) => {
+    builder.addCase(fetchSessionData.pending, (state) => {
+      state.status = 'loading';
+    });
     builder.addCase(fetchSessionData.fulfilled, (state, action) => {
       state.data = action.payload;
       state.status = 'succeeded';
+    });
+    builder.addCase(fetchSessionData.rejected, (state) => {
+      state.status = 'failed';
     });
   }
 });

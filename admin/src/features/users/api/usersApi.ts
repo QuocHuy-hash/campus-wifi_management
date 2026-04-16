@@ -7,6 +7,7 @@ import {
   UserPolicy,
   UserDetail,
   UsersApiEnvelope,
+  PageResponse,
   WifiPolicy,
   LinkedAccount,
   MeResponse,
@@ -159,12 +160,23 @@ const serializeUser = (user: Partial<User>) => ({
  */
 export const fetchUsers = async (role?: string | null): Promise<User[]> => {
   try {
-    const response = await axios.get<UsersApiEnvelope<UserApiModel[]> | UserApiModel[]>(
+    const response = await axios.get<
+      UsersApiEnvelope<PageResponse<UserApiModel[]>> | PageResponse<UserApiModel[]>
+    >(
       USERS_ENDPOINT,
       { params: role ? { role } : undefined },
     );
-console.log("Raw response data:", response.data); // Debug log
-    return unwrapData<UserApiModel[]>(response.data).map(normalizeUser);
+    const raw = unwrapData<PageResponse<UserApiModel[]>>(response.data);
+    // Handle paginated response: data.records
+    let users: UserApiModel[];
+    if (Array.isArray(raw)) {
+      users = raw as UserApiModel[];
+    } else if (raw && typeof raw === 'object' && 'records' in raw) {
+      users = (raw as PageResponse<UserApiModel[]>).records ?? [];
+    } else {
+      users = [];
+    }
+    return users.map(normalizeUser);
   } catch (error) {
     throw new Error(extractErrorMessage(error));
   }

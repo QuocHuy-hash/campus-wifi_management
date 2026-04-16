@@ -8,6 +8,16 @@ export interface UsersApiEnvelope<T> {
   data: T;
 }
 
+// ─── Paginated response (GET /api/v1/users) ────────────────────────────────
+export interface PageResponse<T> {
+  current: number;
+  size: number;
+  total: number;
+  pages: number;
+  records: T[];
+  orders?: unknown[];
+}
+
 // ─── User list (GET /api/v1/users?role=) ────────────────────────────────────
 
 /** OAuth provider linked to a wifi user (V4 unified endpoint) */

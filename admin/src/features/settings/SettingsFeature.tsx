@@ -44,7 +44,7 @@ export const SettingsFeature = () => {
     dispatch(fetchRoles());
     dispatch(fetchGroups());
     dispatch(fetchResources());
-    dispatch(fetchAreas());
+    dispatch(fetchAreas({ page: 1, size: 1000 }));
     dispatch(fetchDevices());
     dispatch(fetchIntegrations());
     dispatch(fetchLogs());

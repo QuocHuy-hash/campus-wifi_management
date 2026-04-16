@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Campus, Building, Location } from '../types';
 import { API_BASE_URL } from '@/config/api';
+import { PageResponse, PageRequest } from '@/types/pagination';
 
 interface ApiResponse<T> {
   statusCode: number;
@@ -10,8 +11,10 @@ interface ApiResponse<T> {
 
 export const areasApi = {
   // Campuses
-  getCampuses: async (): Promise<Campus[]> => {
-    const response = await axios.get<ApiResponse<Campus[]>>(`${API_BASE_URL}/campus`);
+  getCampuses: async (params?: PageRequest): Promise<PageResponse<Campus>> => {
+    const response = await axios.get<ApiResponse<PageResponse<Campus>>>(`${API_BASE_URL}/campus`, {
+      params: { page: params?.page || 1, size: params?.size || 1000 }
+    });
     return response.data.data;
   },
   createCampus: async (data: Omit<Campus, 'id'>): Promise<Campus> => {
@@ -27,8 +30,10 @@ export const areasApi = {
   },
 
   // Buildings
-  getBuildings: async (): Promise<Building[]> => {
-    const response = await axios.get<ApiResponse<Building[]>>(`${API_BASE_URL}/buildings`);
+  getBuildings: async (params?: PageRequest): Promise<PageResponse<Building>> => {
+    const response = await axios.get<ApiResponse<PageResponse<Building>>>(`${API_BASE_URL}/buildings`, {
+      params: { page: params?.page || 1, size: params?.size || 1000 }
+    });
     return response.data.data;
   },
   createBuilding: async (data: Omit<Building, 'id'>): Promise<Building> => {

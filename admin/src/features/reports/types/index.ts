@@ -126,6 +126,11 @@ export interface UserSession {
   terminateCause: 'normal' | 'user-request' | 'idle-timeout' | 'hard-timeout' | 'quota-exceeded' | '-';
   status: 'active' | 'completed';
   tags: string[];
+  trafficIn?: string;
+  trafficOut?: string;
+  isOnline?: boolean;
+  userAgent?: string;
+  createdAt?: string;
 }
 
 // ─── API Response DTOs từ backend (v7) ───────────────────────────────────────
@@ -137,20 +142,23 @@ export interface DeviceUserInfo {
   userId: number;
   userName: string;
   userGroup: string;
+  trafficIn?: string;
+  trafficOut?: string;
+  isOnline?: boolean;
 }
 
 export interface UserSessionResponse {
   sessionId: string;
   ipAddress: string;
-  userId: number;
+  userId?: number;
   userAgent: string;
   startTime: string;
   endTime: string | null;
   status: 'ACTIVE' | 'ENDED' | 'EXPIRED';
   createdAt: string;
-  ssid: string;
-  vlan: string;
-  apMac: string;
+  ssid: string | null;
+  vlan: string | null;
+  apMac: string | null;
   campusId: number | null;
   buildingId: number | null;
   roleId: number | null;

@@ -3,11 +3,20 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, Server } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/stores/hooks';
-import { setSelectedCampus, setSelectedArea, toggleControllerSection } from '../slices/accessPointsSlice';
+import { setSelectedCampus, setSelectedArea, toggleControllerSection, getCampuses, getBuildings } from '../slices/accessPointsSlice';
+import { Pagination } from '@/components/ui/pagination';
 
 export function AccessPointsMap() {
   const dispatch = useAppDispatch();
-  const { selectedCampus, selectedArea, showControllerSection, campuses, buildings } = useAppSelector(state => state.accessPoints);
+  const { selectedCampus, selectedArea, showControllerSection, campuses, buildings, campusesPagination } = useAppSelector(state => state.accessPoints);
+
+  const handleCampusPageChange = (page: number) => {
+    dispatch(getCampuses({ page, size: 1000 }));
+  };
+
+  const handleCampusPageSizeChange = (size: number) => {
+    dispatch(getCampuses({ page: 1, size }));
+  };
 
   // Get buildings for selected campus
   const filteredBuildings = selectedCampus && selectedCampus !== 'all'
@@ -27,12 +36,29 @@ export function AccessPointsMap() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
-              {campuses.map(campus => (
+              {Array.isArray(campuses) && campuses.map(campus => (
                 <SelectItem key={campus.id} value={campus.id.toString()}>{campus.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+        
+        {/* Campus Pagination */}
+        {campusesPagination && campusesPagination.totalPages > 1 && (
+          <div className="mt-2">
+            <Pagination
+              currentPage={campusesPagination.current}
+              pageSize={campusesPagination.size}
+              totalItems={campusesPagination.total}
+              totalPages={campusesPagination.pages}
+              onPageChange={handleCampusPageChange}
+              onPageSizeChange={handleCampusPageSizeChange}
+              showPageSizeSelector={false}
+              showQuickJumper={false}
+            />
+          </div>
+        )}
+        
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Chọn khu nhà</span>
           <Select value={selectedArea} onValueChange={(val) => dispatch(setSelectedArea(val))}>
@@ -41,7 +67,7 @@ export function AccessPointsMap() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
-              {filteredBuildings.map(building => (
+              {Array.isArray(filteredBuildings) && filteredBuildings.map(building => (
                 <SelectItem key={building.id} value={building.id.toString()}>{building.name}</SelectItem>
               ))}
             </SelectContent>
