@@ -64,6 +64,41 @@ export const initializeAxios = (): void => {
     return config;
   });
 
+  // Response interceptor for handling 401 (token expired)
+  axios.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const originalRequest = error.config;
+      
+      // Check if it's a 401 error and not already retried
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        console.log('🔒 Token expired, redirecting to login...');
+        originalRequest._retry = true;
+        
+        // Clear auth state
+        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.accessToken);
+        localStorage.removeItem(STORAGE_KEYS.refreshToken);
+        localStorage.removeItem(STORAGE_KEYS.portalLoggedIn);
+        localStorage.removeItem(STORAGE_KEYS.portalUser);
+        
+        // Get current URL for return
+        const currentPath = window.location.pathname;
+        const searchParams = window.location.search;
+        
+        // Only redirect if not already on login page
+        if (!currentPath.includes('/login')) {
+          window.location.href = `/login?returnUrl=${encodeURIComponent(currentPath + searchParams)}`;
+        }
+        
+        return Promise.reject(error);
+      }
+      
+      return Promise.reject(error);
+    }
+  );
+
   hasInitialized = true;
 };
 
@@ -83,7 +118,5 @@ export const setAxiosAuthToken = (token: string | null): void => {
 
   removeAxiosHeader(API_HEADERS.AUTHORIZATION);
 };
-
-initializeAxios();
 
 export default axios;

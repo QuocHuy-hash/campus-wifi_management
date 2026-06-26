@@ -5,7 +5,7 @@
 
 const normalizeBaseUrl = (url: string): string => url.replace(/\/$/, '');
 
-const envBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
+const envBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL as string | undefined;
 
 // Default to relative path so dev proxy can forward to backend without CORS issues.
 export const API_BASE_URL = normalizeBaseUrl(envBaseUrl || '/api/v1');

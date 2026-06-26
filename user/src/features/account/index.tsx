@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useLocation, Link } from 'wouter';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,7 +118,7 @@ const safeParsePortalUser = () => {
 };
 
 export default function Account() {
-  const [, setLocation] = useLocation();
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const { profile, loading, error } = useAppSelector((state) => state.userProfile);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -154,7 +155,7 @@ export default function Account() {
     localStorage.removeItem('portalLoggedIn');
     localStorage.removeItem('portalUser');
     localStorage.removeItem(STORAGE_KEYS.accessToken);
-    setLocation('/');
+    router.push('/');
   };
 
   const resetPasswordForm = () => {
@@ -243,23 +244,17 @@ export default function Account() {
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
           <nav className="p-3 space-y-1">
-            <Link href="/session">
-              <a className="flex items-center gap-2 px-3 py-2 rounded text-xs text-gray-600 hover:bg-gray-50">
-                <Activity size={14} />
-                Phiên hiện tại
-              </a>
+            <Link href="/session" className="flex items-center gap-2 px-3 py-2 rounded text-xs text-gray-600 hover:bg-gray-50">
+              <Activity size={14} />
+              Phiên hiện tại
             </Link>
-            <Link href="/history">
-              <a className="flex items-center gap-2 px-3 py-2 rounded text-xs text-gray-600 hover:bg-gray-50">
-                <History size={14} />
-                Lịch sử đăng nhập
-              </a>
+            <Link href="/history" className="flex items-center gap-2 px-3 py-2 rounded text-xs text-gray-600 hover:bg-gray-50">
+              <History size={14} />
+              Lịch sử đăng nhập
             </Link>
-            <Link href="/account">
-              <a className="flex items-center gap-2 px-3 py-2 rounded text-xs bg-gray-100 text-gray-900 font-medium">
-                <User size={14} />
-                Thông tin tài khoản
-              </a>
+            <Link href="/account" className="flex items-center gap-2 px-3 py-2 rounded text-xs bg-gray-100 text-gray-900 font-medium">
+              <User size={14} />
+              Thông tin tài khoản
             </Link>
             <a href="#" className="flex items-center gap-2 px-3 py-2 rounded text-xs text-gray-600 hover:bg-gray-50">
               <HelpCircle size={14} />

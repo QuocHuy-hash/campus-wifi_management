@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { useLocation } from 'wouter';
+import { useRouter } from 'next/navigation';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertCircle } from 'lucide-react';
 import { currentUser, qosPolicies, formatBytes } from '@/data/mockData';
-import hcmusLogo from '@/assets/logo_hcmus.png';
+const hcmusLogo = "/logo_hcmus.png";
 import InternalLoginTab from '@/components/InternalLoginTab';
 import GuestLoginTab from '@/components/GuestLoginTab';
 import { authorizeDevice, getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
@@ -22,7 +22,7 @@ import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
 
 export default function Login() {
   const dispatch = useAppDispatch();
-  const [, setLocation] = useLocation();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'internal' | 'guest'>('guest');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,6 +115,55 @@ export default function Login() {
         console.warn('⚠️ No captive context in URL or localStorage');
       }
     }
+  }, []);
+
+  // Handle redirect with existing session and captive portal context
+  useEffect(() => {
+    const handleRedirectWithSession = async () => {
+      // Check if user is already logged in
+      const isLoggedIn = localStorage.getItem(STORAGE_KEYS.portalLoggedIn) === 'true';
+      const hasToken = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || !!localStorage.getItem(STORAGE_KEYS.accessToken);
+      const captiveContext = getCaptivePortalContext('');
+
+      console.log('🔄 Checking redirect with session...');
+      console.log('🔄 Is logged in:', isLoggedIn);
+      console.log('🔄 Has token:', hasToken);
+      console.log('🔄 Captive context:', captiveContext);
+
+      // If user is logged in and has captive context, auto authorize device
+      if (isLoggedIn && hasToken && captiveContext) {
+        console.log('🚀 User already logged in with captive context - auto authorizing device...');
+        
+        // Set axios auth token if available
+        const token = localStorage.getItem(STORAGE_KEYS.accessToken) || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        if (token) {
+          setAxiosAuthToken(token);
+        }
+
+        try {
+          // Call authorize device API
+          const payload = buildAuthorizeDevicePayload(captiveContext);
+          await authorizeDevice(payload);
+          console.log('✅ Device authorized successfully via redirect');
+
+          // Clear captive context after successful authorization
+          localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+
+          // Redirect to network connecting screen
+          router.push('/network-connecting');
+        } catch (error) {
+          console.error('❌ Failed to authorize device via redirect:', error);
+          // Even if authorization fails, we can still show the connecting screen
+          // The captive portal will handle the actual device authorization on the controller
+          localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+          router.push('/network-connecting');
+        }
+      }
+    };
+
+    // Run after a small delay to ensure initialization is complete
+    const timer = setTimeout(handleRedirectWithSession, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const getLoginErrorMessage = (apiError: unknown): string => {
@@ -273,9 +322,9 @@ export default function Login() {
 
       // Kiểm tra flag đã lưu để quyết định redirect
       if (hasCaptiveContext) {
-        setLocation('/network-connecting');
+        router.push('/network-connecting');
       } else {
-        setLocation('/session');
+        router.push('/session');
       }
       setIsLoading(false);
     }, 1200);
@@ -434,9 +483,9 @@ export default function Login() {
 
       // Kiểm tra flag đã lưu để quyết định redirect
       if (hasCaptiveContext) {
-        setLocation('/network-connecting');
+        router.push('/network-connecting');
       } else {
-        setLocation('/session');
+        router.push('/session');
       }
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
@@ -473,9 +522,9 @@ export default function Login() {
 
       // Kiểm tra flag đã lưu để quyết định redirect
       if (hasCaptiveContext) {
-        setLocation('/network-connecting');
+        router.push('/network-connecting');
       } else {
-        setLocation('/session');
+        router.push('/session');
       }
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
@@ -593,9 +642,9 @@ export default function Login() {
       
       // Kiểm tra flag đã lưu để quyết định redirect
       if (hasCaptiveContext) {
-        setLocation('/network-connecting');
+        router.push('/network-connecting');
       } else {
-        setLocation('/session');
+        router.push('/session');
       }
     }, 1000);
   };

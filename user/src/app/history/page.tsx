@@ -1,4 +1,6 @@
-import HistoryFeature from '@/features/history';
+"use client";
+
+import HistoryFeature from "@/features/history";
 
 export default function HistoryPage() {
   return <HistoryFeature />;

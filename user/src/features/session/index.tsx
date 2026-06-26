@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'wouter';
+import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -106,23 +106,17 @@ export default function Session() {
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
           <nav className="p-4 space-y-1">
-            <Link href="/session">
-              <a className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm bg-gray-100 text-gray-900 font-medium">
-                <Activity size={18} />
-                Phiên hiện tại
-              </a>
+            <Link href="/session" className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm bg-gray-100 text-gray-900 font-medium">
+              <Activity size={18} />
+              Phiên hiện tại
             </Link>
-            <Link href="/history">
-              <a className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                <History size={18} />
-                Lịch sử đăng nhập
-              </a>
+            <Link href="/history" className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+              <History size={18} />
+              Lịch sử đăng nhập
             </Link>
-            <Link href="/account">
-              <a className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                <User size={18} />
-                Thông tin tài khoản
-              </a>
+            <Link href="/account" className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+              <User size={18} />
+              Thông tin tài khoản
             </Link>
             <a href="#" className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
               <HelpCircle size={18} />
