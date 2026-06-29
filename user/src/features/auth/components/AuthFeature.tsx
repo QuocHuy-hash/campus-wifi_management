@@ -5,7 +5,6 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertCircle } from 'lucide-react';
 import { currentUser, qosPolicies, formatBytes } from '@/data/mockData';
-const hcmusLogo = "/logo_hcmus.png";
 import InternalLoginTab from '@/components/InternalLoginTab';
 import GuestLoginTab from '@/components/GuestLoginTab';
 import { authorizeDevice, getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
@@ -19,6 +18,7 @@ import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPassw
 import { STORAGE_KEYS } from '@/constants/appKeys';
 import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
+const hcmusLogo = "/logo_hcmus.png";
 
 export default function Login() {
   const dispatch = useAppDispatch();
@@ -173,8 +173,22 @@ export default function Login() {
         message?: string;
       };
 
-      if (maybeAxios.response?.status === 401) {
+      const status = maybeAxios.response?.status;
+
+      if (status === 401) {
         return 'Tài khoản hoặc mật khẩu không đúng';
+      }
+
+      if (status === 404) {
+        return 'Không tìm thấy servidor. Vui lòng thử lại sau.';
+      }
+
+      if (status === 500) {
+        return 'Lỗi servidor nội bộ. Vui lòng thử lại sau.';
+      }
+
+      if (status === 502 || status === 503) {
+        return 'Servidor đang bảo trì. Vui lòng thử lại sau.';
       }
 
       if (maybeAxios.response?.data?.message) {
@@ -182,7 +196,13 @@ export default function Login() {
       }
 
       if (maybeAxios.message) {
-        return maybeAxios.message;
+        if (maybeAxios.message.includes('Network Error') || maybeAxios.message.includes('ECONNREFUSED')) {
+          return 'Không thể kết nối đến servidor. Vui lòng kiểm tra mạng và thử lại.';
+        }
+        if (maybeAxios.message.includes('timeout')) {
+          return 'Hết thời gian kết nối. Vui lòng thử lại.';
+        }
+        return 'Đăng nhập thất bại. Vui lòng thử lại.';
       }
     }
 
@@ -655,7 +675,7 @@ export default function Login() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-3">
-            <img src={hcmusLogo} alt="HCMUS Logo" className="w-18 h-18 object-contain" />
+            <img src={hcmusLogo} alt="HCMUS Logo" className="w-14 h-14 object-contain" />
             <p className="text-gray-600 font-sans">Trường Đại học KHTN - ĐHQG HCM</p>
           </div>
         </div>

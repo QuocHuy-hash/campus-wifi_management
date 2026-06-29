@@ -36,9 +36,23 @@ const initialState: AuthState = {
 export function extractErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null) {
     const maybeAxios = error as {
-      response?: { data?: { message?: string } };
+      response?: { status?: number; data?: { message?: string } };
       message?: string;
     };
+
+    const status = maybeAxios.response?.status;
+
+    if (status === 404) {
+      return "Không tìm thấy servidor. Vui lòng thử lại sau.";
+    }
+
+    if (status === 500) {
+      return "Lỗi servidor nội bộ. Vui lòng thử lại sau.";
+    }
+
+    if (status === 502 || status === 503) {
+      return "Servidor đang bảo trì. Vui lòng thử lại sau.";
+    }
 
     return (
       maybeAxios.response?.data?.message || maybeAxios.message || "Đã xảy ra lỗi hệ thống"

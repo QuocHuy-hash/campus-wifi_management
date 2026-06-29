@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -30,7 +32,7 @@ export default function ModalShowcase() {
   const activeDuration = 3661; // 1h 1m 1s
   const currentTime = Date.now();
 
-  const userStr = localStorage.getItem('portalUser');
+  const userStr = typeof window !== 'undefined' ? localStorage.getItem('portalUser') : null;
   const user = userStr ? JSON.parse(userStr) : { username: '21120001', fullname: 'Nguyễn Văn A', role: 'Student', department: 'Khoa CNTT' };
 
   return (
