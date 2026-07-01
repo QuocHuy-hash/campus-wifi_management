@@ -8,6 +8,9 @@ const PUBLIC_ENDPOINTS = [
   '/auth/register',
   '/auth/verify-otp',
   '/auth/resend-otp',
+  '/auth/forgot-password',
+  '/auth/verify-reset-otp',
+  '/auth/reset-password',
   '/providers-config',
   '/oauth2/',
 ] as const;

@@ -1,15 +1,22 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import {
   fetchActiveProviders,
+  forgotPassword,
   registerUser,
   resendOtp,
+  resetPassword,
+  verifyResetOtp,
   verifyUserEmail,
 } from "@/features/auth/api/authApi";
 import type {
+  ForgotPasswordPayload,
   ProviderConfig,
   RegisterPayload,
   RegisterResult,
+  ResetPasswordPayload,
   VerifyOtpPayload,
+  VerifyResetOtpPayload,
+  VerifyResetOtpResult,
   VerifyOtpResult,
 } from "@/features/auth/types";
 
@@ -21,6 +28,8 @@ interface AuthState {
   verifyLoading: boolean;
   resendLoading: boolean;
   error: string | null;
+  forgotLoading: boolean;
+  forgotToken: string | null;
 }
 
 const initialState: AuthState = {
@@ -31,35 +40,81 @@ const initialState: AuthState = {
   verifyLoading: false,
   resendLoading: false,
   error: null,
+  forgotLoading: false,
+  forgotToken: null,
 };
+
+/**
+ * Chuyển đổi error message từ API sang tiếng Việt
+ */
+function translateErrorMessage(message: string): string {
+  if (message.includes("OTP_RESEND_RATE_LIMITED")) {
+    return "Bạn đã gửi OTP quá nhiều lần. Vui lòng thử lại sau 60 giây.";
+  }
+  if (message.includes("OTP_INVALID_OR_EXPIRED") || message.includes("OTP is invalid or expired")) {
+    return "Mã OTP không đúng hoặc đã hết hạn. Vui lòng thử lại.";
+  }
+  if (message.includes("TOKEN_INVALID") || message.includes("token is invalid")) {
+    return "Phiên đặt lại mật khẩu đã hết hạn. Vui lòng thực hiện lại từ đầu.";
+  }
+  if (message.includes("USER_NOT_FOUND") || message.includes("not found")) {
+    return "Tài khoản không tồn tại trong hệ thống.";
+  }
+  if (message.includes("rate limit") || message.includes("too many")) {
+    return "Bạn đã thực hiện thao tác quá nhiều lần. Vui lòng thử lại sau.";
+  }
+  return message;
+}
 
 export function extractErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null) {
     const maybeAxios = error as {
-      response?: { status?: number; data?: { message?: string } };
+      response?: {
+        status?: number;
+        data?: {
+          code?: number;
+          message?: string;
+          error?: string;
+        };
+      };
       message?: string;
     };
 
     const status = maybeAxios.response?.status;
+    const data = maybeAxios.response?.data;
+    const rawMessage = data?.message || data?.error || maybeAxios.message;
 
+    // Xử lý lỗi HTTP
     if (status === 404) {
-      return "Không tìm thấy servidor. Vui lòng thử lại sau.";
+      return "Không tìm thấy máy chủ. Vui lòng thử lại sau.";
     }
-
+    if (status === 429) {
+      return translateErrorMessage(rawMessage || "");
+    }
     if (status === 500) {
-      return "Lỗi servidor nội bộ. Vui lòng thử lại sau.";
+      return "Lỗi máy chủ nội bộ. Vui lòng thử lại sau.";
     }
-
     if (status === 502 || status === 503) {
-      return "Servidor đang bảo trì. Vui lòng thử lại sau.";
+      return "Máy chủ đang bảo trì. Vui lòng thử lại sau.";
     }
 
-    return (
-      maybeAxios.response?.data?.message || maybeAxios.message || "Đã xảy ra lỗi hệ thống"
-    );
+    // Xử lý lỗi theo business code
+    if (data?.code === 6009) {
+      return "Mã OTP không đúng hoặc đã hết hạn. Vui lòng thử lại.";
+    }
+    if (data?.code === 6004) {
+      return "Mật khẩu hiện tại không đúng. Vui lòng thử lại.";
+    }
+
+    // Dịch message từ API nếu có
+    if (rawMessage) {
+      return translateErrorMessage(rawMessage);
+    }
+
+    return "Đã xảy ra lỗi hệ thống. Vui lòng thử lại.";
   }
 
-  return "Đã xảy ra lỗi hệ thống";
+  return "Đã xảy ra lỗi hệ thống. Vui lòng thử lại.";
 }
 
 export const getActiveProviders = createAsyncThunk(
@@ -106,6 +161,42 @@ export const resendEmailOtp = createAsyncThunk<void, { identifier: string }>(
   },
 );
 
+export const sendForgotOtp = createAsyncThunk<void, ForgotPasswordPayload>(
+  "auth/sendForgotOtp",
+  async (payload, { rejectWithValue }) => {
+    try {
+      await forgotPassword(payload);
+    } catch (error) {
+      return rejectWithValue(extractErrorMessage(error));
+    }
+  },
+);
+
+export const verifyForgotOtp = createAsyncThunk<
+  VerifyResetOtpResult,
+  VerifyResetOtpPayload
+>(
+  "auth/verifyForgotOtp",
+  async (payload, { rejectWithValue }) => {
+    try {
+      return await verifyResetOtp(payload);
+    } catch (error) {
+      return rejectWithValue(extractErrorMessage(error));
+    }
+  },
+);
+
+export const submitResetPassword = createAsyncThunk<void, ResetPasswordPayload>(
+  "auth/submitResetPassword",
+  async (payload, { rejectWithValue }) => {
+    try {
+      await resetPassword(payload);
+    } catch (error) {
+      return rejectWithValue(extractErrorMessage(error));
+    }
+  },
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -115,6 +206,9 @@ const authSlice = createSlice({
     },
     setOtpEmail: (state, action: { payload: string }) => {
       state.otpIdentifier = action.payload;
+    },
+    clearForgotToken: (state) => {
+      state.forgotToken = null;
     },
   },
   extraReducers: (builder) => {
@@ -162,9 +256,44 @@ const authSlice = createSlice({
       .addCase(resendEmailOtp.rejected, (state, action) => {
         state.resendLoading = false;
         state.error = String(action.payload || "Gửi lại OTP thất bại");
+      })
+      .addCase(sendForgotOtp.pending, (state) => {
+        state.forgotLoading = true;
+        state.error = null;
+      })
+      .addCase(sendForgotOtp.fulfilled, (state) => {
+        state.forgotLoading = false;
+      })
+      .addCase(sendForgotOtp.rejected, (state, action) => {
+        state.forgotLoading = false;
+        state.error = String(action.payload || "Gửi OTP thất bại");
+      })
+      .addCase(verifyForgotOtp.pending, (state) => {
+        state.forgotLoading = true;
+        state.error = null;
+      })
+      .addCase(verifyForgotOtp.fulfilled, (state, action) => {
+        state.forgotLoading = false;
+        state.forgotToken = action.payload;
+      })
+      .addCase(verifyForgotOtp.rejected, (state, action) => {
+        state.forgotLoading = false;
+        state.error = String(action.payload || "Xác thực OTP thất bại");
+      })
+      .addCase(submitResetPassword.pending, (state) => {
+        state.forgotLoading = true;
+        state.error = null;
+      })
+      .addCase(submitResetPassword.fulfilled, (state) => {
+        state.forgotLoading = false;
+        state.forgotToken = null;
+      })
+      .addCase(submitResetPassword.rejected, (state, action) => {
+        state.forgotLoading = false;
+        state.error = String(action.payload || "Đặt lại mật khẩu thất bại");
       });
   },
 });
 
-export const { clearAuthError, setOtpEmail } = authSlice.actions;
+export const { clearAuthError, clearForgotToken, setOtpEmail } = authSlice.actions;
 export default authSlice.reducer;

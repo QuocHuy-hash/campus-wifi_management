@@ -74,6 +74,28 @@ export interface ResendOtpPayload {
   identifier: string;
 }
 
+export interface ForgotPasswordPayload {
+  identifier: string;
+}
+
+export interface VerifyResetOtpPayload {
+  identifier: string;
+  otp: string;
+}
+
+export type VerifyResetOtpResult = string;
+
+export interface ResetPasswordPayload {
+  token: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export interface LinkedProvider {
   provider: string;
   providerEmail: string | null;

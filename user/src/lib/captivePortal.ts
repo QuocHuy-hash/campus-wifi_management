@@ -41,11 +41,11 @@ export function getStoredCaptivePortalContext(): CaptivePortalContext | null {
     }
 
     return {
-      id: parsed.id,
-      ap: parsed.ap,
-      ssid: parsed.ssid,
-      url: parsed.url,
-      t: parsed.t,
+      id: parsed.id, //Địa chỉ MAC của thiết bị
+      ap: parsed.ap, //Địa chỉ MAC của Access Point
+      ssid: parsed.ssid, //Tên WiFi
+      url: parsed.url, //URL gốc người dùng muốn truy cập
+      t: parsed.t, //Timestamp (optional)
     };
   } catch {
     return null;

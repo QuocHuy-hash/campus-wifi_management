@@ -43,7 +43,12 @@ import {
 } from "lucide-react";
 import { formatBytes, getTodayUsage } from "@/data/mockData";
 import { useAppDispatch, useAppSelector } from "@/stores/hooks";
-import { getUserProfile, clearProfile } from "@/features/user/slices/userProfileSlice";
+import {
+  getUserProfile,
+  clearProfile,
+  changePassword,
+  clearChangePasswordStatus,
+} from "@/features/user/slices/userProfileSlice";
 import type { UserPolicy } from "@/features/auth/types";
 import { STORAGE_KEYS } from "@/constants/appKeys";
 
@@ -122,7 +127,8 @@ const safeParsePortalUser = () => {
 export default function Account() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { profile, loading, error } = useAppSelector((state) => state.userProfile);
+  const { profile, loading, error, changePasswordLoading, changePasswordError, changePasswordSuccess } =
+    useAppSelector((state) => state.userProfile);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -131,8 +137,6 @@ export default function Account() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     dispatch(getUserProfile());
@@ -159,15 +163,26 @@ export default function Account() {
     router.push("/");
   };
 
+  // Tự động đóng modal khi đổi mật khẩu thành công
+  useEffect(() => {
+    if (changePasswordSuccess) {
+      const timer = setTimeout(() => {
+        setPasswordModalOpen(false);
+        resetPasswordForm();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [changePasswordSuccess]);
+
   const resetPasswordForm = () => {
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
     setPasswordError("");
-    setPasswordSuccess(false);
     setShowCurrentPassword(false);
     setShowNewPassword(false);
     setShowConfirmPassword(false);
+    dispatch(clearChangePasswordStatus());
   };
 
   const handleChangePassword = () => {
@@ -188,15 +203,13 @@ export default function Account() {
       setPasswordError("Xác nhận mật khẩu không khớp");
       return;
     }
-    setIsChangingPassword(true);
-    setTimeout(() => {
-      setIsChangingPassword(false);
-      setPasswordSuccess(true);
-      setTimeout(() => {
-        setPasswordModalOpen(false);
-        resetPasswordForm();
-      }, 1500);
-    }, 1000);
+    dispatch(
+      changePassword({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      }),
+    );
   };
 
   return (
@@ -540,7 +553,7 @@ export default function Account() {
             </DialogDescription>
           </DialogHeader>
 
-          {passwordSuccess ? (
+          {changePasswordSuccess ? (
             <div className="py-8 text-center">
               <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle size={32} className="text-emerald-600" />
@@ -552,10 +565,10 @@ export default function Account() {
             </div>
           ) : (
             <div className="space-y-4 py-2">
-              {passwordError && (
+              {(passwordError || changePasswordError) && (
                 <div className="p-3 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2 text-red-600">
                   <AlertCircle size={16} />
-                  <span className="text-sm">{passwordError}</span>
+                  <span className="text-sm">{changePasswordError || passwordError}</span>
                 </div>
               )}
 
@@ -634,10 +647,10 @@ export default function Account() {
                 </Button>
                 <Button
                   onClick={handleChangePassword}
-                  disabled={isChangingPassword}
+                  disabled={changePasswordLoading}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  {isChangingPassword ? (
+                  {changePasswordLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Đang xử lý...

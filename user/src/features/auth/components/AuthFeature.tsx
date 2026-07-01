@@ -8,7 +8,16 @@ import { currentUser, qosPolicies, formatBytes } from '@/data/mockData';
 import InternalLoginTab from '@/components/InternalLoginTab';
 import GuestLoginTab from '@/components/GuestLoginTab';
 import { authorizeDevice, getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
-import { getActiveProviders, registerWithOtp, resendEmailOtp, verifyEmailOtp } from '@/features/auth/slices/authSlice';
+import {
+  clearForgotToken,
+  getActiveProviders,
+  registerWithOtp,
+  resendEmailOtp,
+  sendForgotOtp,
+  verifyEmailOtp,
+  verifyForgotOtp,
+  submitResetPassword,
+} from '@/features/auth/slices/authSlice';
 import type {  ProviderConfig } from '@/features/auth/types';
 import { useAppDispatch } from '@/stores/hooks';
 import type { RootState } from '@/stores/store';
@@ -47,8 +56,8 @@ export default function Login() {
   const [isSettingGuestPassword, setIsSettingGuestPassword] = useState(false);
 
   // Standard Login states for returned guests
-  const [loginUsername, setLoginUsername] = useState('minhnam1810@gmail.com');
-  const [loginPassword, setLoginPassword] = useState('admin123');
+  const [loginUsername, setLoginUsername] = useState('huy343536@gmail.com');
+  const [loginPassword, setLoginPassword] = useState('abcd@1234');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   // Forgot password states
@@ -64,15 +73,18 @@ export default function Login() {
   const [isSendingForgotOtp, setIsSendingForgotOtp] = useState(false);
   const [isVerifyingForgotOtp, setIsVerifyingForgotOtp] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [forgotResendCooldown, setForgotResendCooldown] = useState(0); // Đếm ngược gửi lại OTP (giây)
 
   const authState = useSelector((state: RootState) => state.auth) as {
     providers: ProviderConfig[];
     registerLoading: boolean;
     verifyLoading: boolean;
     resendLoading: boolean;
+    forgotLoading: boolean;
+    forgotToken: string | null;
   };
 
-  const { providers, registerLoading, verifyLoading, resendLoading } = authState;
+  const { providers, registerLoading, verifyLoading, resendLoading, forgotLoading, forgotToken } = authState;
 
   const studentPolicy = qosPolicies.Student;
 
@@ -85,12 +97,23 @@ export default function Login() {
     dispatch(getActiveProviders());
   }, [dispatch]);
 
-  // Initialize axios on component mount
+  // Khởi tạo axios khi component mount
   useEffect(() => {
     initializeAxios();
   }, []);
 
-  // FIX: Lưu captive context ngay khi component mount
+  // Đếm ngược thời gian chờ gửi lại OTP (120 giây)
+  useEffect(() => {
+    if (forgotResendCooldown <= 0) return;
+
+    const timer = setInterval(() => {
+      setForgotResendCooldown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [forgotResendCooldown]);
+
+  // Lưu captive context ngay khi component mount
   useEffect(() => {
     const currentSearch = window.location.search;
 
@@ -552,15 +575,20 @@ export default function Login() {
     }
   };
 
-  // Forgot password handlers
-  const handleSendForgotOtp = () => {
+  // Gửi OTP đặt lại mật khẩu
+  const handleSendForgotOtp = async () => {
     if (!forgotContact) return;
     setIsSendingForgotOtp(true);
     setForgotOtpError('');
-    setTimeout(() => {
-      setIsSendingForgotOtp(false);
+    try {
+      await dispatch(sendForgotOtp({ identifier: forgotContact })).unwrap();
       setForgotStep('otp');
-    }, 1500);
+      setForgotResendCooldown(120); // Bắt đầu đếm ngược 120s mới được gửi lại
+    } catch (apiError) {
+      setForgotOtpError(String(apiError));
+    } finally {
+      setIsSendingForgotOtp(false);
+    }
   };
 
   const handleForgotOtpChange = (index: number, value: string) => {
@@ -579,7 +607,7 @@ export default function Login() {
     }
   };
 
-  const handleVerifyForgotOtp = () => {
+  const handleVerifyForgotOtp = async () => {
     const otp = forgotOtp.join('');
     if (otp.length !== 6) {
       setForgotOtpError('Vui lòng nhập đủ 6 số');
@@ -587,19 +615,32 @@ export default function Login() {
     }
     setIsVerifyingForgotOtp(true);
     setForgotOtpError('');
-    setTimeout(() => {
-      setIsVerifyingForgotOtp(false);
+    try {
+      await dispatch(verifyForgotOtp({ identifier: forgotContact, otp })).unwrap();
       setForgotStep('newpass');
-    }, 1500);
+    } catch (apiError) {
+      setForgotOtpError(String(apiError));
+    } finally {
+      setIsVerifyingForgotOtp(false);
+    }
   };
 
-  const handleResendForgotOtp = () => {
+  // Gửi lại OTP (gọi lại API forgot-password) và reset đếm ngược
+  const handleResendForgotOtp = async () => {
     setForgotOtp(['', '', '', '', '', '']);
+    setForgotOtpError('');
     setIsSendingForgotOtp(true);
-    setTimeout(() => setIsSendingForgotOtp(false), 1500);
+    try {
+      await dispatch(sendForgotOtp({ identifier: forgotContact })).unwrap();
+      setForgotResendCooldown(120); // Reset đếm ngược sau khi gửi lại thành công
+    } catch (apiError) {
+      setForgotOtpError(String(apiError));
+    } finally {
+      setIsSendingForgotOtp(false);
+    }
   };
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
     // Validate password policy
     if (!newPassword || newPassword.length < 8) {
       setForgotOtpError('Mật khẩu phải có ít nhất 8 ký tự');
@@ -625,14 +666,25 @@ export default function Login() {
       setForgotOtpError('Xác nhận mật khẩu không khớp');
       return;
     }
+    if (!forgotToken) {
+      setForgotOtpError('Phiên đặt lại mật khẩu đã hết hạn. Vui lòng thử lại.');
+      return;
+    }
     setIsResettingPassword(true);
     setForgotOtpError('');
-    setTimeout(() => {
-      setIsResettingPassword(false);
+    try {
+      await dispatch(
+        submitResetPassword({ token: forgotToken, newPassword }),
+      ).unwrap();
       setForgotStep('success');
-    }, 1500);
+    } catch (apiError) {
+      setForgotOtpError(String(apiError));
+    } finally {
+      setIsResettingPassword(false);
+    }
   };
 
+  // Reset toàn bộ form quên mật khẩu về trạng thái ban đầu
   const resetForgotForm = () => {
     setForgotContact('');
     setForgotMethod('email');
@@ -642,31 +694,13 @@ export default function Login() {
     setNewPassword('');
     setConfirmNewPassword('');
     setShowNewPassword(false);
+    setForgotResendCooldown(0);
+    dispatch(clearForgotToken());
   };
 
   const handleUseForgotCredentials = () => {
     setForgotModalOpen(false);
-    setIsLoading(true);
-    
-    // FIX: Lưu flag TRƯỚC khi setTimeout
-    const hasCaptiveContext = getCaptivePortalContext('');
-    
-    setTimeout(() => {
-      localStorage.setItem('portalLoggedIn', 'true');
-      localStorage.setItem('portalUser', JSON.stringify({
-        ...currentUser,
-        username: forgotContact,
-        loginTime: new Date().toISOString()
-      }));
-      resetForgotForm();
-      
-      // Kiểm tra flag đã lưu để quyết định redirect
-      if (hasCaptiveContext) {
-        router.push('/network-connecting');
-      } else {
-        router.push('/session');
-      }
-    }, 1000);
+    resetForgotForm();
   };
 
   return (
@@ -683,12 +717,12 @@ export default function Login() {
         {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           <div className="p-6">
-            {error && (
+            {/* {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
                 <AlertCircle size={16} />
                 <span className="text-sm">{error}</span>
               </div>
-            )}
+            )} */}
 
             {/* Segmented Control */}
             <div className="flex p-1 bg-gray-100 rounded-xl">
@@ -824,6 +858,7 @@ export default function Login() {
         isSendingOtp={isSendingForgotOtp}
         isVerifyingOtp={isVerifyingForgotOtp}
         isResettingPassword={isResettingPassword}
+        resendCooldown={forgotResendCooldown}
         onOpenChange={(open) => {
           setForgotModalOpen(open);
           if (!open) resetForgotForm();

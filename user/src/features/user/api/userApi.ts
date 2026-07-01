@@ -2,6 +2,7 @@ import apiClient from "@/config/axios";
 import { API_BASE_URL } from "@/config/api";
 import {
   type ApiEnvelope,
+  type ChangePasswordPayload,
   type MeResponse,
 } from "@/features/auth/types";
 
@@ -27,7 +28,10 @@ export async function updateUserProfile(
 }
 
 export function clearUserProfile(): void {
-  // Helper to clear cached user data if needed
   localStorage.removeItem('portalUser');
   localStorage.removeItem('portalLoggedIn');
+}
+
+export async function changeUserPassword(payload: ChangePasswordPayload): Promise<void> {
+  await apiClient.post(`${AUTH_ENDPOINT}/change-password`, payload);
 }
