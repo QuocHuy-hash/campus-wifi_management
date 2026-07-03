@@ -63,11 +63,13 @@ export interface AuthorizeDevicePayload {
   deviceMac: string;
   apMac: string;
   ssid: string;
-  deviceType: string;
-  deviceName: string;
+  deviceType: string;     // LAPTOP | DESKTOP | MOBILE | TABLET | IOT | OTHER
+  deviceName: string;     // Tên thiết bị
   userIpAddress: string;
   userAgent: string;
   duration: number;
+  manufacturer: string;   // Hãng sản xuất (VD: Dell, Apple, Samsung)
+  operatingSystem: string; // Hệ điều hành (VD: Windows 11, macOS 14, Android 14)
 }
 
 export interface ResendOtpPayload {
