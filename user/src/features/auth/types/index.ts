@@ -47,7 +47,7 @@ export interface LoginPayload {
 
 export interface LoginResult {
   accessToken: string;
-  refreshToken: string;
+  refreshToken: string | null;
   roles: string[];
 }
 
@@ -187,6 +187,8 @@ export interface DeviceUserInfo {
   userGroup: string | null; // VD: Cán bộ cấp cao
   trafficIn: string | null; // Đã format (VD: 3.18 MB) — realtime từ UniFi
   trafficOut: string | null; // Đã format — realtime từ UniFi
+  downloadBytes: string | null; // Lưu lượng download (đã format) — realtime từ UniFi
+  uploadBytes: string | null;   // Lưu lượng upload (đã format) — realtime từ UniFi
   isOnline: boolean;       // Có online trên UniFi không?
   ssid: string;            // SSID realtime từ UniFi
   apMac: string;           // AP MAC realtime từ UniFi

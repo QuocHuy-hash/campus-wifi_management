@@ -7,13 +7,8 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem("portalLoggedIn") === "true";
-    if (isLoggedIn) {
-      router.replace("/session");
-    } else {
-      const search = window.location.search;
-      router.replace(`/login${search}`);
-    }
+    // Fallback: if middleware didn't redirect (shouldn't happen), redirect client-side
+    router.replace("/session");
   }, [router]);
 
   return (

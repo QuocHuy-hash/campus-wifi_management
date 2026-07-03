@@ -23,6 +23,12 @@ export default function OAuthSuccess() {
 
     if (accessToken) {
       localStorage.setItem(STORAGE_KEYS.accessToken, accessToken);
+      // Set httpOnly cookie via API route
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken }),
+      });
     }
 
     try {
@@ -46,7 +52,7 @@ export default function OAuthSuccess() {
       if (!hasAuthenticatedSession) {
         setIsProcessing(false);
         setError("Không thể xác nhận phiên đăng nhập từ backend.");
-        router.replace("/login");
+        window.location.href = "/login";
         return;
       }
       localStorage.setItem(STORAGE_KEYS.portalLoggedIn, "true");
@@ -74,7 +80,7 @@ export default function OAuthSuccess() {
     const redirectPath = sessionStorage.getItem("oauth2_redirect_back") || "/session";
     sessionStorage.removeItem("oauth2_redirect_back");
     sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
-    router.replace(redirectPath);
+    window.location.href = redirectPath;
   }, [router, searchParams]);
 
   useEffect(() => {

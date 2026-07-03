@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { useRouter } from 'next/navigation';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertCircle } from 'lucide-react';
@@ -24,14 +23,31 @@ import type { RootState } from '@/stores/store';
 import TermsDialog from '@/features/auth/components/dialogs/TermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
-import { STORAGE_KEYS } from '@/constants/appKeys';
+import { STORAGE_KEYS, AUTH_COOKIE_KEY } from '@/constants/appKeys';
 import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
+
+async function setSessionCookie(accessToken: string): Promise<boolean> {
+  try {
+    const res = await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken }),
+    });
+    // Fallback: set non-httpOnly cookie directly so middleware always sees it
+    document.cookie = `${AUTH_COOKIE_KEY}=${accessToken};path=/;max-age=3600;SameSite=Lax`;
+    return res.ok;
+  } catch {
+    // Even if API fails, try document.cookie as last resort
+    document.cookie = `${AUTH_COOKIE_KEY}=${accessToken};path=/;max-age=3600;SameSite=Lax`;
+    return true;
+  }
+}
+
 const hcmusLogo = "/logo_hcmus.png";
 
 export default function Login() {
   const dispatch = useAppDispatch();
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'internal' | 'guest'>('guest');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -165,6 +181,29 @@ export default function Login() {
       console.log('🔄 Has token:', hasToken);
       console.log('🔄 Captive context:', captiveContext);
 
+      // If user has token, ensure cookie is set before redirecting
+      if (hasToken) {
+        const token = localStorage.getItem(STORAGE_KEYS.accessToken) || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        if (token) {
+          const cookieOk = await setSessionCookie(token);
+          if (!cookieOk) {
+            // Cookie API failed → token is stale. Clear it so we don't loop.
+            console.warn('⚠️ Failed to set session cookie, clearing stale token');
+            localStorage.removeItem(STORAGE_KEYS.accessToken);
+            localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.portalLoggedIn);
+            return;
+          }
+        }
+      }
+
+      // If user has token but no captive context, redirect to session
+      if (hasToken && !captiveContext) {
+        console.log('🚀 User has token - redirecting to session...');
+        window.location.href = '/session';
+        return;
+      }
+
       // If user is logged in and has captive context, auto authorize device
       if (isLoggedIn && hasToken && captiveContext) {
         console.log('🚀 User already logged in with captive context - auto authorizing device...');
@@ -185,13 +224,13 @@ export default function Login() {
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
 
           // Redirect to network connecting screen
-          router.push('/network-connecting');
+          window.location.href = '/network-connecting';
         } catch (error) {
           console.error('❌ Failed to authorize device via redirect:', error);
           // Even if authorization fails, we can still show the connecting screen
           // The captive portal will handle the actual device authorization on the controller
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-          router.push('/network-connecting');
+          window.location.href = '/network-connecting';
         }
       }
     };
@@ -376,10 +415,11 @@ export default function Login() {
       await authorizeDeviceInBackground();
 
       // Kiểm tra flag đã lưu để quyết định redirect
+      // Dùng window.location.href để full page reload - đảm bảo cookie được gửi
       if (hasCaptiveContext) {
-        router.push('/network-connecting');
+        window.location.href = '/network-connecting';
       } else {
-        router.push('/session');
+        window.location.href = '/session';
       }
       setIsLoading(false);
     }, 1200);
@@ -527,8 +567,18 @@ export default function Login() {
       });
 
       localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
-      localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
+      if (result.refreshToken) {
+        localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
+      }
       setAxiosAuthToken(result.accessToken);
+      const cookieOk = await setSessionCookie(result.accessToken);
+      if (!cookieOk) {
+        localStorage.removeItem(STORAGE_KEYS.accessToken);
+        localStorage.removeItem(STORAGE_KEYS.refreshToken);
+        setError('Không thể thiết lập phiên đăng nhập. Vui lòng thử lại.');
+        setIsLoading(false);
+        return;
+      }
       await persistSession(guestIdentifier, result.roles?.[0]);
 
       // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
@@ -540,10 +590,11 @@ export default function Login() {
       resetGuestForm();
 
       // Kiểm tra flag đã lưu để quyết định redirect
+      // Dùng window.location.href để full page reload - đảm bảo cookie được gửi
       if (hasCaptiveContext) {
-        router.push('/network-connecting');
+        window.location.href = '/network-connecting';
       } else {
-        router.push('/session');
+        window.location.href = '/session';
       }
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
@@ -568,8 +619,18 @@ export default function Login() {
       });
 
       localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
-      localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
+      if (result.refreshToken) {
+        localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
+      }
       setAxiosAuthToken(result.accessToken);
+      const cookieOk = await setSessionCookie(result.accessToken);
+      if (!cookieOk) {
+        localStorage.removeItem(STORAGE_KEYS.accessToken);
+        localStorage.removeItem(STORAGE_KEYS.refreshToken);
+        setError('Không thể thiết lập phiên đăng nhập. Vui lòng thử lại.');
+        setIsLoading(false);
+        return;
+      }
       await persistSession(loginUsername, result.roles?.[0]);
 
       // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
@@ -579,10 +640,11 @@ export default function Login() {
       await authorizeDeviceInBackground();
 
       // Kiểm tra flag đã lưu để quyết định redirect
+      // Dùng window.location.href để full page reload - đảm bảo cookie được gửi
       if (hasCaptiveContext) {
-        router.push('/network-connecting');
+        window.location.href = '/network-connecting';
       } else {
-        router.push('/session');
+        window.location.href = '/session';
       }
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));

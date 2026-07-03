@@ -52,6 +52,23 @@ function getDeviceIcon(deviceType: string | null, size: number = 14) {
   }
 }
 
+// Ưu tiên deviceUserInfo (realtime UniFi) rồi mới đến top-level (DB sync 5p)
+function getTraffic(session: UserSession, type: 'download' | 'upload'): string {
+  const fromDevice = type === 'download' ? session.deviceUserInfo?.downloadBytes : session.deviceUserInfo?.uploadBytes;
+  if (fromDevice) return fromDevice;
+  return formatBytes(type === 'download' ? session.downloadBytes : session.uploadBytes);
+}
+
+function getTrafficTotal(session: UserSession): string {
+  const down = session.deviceUserInfo?.downloadBytes;
+  const up = session.deviceUserInfo?.uploadBytes;
+  if (down && up) {
+    const parseMB = (s: string) => { const p = s.split(' '); const v = parseFloat(p[0]); const u = p[1]?.toLowerCase(); if (u === 'gb') return v * 1024; if (u === 'kb') return v / 1024; return v; };
+    return `${(parseMB(down) + parseMB(up)).toFixed(2)} MB`;
+  }
+  return formatBytes(session.downloadBytes + session.uploadBytes);
+}
+
 // Badge trạng thái phiên
 function getStatusBadge(session: UserSession, compact = false) {
   const baseClass = compact
@@ -391,10 +408,10 @@ export default function HistoryPage() {
                       </td>
                       <td className="px-3 py-2">
                         <div className="text-blue-600">
-                          ↓{formatBytes(session.downloadBytes)}
+                          ↓{getTraffic(session, 'download')}
                         </div>
                         <div className="text-[10px] text-green-600">
-                          ↑{formatBytes(session.uploadBytes)}
+                          ↑{getTraffic(session, 'upload')}
                         </div>
                       </td>
                       <td className="px-3 py-2 text-center">{getStatusBadge(session, true)}</td>
@@ -450,7 +467,7 @@ export default function HistoryPage() {
                           : "--"}
                       </span>
                       <span className="text-gray-900 font-medium">
-                        {formatBytes(session.downloadBytes + session.uploadBytes)}
+                        {getTrafficTotal(session)}
                       </span>
                     </span>
                   </div>
@@ -540,10 +557,10 @@ export default function HistoryPage() {
                     <p className="font-mono">{selectedSession.deviceUserInfo.userName}</p>
                   </div>       
                 </div> 
-                  <div>
+                  {/* <div>
                     <p className="text-gray-400 text-xs">Nhóm</p>
                     <p className="text-sm">{selectedSession.deviceUserInfo.userGroup || "--"}</p>
-                  </div>
+                  </div> */}
               </div>
 
               {/* Thời gian */}
@@ -613,7 +630,7 @@ export default function HistoryPage() {
               </div>
 
               {/* Mạng */}
-              {/* <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
                   <Network size={14} /> Mạng
                 </p>
@@ -622,20 +639,20 @@ export default function HistoryPage() {
                     <p className="text-gray-400 text-xs mb-0.5">SSID</p>
                     <p>{selectedSession.ssid}</p>
                   </div>
-                  <div>
+                  {/* <div>
                     <p className="text-gray-400 text-xs mb-0.5">IP</p>
                     <p className="font-mono text-xs">{selectedSession.ipAddress}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">VLAN</p>
                     <p>{selectedSession.vlan}</p>
-                  </div>
+                  </div> */}
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">AP MAC</p>
                     <p className="font-mono text-xs">{selectedSession.apMac}</p>
                   </div>
                 </div>
-              </div> */}
+              </div>
 
               {/* Lưu lượng */}
               <div className="bg-gray-50 rounded-lg p-4">
@@ -643,25 +660,25 @@ export default function HistoryPage() {
                   <Activity size={14} /> Lưu lượng
                 </p>
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="text-center p-1 bg-blue-50 rounded-lg border border-blue-100">
                     <Download size={16} className="mx-auto text-blue-500 mb-1" />
                     <p className="text-xs text-gray-500">Download</p>
-                    <p className="text-sm font-semibold text-blue-600">
-                      {formatBytes(selectedSession.downloadBytes)}
+                    <p className="text-sm  text-blue-600">
+                      {getTraffic(selectedSession, 'download')}
                     </p>
                   </div>
-                  <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
+                  <div className="text-center p-1 bg-green-50 rounded-lg border border-green-100">
                     <Upload size={16} className="mx-auto text-green-500 mb-1" />
                     <p className="text-xs text-gray-500">Upload</p>
-                    <p className="text-sm font-semibold text-green-600">
-                      {formatBytes(selectedSession.uploadBytes)}
+                    <p className="text-sm  text-green-600">
+                      {getTraffic(selectedSession, 'upload')}
                     </p>
                   </div>
-                  <div className="text-center p-3 bg-violet-50 rounded-lg border border-violet-100">
+                  <div className="text-center p-1 bg-violet-50 rounded-lg border border-violet-100">
                     <Activity size={16} className="mx-auto text-violet-500 mb-1" />
                     <p className="text-xs text-gray-500">Tổng</p>
-                    <p className="text-sm font-semibold text-violet-600">
-                      {formatBytes(selectedSession.downloadBytes + selectedSession.uploadBytes)}
+                    <p className="text-sm  text-violet-600">
+                      {getTrafficTotal(selectedSession)}
                     </p>
                   </div>
                 </div>

@@ -158,18 +158,40 @@ export default function Session() {
                   <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <Download size={18} className="mx-auto text-blue-500 mb-1.5" />
                     <p className="text-xs text-gray-500">Download</p>
-                    <p className="text-sm font-semibold text-blue-600">{formatBytes(currentSession.downloadBytes)}</p>
+                    <p className="text-sm text-blue-600">
+                      {currentSession.deviceUserInfo?.downloadBytes || formatBytes(currentSession.downloadBytes)}
+                    </p>
                   </div>
                   <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
                     <Upload size={18} className="mx-auto text-green-500 mb-1.5" />
                     <p className="text-xs text-gray-500">Upload</p>
-                    <p className="text-sm font-semibold text-green-600">{formatBytes(currentSession.uploadBytes)}</p>
+                    <p className="text-sm text-green-600">
+                      {currentSession.deviceUserInfo?.uploadBytes || formatBytes(currentSession.uploadBytes)}
+                    </p>
                   </div>
                   <div className="text-center p-3 bg-violet-50 rounded-lg border border-violet-100">
                     <Activity size={18} className="mx-auto text-violet-500 mb-1.5" />
                     <p className="text-xs text-gray-500">Tổng</p>
-                    <p className="text-sm font-semibold text-violet-600">
-                      {formatBytes(currentSession.downloadBytes + currentSession.uploadBytes)}
+                    <p className="text-sm text-violet-600">
+                      {(() => {
+                        const down = currentSession.deviceUserInfo?.downloadBytes;
+                        const up = currentSession.deviceUserInfo?.uploadBytes;
+                        if (down && up) {
+                          // Parse formatted strings like "4.29 MB", "124.37 MB"
+                          const parseNumber = (s: string) => {
+                            const parts = s.split(' ');
+                            const val = parseFloat(parts[0]);
+                            const unit = parts[1]?.toLowerCase();
+                            if (unit === 'gb') return val * 1024;
+                            if (unit === 'mb') return val;
+                            if (unit === 'kb') return val / 1024;
+                            return val;
+                          };
+                          const totalMB = parseNumber(down) + parseNumber(up);
+                          return `${totalMB.toFixed(2)} MB`;
+                        }
+                        return formatBytes(currentSession.downloadBytes + currentSession.uploadBytes);
+                      })()}
                     </p>
                   </div>
                 </div>
