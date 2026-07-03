@@ -5,52 +5,75 @@ import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { 
-  Wifi, LogOut, History, Clock, Download, Upload, 
-  Activity, Globe, Server, Gauge, HardDrive,
-  Network
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Wifi, LogOut, History, Clock, Download, Upload,
+  Activity, Globe, Network, Loader2
 } from 'lucide-react';
-import { 
-  mockSessions, 
-  formatBytes, 
-  formatDurationShort,
-  getTodayUsage,
-  qosPolicies,
-  type RadiusSession 
-} from '@/data/mockData';
+import { formatBytes, formatDurationShort } from '@/data/mockData';
+import { fetchUserSessions } from './api/sessionApi';
+import type { UserSession } from '@/features/auth/types';
 
 export default function Session() {
+  const [currentSession, setCurrentSession] = useState<UserSession | null>(null);
+  const [loading, setLoading] = useState(true);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [logoutAllDialogOpen, setLogoutAllDialogOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
-  const userStr = typeof window !== 'undefined' ? localStorage.getItem('portalUser') : null;
-  const user = userStr ? JSON.parse(userStr) : null;
-
-  const activeSession = mockSessions.find(s => s.acctstoptime === null) as RadiusSession | undefined;
-  
-  const activeDuration = activeSession 
-    ? Math.floor((currentTime - new Date(activeSession.acctstarttime).getTime()) / 1000) 
-    : 0;
-
-  const todayUsage = getTodayUsage();
-  const policy = user && user.role ? (qosPolicies[user.role as keyof typeof qosPolicies] || qosPolicies.Student) : qosPolicies.Student;
-  const quotaPercentage = Math.min((todayUsage.total / policy.quota_daily) * 100, 100);
+  // Lấy thông tin user từ localStorage để hiển thị header
+  const [user, setUser] = useState<{ fullname: string; role: string } | null>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 60000);
+    const userStr = localStorage.getItem('portalUser');
+    setUser(userStr ? JSON.parse(userStr) : null);
+  }, []);
+
+  // Gọi API lấy phiên hiện tại (chỉ lấy 1 record)
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchUserSessions({ page: 1, size: 1 });
+        console.log("Fetched user sessions:", data);
+        // Kiểm tra record đầu tiên có status ACTIVE hay không
+        if (data.records.length > 0 && data.records[0].status === 'ACTIVE') {
+          setCurrentSession(data.records[0]);
+        } else {
+          setCurrentSession(null);
+        }
+      } catch {
+        setCurrentSession(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSession();
+  }, []);
+
+  // Cập nhật thời gian online mỗi 60s
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(Date.now()), 60000);
     return () => clearInterval(interval);
   }, []);
 
+  // Tính thời lượng online hiện tại (giây)
+  const activeDuration = currentSession
+    ? Math.floor((currentTime - new Date(currentSession.startTime).getTime()) / 1000)
+    : 0;
+
+  // Đăng xuất tất cả (xóa localStorage)
   const handleLogout = () => {
     localStorage.removeItem('portalLoggedIn');
     localStorage.removeItem('portalUser');
     window.location.href = '/';
   };
 
+  // TODO: Gọi API logout session khi có endpoint
   const handleSessionLogout = () => {
     setLogoutDialogOpen(false);
   };
@@ -65,8 +88,8 @@ export default function Session() {
               <p className="text-sm font-medium text-gray-900">{user?.fullname || 'Guest'}</p>
               <p className="text-xs text-gray-500">{user?.role || 'Student'}</p>
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
               onClick={() => setLogoutAllDialogOpen(true)}
               className="text-gray-600"
@@ -77,7 +100,14 @@ export default function Session() {
           </div>
         }
       >
-        {activeSession ? (
+        {loading ? (
+          // Trạng thái loading
+          <Card className="p-8 text-center border border-gray-200">
+            <Loader2 size={32} className="mx-auto text-gray-300 mb-4 animate-spin" />
+            <p className="text-sm text-gray-500">Đang tải...</p>
+          </Card>
+        ) : currentSession ? (
+          // Có phiên ACTIVE -> hiển thị thông tin phiên
           <Card className="mb-5 overflow-hidden border border-gray-200">
             <div className="p-5 space-y-5">
               <div className="grid grid-cols-2 gap-3">
@@ -85,19 +115,19 @@ export default function Session() {
                   <p className="text-xs text-gray-500 flex items-center gap-1.5 mb-1">
                     <Wifi size={12} /> SSID
                   </p>
-                  <p className="text-sm font-medium">{activeSession.ssid}</p>
+                  <p className="text-sm font-medium">{currentSession.ssid}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500 flex items-center gap-1.5 mb-1">
                     <Globe size={12} /> IP
                   </p>
-                  <p className="text-sm font-mono">{activeSession.ip_address}</p>
+                  <p className="text-sm font-mono">{currentSession.ipAddress}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500 flex items-center gap-1.5 mb-1">
                     <Network size={12} /> MAC
                   </p>
-                  <p className="text-sm font-mono">{activeSession.mac_address}</p>
+                  <p className="text-sm font-mono">{currentSession.deviceUserInfo.macAddress}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500 flex items-center gap-1.5 mb-1">
@@ -111,13 +141,13 @@ export default function Session() {
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                   <div className="min-w-0">
                     <p className="text-xs text-gray-500">Thiết bị</p>
-                    <p className="text-sm font-medium truncate">{activeSession.device_name}</p>
+                    <p className="text-sm font-medium truncate">{currentSession.deviceUserInfo.deviceName}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500">Vị trí</p>
-                    <p className="text-sm font-medium truncate">{activeSession.ap_location}</p>
+                    <p className="text-xs text-gray-500">AP MAC</p>
+                    <p className="text-sm font-mono truncate">{currentSession.apMac}</p>
                   </div>
                 </div>
               </div>
@@ -128,49 +158,25 @@ export default function Session() {
                   <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <Download size={18} className="mx-auto text-blue-500 mb-1.5" />
                     <p className="text-xs text-gray-500">Download</p>
-                    <p className="text-sm font-semibold text-blue-600">{formatBytes(activeSession.acctinputoctets)}</p>
+                    <p className="text-sm font-semibold text-blue-600">{formatBytes(currentSession.downloadBytes)}</p>
                   </div>
                   <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
                     <Upload size={18} className="mx-auto text-green-500 mb-1.5" />
                     <p className="text-xs text-gray-500">Upload</p>
-                    <p className="text-sm font-semibold text-green-600">{formatBytes(activeSession.acctoutputoctets)}</p>
+                    <p className="text-sm font-semibold text-green-600">{formatBytes(currentSession.uploadBytes)}</p>
                   </div>
                   <div className="text-center p-3 bg-violet-50 rounded-lg border border-violet-100">
                     <Activity size={18} className="mx-auto text-violet-500 mb-1.5" />
                     <p className="text-xs text-gray-500">Tổng</p>
                     <p className="text-sm font-semibold text-violet-600">
-                      {formatBytes(activeSession.acctinputoctets + activeSession.acctoutputoctets)}
+                      {formatBytes(currentSession.downloadBytes + currentSession.uploadBytes)}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-700">Hạn ngạch hôm nay</p>
-                  <span className="text-xs text-gray-500">
-                    {formatBytes(todayUsage.total)} / {formatBytes(policy.quota_daily)}
-                  </span>
-                </div>
-                <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all ${
-                      quotaPercentage > 90 ? 'bg-red-500' : 
-                      quotaPercentage > 70 ? 'bg-amber-500' : 'bg-emerald-500'
-                    }`}
-                    style={{ width: `${quotaPercentage}%` }}
-                  />
-                </div>
-                <p className={`text-xs mt-1 ${
-                  quotaPercentage > 90 ? 'text-red-600' : 
-                  quotaPercentage > 70 ? 'text-amber-600' : 'text-gray-500'
-                }`}>
-                  Đã dùng {quotaPercentage.toFixed(1)}%
-                </p>
-              </div>
-
               <div className="flex gap-3 pt-4 border-t border-gray-100">
-                <Button 
+                <Button
                   className="flex-1 bg-gray-900 hover:bg-gray-800"
                   onClick={() => setLogoutDialogOpen(true)}
                 >
@@ -187,10 +193,11 @@ export default function Session() {
             </div>
           </Card>
         ) : (
+          // Không có phiên ACTIVE -> thông báo chưa có phiên nào
           <Card className="p-8 text-center border border-gray-200">
             <Wifi size={40} className="mx-auto text-gray-300 mb-4" />
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Không có phiên hoạt động</h2>
-            <p className="text-sm text-gray-500 mb-4">Bạn chưa kết nối WiFi.</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Chưa có phiên nào</h2>
+            <p className="text-sm text-gray-500 mb-4">Hiện tại bạn chưa kết nối WiFi.</p>
             <Link href="/history">
               <Button variant="outline">
                 <History size={16} className="mr-2" />
@@ -199,28 +206,9 @@ export default function Session() {
             </Link>
           </Card>
         )}
-
-        <Card className="p-4 border border-gray-200">
-          <p className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-            <Server size={16} /> Chính sách QoS
-          </p>
-          <div className="flex flex-wrap gap-4 text-sm">
-            <span className="flex items-center gap-2 text-gray-600">
-              <Gauge size={16} className="text-gray-400" />
-              {policy.bandwidth_limit} Mbps
-            </span>
-            <span className="flex items-center gap-2 text-gray-600">
-              <Clock size={16} className="text-gray-400" />
-              {policy.session_timeout / 3600}h/phiên
-            </span>
-            <span className="flex items-center gap-2 text-gray-600">
-              <HardDrive size={16} className="text-gray-400" />
-              {formatBytes(policy.quota_daily)}/ngày
-            </span>
-          </div>
-        </Card>
       </AppLayout>
 
+      {/* Dialog xác nhận đăng xuất WiFi */}
       <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -238,6 +226,7 @@ export default function Session() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Dialog xác nhận đăng xuất tất cả */}
       <AlertDialog open={logoutAllDialogOpen} onOpenChange={setLogoutAllDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

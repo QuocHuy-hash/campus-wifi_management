@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import AppLayout from "@/components/AppLayout";
 import { Card } from "@/components/ui/card";
@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Wifi,
   History,
   Clock,
   Download,
@@ -31,27 +30,16 @@ import {
   FileSpreadsheet,
   CheckCircle,
   XCircle,
-  AlertTriangle,
   Network,
-  Server,
-  Package,
-  Gauge,
-  Timer,
   User,
+  Loader2,
 } from "lucide-react";
-import {
-  mockSessions,
-  formatBytes,
-  formatDuration,
-  formatDurationShort,
-  formatDateTime,
-  formatDateTimeShort,
-  getTerminateCauseLabel,
-  getUniqueAPLocations,
-  type RadiusSession,
-} from "@/data/mockData";
+import { formatBytes, formatDuration, formatDurationShort, formatDateTime, formatDateTimeShort } from "@/data/mockData";
+import { fetchUserSessions } from "@/features/session/api/sessionApi";
+import type { UserSession } from "@/features/auth/types";
 
-function getDeviceIcon(deviceType: string, size: number = 14) {
+// Icon thiết bị dựa trên deviceType
+function getDeviceIcon(deviceType: string | null, size: number = 14) {
   switch (deviceType) {
     case "Smartphone":
       return <Smartphone size={size} />;
@@ -64,43 +52,35 @@ function getDeviceIcon(deviceType: string, size: number = 14) {
   }
 }
 
-function getStatusBadge(session: RadiusSession, compact = false) {
+// Badge trạng thái phiên
+function getStatusBadge(session: UserSession, compact = false) {
   const baseClass = compact
     ? "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium"
     : "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium";
 
-  if (session.acctstoptime === null) {
-    return (
-      <span className={`${baseClass} bg-emerald-100 text-emerald-700`}>
-        <Activity size={10} className="animate-pulse" /> Online
-      </span>
-    );
-  }
-
-  switch (session.acctterminatecause) {
-    case "User-Request":
+  switch (session.status) {
+    case "ACTIVE":
+      return (
+        <span className={`${baseClass} bg-emerald-100 text-emerald-700`}>
+          <Activity size={10} className="animate-pulse" /> Online
+        </span>
+      );
+    case "ENDED":
       return (
         <span className={`${baseClass} bg-gray-100 text-gray-600`}>
           <CheckCircle size={10} /> Kết thúc
         </span>
       );
-    case "Session-Timeout":
-    case "Idle-Timeout":
+    case "EXPIRED":
       return (
         <span className={`${baseClass} bg-amber-50 text-amber-600`}>
-          <Clock size={10} /> Timeout
+          <Clock size={10} /> Hết hạn
         </span>
       );
-    case "Admin-Reset":
+    case "FAILED":
       return (
         <span className={`${baseClass} bg-red-50 text-red-600`}>
-          <XCircle size={10} /> Admin
-        </span>
-      );
-    case "Lost-Carrier":
-      return (
-        <span className={`${baseClass} bg-orange-50 text-orange-600`}>
-          <AlertTriangle size={10} /> Mất KN
+          <XCircle size={10} /> Thất bại
         </span>
       );
     default:
@@ -112,77 +92,107 @@ function getStatusBadge(session: RadiusSession, compact = false) {
   }
 }
 
-const ITEMS_PER_PAGE = 20;
+// Map lý do kết thúc từ API
+function getTerminateCauseLabel(cause: string | null): string {
+  switch (cause) {
+    case "User-Request":
+      return "Người dùng đăng xuất";
+    case "Session-Timeout":
+      return "Hết thời gian phiên";
+    case "Idle-Timeout":
+      return "Không hoạt động";
+    case "Admin-Reset":
+      return "Admin ngắt kết nối";
+    case "Lost-Carrier":
+      return "Mất kết nối";
+    default:
+      return cause || "--";
+  }
+}
+
+// Format ngày thành yyyy-MM-dd
+function toDateString(date: Date): string {
+  return date.toISOString().split("T")[0];
+}
 
 export default function HistoryPage() {
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<RadiusSession | null>(null);
+  const [selectedSession, setSelectedSession] = useState<UserSession | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const [loading, setLoading] = useState(true);
 
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [deviceFilter, setDeviceFilter] = useState("all");
+  // Bộ lọc
+  const today = toDateString(new Date());
+  const oneWeekAgo = toDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+  const [dateFrom, setDateFrom] = useState(oneWeekAgo);
+  const [dateTo, setDateTo] = useState(today);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [locationFilter, setLocationFilter] = useState("all");
+  const [ssidFilter, setSsidFilter] = useState("");
 
+  // Dữ liệu từ API
+  const [pageData, setPageData] = useState({
+    current: 1,
+    size: 10,
+    total: 0,
+    pages: 0,
+    records: [] as UserSession[],
+  });
+
+  const ITEMS_PER_PAGE = 10;
+
+  // Gọi API lấy danh sách phiên
+  const loadSessions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params: Record<string, string | number> = {
+        page: currentPage,
+        size: ITEMS_PER_PAGE,
+        startDate: dateFrom,
+        endDate: dateTo,
+      };
+      if (statusFilter !== "all") params.status = statusFilter;
+      if (ssidFilter.trim()) params.ssid = ssidFilter.trim();
+
+      const data = await fetchUserSessions(params);
+      setPageData(data);
+    } catch {
+      setPageData(prev => ({ ...prev, records: [], total: 0, pages: 0 }));
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, dateFrom, dateTo, statusFilter, ssidFilter]);
+
+  // Load khi filters hoặc page thay đổi
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
+
+  // Cập nhật thời gian mỗi 60s (cho duration của session đang online)
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(Date.now()), 60000);
     return () => clearInterval(interval);
   }, []);
 
-  const userStr = typeof window !== "undefined" ? localStorage.getItem("portalUser") : null;
-  const user = userStr ? JSON.parse(userStr) : null;
+  const [user, setUser] = useState<{ fullname: string; role: string } | null>(null);
 
-  const apLocations = getUniqueAPLocations();
+  useEffect(() => {
+    const userStr = localStorage.getItem("portalUser");
+    setUser(userStr ? JSON.parse(userStr) : null);
+  }, []);
 
-  const filteredSessions = useMemo(() => {
-    return mockSessions.filter((session) => {
-      if (deviceFilter !== "all") {
-        if (deviceFilter.includes(":")) {
-          if (session.mac_address !== deviceFilter) return false;
-        } else {
-          if (session.device_type !== deviceFilter) return false;
-        }
-      }
-      if (statusFilter !== "all") {
-        if (statusFilter === "active" && session.acctstoptime !== null) return false;
-        if (statusFilter === "ended" && session.acctstoptime === null) return false;
-      }
-      if (locationFilter !== "all" && session.ap_location !== locationFilter) return false;
-      if (dateFrom) {
-        const sessionDate = new Date(session.acctstarttime);
-        const fromDate = new Date(dateFrom);
-        fromDate.setHours(0, 0, 0, 0);
-        if (sessionDate < fromDate) return false;
-      }
-      if (dateTo) {
-        const sessionDate = new Date(session.acctstarttime);
-        const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        if (sessionDate > toDate) return false;
-      }
-      return true;
-    });
-  }, [deviceFilter, statusFilter, locationFilter, dateFrom, dateTo]);
-
-  const totalPages = Math.ceil(filteredSessions.length / ITEMS_PER_PAGE);
-  const paginatedSessions = filteredSessions.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
+  // Reset filters
   const resetFilters = () => {
-    setDateFrom("");
-    setDateTo("");
-    setDeviceFilter("all");
+    setDateFrom(oneWeekAgo);
+    setDateTo(today);
     setStatusFilter("all");
-    setLocationFilter("all");
+    setSsidFilter("");
     setCurrentPage(1);
   };
 
-  const openSessionDetail = (session: RadiusSession) => {
+  // Mở modal chi tiết
+  const openSessionDetail = (session: UserSession) => {
     setSelectedSession(session);
     setDetailModalOpen(true);
   };
@@ -199,6 +209,7 @@ export default function HistoryPage() {
         }
       >
         <Card className="overflow-hidden border border-gray-200">
+          {/* Header */}
           <div className="p-3 border-b border-gray-100">
             <div className="flex items-center justify-between gap-2 mb-2">
               <div>
@@ -206,7 +217,7 @@ export default function HistoryPage() {
                   <History size={14} />
                   Lịch sử đăng nhập
                 </h1>
-                <p className="text-[10px] text-gray-500">{filteredSessions.length} phiên</p>
+                <p className="text-[10px] text-gray-500">{pageData.total} phiên</p>
               </div>
               <div className="flex gap-1.5">
                 <Button
@@ -225,9 +236,10 @@ export default function HistoryPage() {
               </div>
             </div>
 
+            {/* Bộ lọc */}
             {showFilters && (
               <div className="pt-2 border-t border-gray-100">
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div>
                     <Label className="text-[10px] text-gray-500">Từ ngày</Label>
                     <Input
@@ -253,26 +265,6 @@ export default function HistoryPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-[10px] text-gray-500">Thiết bị</Label>
-                    <Select
-                      value={deviceFilter}
-                      onValueChange={(v) => {
-                        setDeviceFilter(v);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <SelectTrigger className="h-7 text-xs mt-0.5">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tất cả</SelectItem>
-                        <SelectItem value="Laptop">Laptop</SelectItem>
-                        <SelectItem value="Smartphone">Phone</SelectItem>
-                        <SelectItem value="Tablet">Tablet</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
                     <Label className="text-[10px] text-gray-500">Trạng thái</Label>
                     <Select
                       value={statusFilter}
@@ -286,33 +278,26 @@ export default function HistoryPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tất cả</SelectItem>
-                        <SelectItem value="active">Online</SelectItem>
-                        <SelectItem value="ended">Kết thúc</SelectItem>
+                        <SelectItem value="ACTIVE">Online</SelectItem>
+                        <SelectItem value="ENDED">Kết thúc</SelectItem>
+                        <SelectItem value="EXPIRED">Hết hạn</SelectItem>
+                        <SelectItem value="FAILED">Thất bại</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label className="text-[10px] text-gray-500">Vị trí</Label>
-                    <Select
-                      value={locationFilter}
-                      onValueChange={(v) => {
-                        setLocationFilter(v);
+                  {/* <div>
+                    <Label className="text-[10px] text-gray-500">SSID</Label>
+                    <Input
+                      type="text"
+                      placeholder="Tên WiFi..."
+                      value={ssidFilter}
+                      onChange={(e) => {
+                        setSsidFilter(e.target.value);
                         setCurrentPage(1);
                       }}
-                    >
-                      <SelectTrigger className="h-7 text-xs mt-0.5">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tất cả</SelectItem>
-                        {apLocations.map((loc) => (
-                          <SelectItem key={loc} value={loc}>
-                            {loc}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      className="h-7 text-xs mt-0.5"
+                    />
+                  </div> */}
                 </div>
                 <Button
                   variant="ghost"
@@ -326,129 +311,156 @@ export default function HistoryPage() {
             )}
           </div>
 
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium text-gray-500">Thời gian</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-500">Thiết bị</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-500">Vị trí</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-500">Thời lượng</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-500">Lưu lượng</th>
-                  <th className="px-3 py-2 text-center font-medium text-gray-500">Trạng thái</th>
-                  <th className="px-3 py-2 w-8"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {paginatedSessions.map((session) => (
-                  <tr
-                    key={session.session_id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => openSessionDetail(session)}
-                  >
-                    <td className="px-3 py-2">
-                      <div className="text-gray-900">
-                        {formatDateTimeShort(session.acctstarttime)}
-                      </div>
-                      {session.acctstoptime && (
-                        <div className="text-[12px] text-gray-400">
-                          → {formatDateTimeShort(session.acctstoptime)}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-gray-500">
-                          {getDeviceIcon(session.device_type, 12)}
-                        </div>
-                        <div>
-                          <div className="text-gray-900 truncate max-w-[120px]">
-                            {session.device_name}
-                          </div>
-                          <div className="text-[10px] text-gray-400 font-mono">
-                            {session.mac_address}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="text-gray-900 truncate max-w-[100px]">
-                        {session.ap_name}
-                      </div>
-                      <div className="text-[10px] text-gray-400 truncate max-w-[100px]">
-                        {session.ap_location}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-gray-900">
-                      {session.acctstoptime === null
-                        ? formatDurationShort(
-                            Math.floor(
-                              (currentTime - new Date(session.acctstarttime).getTime()) / 1000
-                            )
-                          )
-                        : formatDurationShort(session.acctsessiontime)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="text-blue-600">
-                        ↓{formatBytes(session.acctinputoctets)}
-                      </div>
-                      <div className="text-[10px] text-green-600">
-                        ↑{formatBytes(session.acctoutputoctets)}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-center">{getStatusBadge(session, true)}</td>
-                    <td className="px-3 py-2">
-                      <ChevronRight size={14} className="text-gray-300" />
-                    </td>
+          {/* Loading spinner */}
+          {loading && (
+            <div className="p-8 text-center">
+              <Loader2 size={24} className="mx-auto mb-2 text-gray-300 animate-spin" />
+              <p className="text-xs text-gray-500">Đang tải...</p>
+            </div>
+          )}
+
+          {/* Bảng desktop */}
+          {!loading && (
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">Thời gian</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">Thiết bị</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">Mạng</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">Thời lượng</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">Lưu lượng</th>
+                    <th className="px-3 py-2 text-center font-medium text-gray-500">Trạng thái</th>
+                    <th className="px-3 py-2 w-8"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="md:hidden divide-y divide-gray-100">
-            {paginatedSessions.map((session) => (
-              <div
-                key={session.session_id}
-                className="p-3 hover:bg-gray-50"
-                onClick={() => openSessionDetail(session)}
-              >
-                <div className="flex items-start justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-gray-100 rounded flex items-center justify-center text-gray-500">
-                      {getDeviceIcon(session.device_type, 12)}
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-gray-900">
-                        {session.device_name}
-                      </div>
-                      <div className="text-[10px] text-gray-400">{session.ap_location}</div>
-                    </div>
-                  </div>
-                  {getStatusBadge(session, true)}
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-gray-500">
-                  <span>{formatDateTimeShort(session.acctstarttime)}</span>
-                  <span className="flex items-center gap-2">
-                    <span>
-                      {session.acctstoptime === null
-                        ? formatDurationShort(
-                            Math.floor(
-                              (currentTime - new Date(session.acctstarttime).getTime()) / 1000
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {pageData.records.map((session) => (
+                    <tr
+                      key={session.sessionId}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => openSessionDetail(session)}
+                    >
+                      <td className="px-3 py-2">
+                        <div className="text-gray-900">
+                          {formatDateTimeShort(session.startTime)}
+                        </div>
+                        {session.endTime && (
+                          <div className="text-[12px] text-gray-400">
+                            → {formatDateTimeShort(session.endTime)}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-gray-500">
+                            {getDeviceIcon(session.deviceUserInfo.deviceType, 12)}
+                          </div>
+                          <div>
+                            <div className="text-gray-900 truncate max-w-[120px]">
+                              {session.deviceUserInfo.deviceName}
+                            </div>
+                            <div className="text-[10px] text-gray-400 font-mono">
+                              {session.deviceUserInfo.macAddress}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="text-gray-900 truncate max-w-[100px]">
+                          {session.ssid}
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-mono truncate max-w-[100px]">
+                          {session.apMac}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-gray-900">
+                        {session.status === "ACTIVE"
+                          ? formatDurationShort(
+                              Math.floor(
+                                (currentTime - new Date(session.startTime).getTime()) / 1000
+                              )
                             )
-                          )
-                        : formatDurationShort(session.acctsessiontime)}
-                    </span>
-                    <span className="text-gray-900 font-medium">
-                      {formatBytes(session.acctinputoctets + session.acctoutputoctets)}
-                    </span>
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+                          : session.endTime
+                          ? formatDurationShort(
+                              Math.floor(
+                                (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / 1000
+                              )
+                            )
+                          : "--"}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="text-blue-600">
+                          ↓{formatBytes(session.downloadBytes)}
+                        </div>
+                        <div className="text-[10px] text-green-600">
+                          ↑{formatBytes(session.uploadBytes)}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-center">{getStatusBadge(session, true)}</td>
+                      <td className="px-3 py-2">
+                        <ChevronRight size={14} className="text-gray-300" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-          {filteredSessions.length === 0 && (
+          {/* Danh sách mobile */}
+          {!loading && (
+            <div className="md:hidden divide-y divide-gray-100">
+              {pageData.records.map((session) => (
+                <div
+                  key={session.sessionId}
+                  className="p-3 hover:bg-gray-50"
+                  onClick={() => openSessionDetail(session)}
+                >
+                  <div className="flex items-start justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 bg-gray-100 rounded flex items-center justify-center text-gray-500">
+                        {getDeviceIcon(session.deviceUserInfo.deviceType, 12)}
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium text-gray-900">
+                          {session.deviceUserInfo.deviceName}
+                        </div>
+                        <div className="text-[10px] text-gray-400">{session.ssid}</div>
+                      </div>
+                    </div>
+                    {getStatusBadge(session, true)}
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-gray-500">
+                    <span>{formatDateTimeShort(session.startTime)}</span>
+                    <span className="flex items-center gap-2">
+                      <span>
+                        {session.status === "ACTIVE"
+                          ? formatDurationShort(
+                              Math.floor(
+                                (currentTime - new Date(session.startTime).getTime()) / 1000
+                              )
+                            )
+                          : session.endTime
+                          ? formatDurationShort(
+                              Math.floor(
+                                (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / 1000
+                              )
+                            )
+                          : "--"}
+                      </span>
+                      <span className="text-gray-900 font-medium">
+                        {formatBytes(session.downloadBytes + session.uploadBytes)}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!loading && pageData.records.length === 0 && (
             <div className="p-8 text-center">
               <History size={32} className="mx-auto mb-2 text-gray-300" />
               <p className="text-xs text-gray-500">Không tìm thấy phiên nào</p>
@@ -463,12 +475,13 @@ export default function HistoryPage() {
             </div>
           )}
 
-          {filteredSessions.length > 0 && (
+          {/* Phân trang */}
+          {!loading && pageData.records.length > 0 && (
             <div className="px-3 py-2 border-t border-gray-100 flex items-center justify-between">
               <span className="text-[10px] text-gray-500">
-                {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
-                {Math.min(currentPage * ITEMS_PER_PAGE, filteredSessions.length)} /{" "}
-                {filteredSessions.length}
+                {(pageData.current - 1) * pageData.size + 1}-
+                {Math.min(pageData.current * pageData.size, pageData.total)} /{" "}
+                {pageData.total}
               </span>
               <div className="flex items-center gap-1">
                 <Button
@@ -481,14 +494,14 @@ export default function HistoryPage() {
                   <ChevronLeft size={12} />
                 </Button>
                 <span className="text-[10px] text-gray-600 px-2">
-                  {currentPage}/{totalPages}
+                  {pageData.current}/{pageData.pages}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-6 w-6 p-0"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(pageData.pages, p + 1))}
+                  disabled={currentPage === pageData.pages}
                 >
                   <ChevronRight size={12} />
                 </Button>
@@ -498,60 +511,56 @@ export default function HistoryPage() {
         </Card>
       </AppLayout>
 
+      {/* Modal chi tiết phiên */}
       <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base flex items-center gap-2">
-              {selectedSession && getDeviceIcon(selectedSession.device_type, 18)}
+              {selectedSession && getDeviceIcon(selectedSession.deviceUserInfo.deviceType, 18)}
               Chi tiết phiên đăng nhập
             </DialogTitle>
           </DialogHeader>
 
           {selectedSession && (
-            <div className="space-y-4 py-2">
+            <div className="space-y-2 py-1">
+              {/* Trạng thái */}
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500">Trạng thái</span>
                 {getStatusBadge(selectedSession)}
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
+              {/* Thông tin người dùng */}
+              <div className="bg-gray-50 rounded-lg p-2">
                 <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
                   <User size={14} /> Người dùng
                 </p>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
+                <div className="grid grid-cols-2 gap-6 text-sm">
+                  <div className="mb-2">
                     <p className="text-gray-400 text-xs mb-0.5">Username</p>
-                    <p className="font-mono">{user?.username || selectedSession.username}</p>
-                  </div>
+                    <p className="font-mono">{selectedSession.deviceUserInfo.userName}</p>
+                  </div>       
+                </div> 
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Họ tên</p>
-                    <p>{user?.fullname || "--"}</p>
+                    <p className="text-gray-400 text-xs">Nhóm</p>
+                    <p className="text-sm">{selectedSession.deviceUserInfo.userGroup || "--"}</p>
                   </div>
-                  <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Vai trò</p>
-                    <p>{user?.role || "Student"}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Khoa/Phòng</p>
-                    <p>{user?.department || "Khoa CNTT"}</p>
-                  </div>
-                </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
+              {/* Thời gian */}
+              <div className="bg-gray-50 rounded-lg p-2">
                 <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
                   <Clock size={14} /> Thời gian
                 </p>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">Bắt đầu</p>
-                    <p>{formatDateTime(selectedSession.acctstarttime)}</p>
+                    <p>{formatDateTime(selectedSession.startTime)}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">Kết thúc</p>
                     <p>
-                      {selectedSession.acctstoptime ? (
-                        formatDateTime(selectedSession.acctstoptime)
+                      {selectedSession.endTime ? (
+                        formatDateTime(selectedSession.endTime)
                       ) : (
                         <span className="text-green-600 font-medium">Đang online</span>
                       )}
@@ -560,23 +569,29 @@ export default function HistoryPage() {
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">Thời lượng</p>
                     <p>
-                      {selectedSession.acctstoptime === null
+                      {selectedSession.status === "ACTIVE"
                         ? formatDuration(
                             Math.floor(
-                              (currentTime - new Date(selectedSession.acctstarttime).getTime()) /
-                                1000
+                              (currentTime - new Date(selectedSession.startTime).getTime()) / 1000
                             )
                           )
-                        : formatDuration(selectedSession.acctsessiontime)}
+                        : selectedSession.endTime
+                        ? formatDuration(
+                            Math.floor(
+                              (new Date(selectedSession.endTime).getTime() - new Date(selectedSession.startTime).getTime()) / 1000
+                            )
+                          )
+                        : "--"}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">Lý do kết thúc</p>
-                    <p>{getTerminateCauseLabel(selectedSession.acctterminatecause)}</p>
+                    <p>{getTerminateCauseLabel(selectedSession.terminateCause)}</p>
                   </div>
                 </div>
               </div>
 
+              {/* Thiết bị */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
                   <Laptop size={14} /> Thiết bị
@@ -584,24 +599,21 @@ export default function HistoryPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">Tên</p>
-                    <p>{selectedSession.device_name}</p>
+                    <p>{selectedSession.deviceUserInfo.deviceName}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">Loại</p>
-                    <p>{selectedSession.device_type}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Vendor</p>
-                    <p>{selectedSession.device_vendor || "--"}</p>
+                    <p>{selectedSession.deviceUserInfo.deviceType || "--"}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">MAC</p>
-                    <p className="font-mono text-xs">{selectedSession.mac_address}</p>
+                    <p className="font-mono text-xs">{selectedSession.deviceUserInfo.macAddress}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
+              {/* Mạng */}
+              {/* <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
                   <Network size={14} /> Mạng
                 </p>
@@ -612,81 +624,46 @@ export default function HistoryPage() {
                   </div>
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">IP</p>
-                    <p className="font-mono text-xs">{selectedSession.ip_address}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Gateway</p>
-                    <p className="font-mono text-xs">
-                      {selectedSession.ip_address.replace(/\.\d+$/, ".1")}
-                    </p>
+                    <p className="font-mono text-xs">{selectedSession.ipAddress}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-xs mb-0.5">VLAN</p>
-                    <p>{selectedSession.vlan_id}</p>
+                    <p>{selectedSession.vlan}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">AP</p>
-                    <p>{selectedSession.ap_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Vị trí</p>
-                    <p>{selectedSession.ap_location}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-gray-400 text-xs mb-0.5">NAS IP</p>
-                    <p className="font-mono text-xs">{selectedSession.nas_ip}</p>
+                    <p className="text-gray-400 text-xs mb-0.5">AP MAC</p>
+                    <p className="font-mono text-xs">{selectedSession.apMac}</p>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
+              {/* Lưu lượng */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
-                  <Package size={14} /> Lưu lượng
+                  <Activity size={14} /> Lưu lượng
                 </p>
-                <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <Download size={16} className="mx-auto text-blue-500 mb-1" />
                     <p className="text-xs text-gray-500">Download</p>
                     <p className="text-sm font-semibold text-blue-600">
-                      {formatBytes(selectedSession.acctinputoctets)}
+                      {formatBytes(selectedSession.downloadBytes)}
                     </p>
                   </div>
                   <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
                     <Upload size={16} className="mx-auto text-green-500 mb-1" />
                     <p className="text-xs text-gray-500">Upload</p>
                     <p className="text-sm font-semibold text-green-600">
-                      {formatBytes(selectedSession.acctoutputoctets)}
+                      {formatBytes(selectedSession.uploadBytes)}
                     </p>
                   </div>
                   <div className="text-center p-3 bg-violet-50 rounded-lg border border-violet-100">
                     <Activity size={16} className="mx-auto text-violet-500 mb-1" />
                     <p className="text-xs text-gray-500">Tổng</p>
                     <p className="text-sm font-semibold text-violet-600">
-                      {formatBytes(
-                        selectedSession.acctinputoctets + selectedSession.acctoutputoctets
-                      )}
+                      {formatBytes(selectedSession.downloadBytes + selectedSession.uploadBytes)}
                     </p>
                   </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
-                  <Server size={14} /> QoS Policy
-                </p>
-                <div className="flex flex-wrap gap-4 text-sm">
-                  <span className="flex items-center gap-1.5">
-                    <Gauge size={14} className="text-gray-400" /> {selectedSession.bandwidth_limit}{" "}
-                    Mbps
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Timer size={14} className="text-gray-400" />{" "}
-                    {selectedSession.session_timeout / 3600}h
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Package size={14} className="text-gray-400" />{" "}
-                    {formatBytes(selectedSession.quota_daily)}/ngày
-                  </span>
                 </div>
               </div>
             </div>

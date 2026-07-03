@@ -74,6 +74,7 @@ export default function Login() {
   const [isVerifyingForgotOtp, setIsVerifyingForgotOtp] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [forgotResendCooldown, setForgotResendCooldown] = useState(0); // Đếm ngược gửi lại OTP (giây)
+  const [guestResendCooldown, setGuestResendCooldown] = useState(0); // Đếm ngược gửi lại OTP đăng ký (giây)
 
   const authState = useSelector((state: RootState) => state.auth) as {
     providers: ProviderConfig[];
@@ -112,6 +113,17 @@ export default function Login() {
 
     return () => clearInterval(timer);
   }, [forgotResendCooldown]);
+
+  // Đếm ngược thời gian chờ gửi lại OTP đăng ký (60 giây)
+  useEffect(() => {
+    if (guestResendCooldown <= 0) return;
+
+    const timer = setInterval(() => {
+      setGuestResendCooldown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [guestResendCooldown]);
 
   // Lưu captive context ngay khi component mount
   useEffect(() => {
@@ -397,6 +409,7 @@ export default function Login() {
         }),
       ).unwrap();
       setGuestStep('otp');
+      setGuestResendCooldown(60); // Bắt đầu đếm ngược 60s mới được gửi lại
     } catch (apiError) {
       setOtpError(String(apiError));
     }
@@ -486,6 +499,7 @@ export default function Login() {
 
     try {
       await dispatch(resendEmailOtp({ identifier: getGuestIdentifier() })).unwrap();
+      setGuestResendCooldown(60); // Reset đếm ngược sau khi gửi lại thành công
     } catch (apiError) {
       setOtpError(String(apiError));
     }
@@ -497,6 +511,7 @@ export default function Login() {
     setGuestStep('form');
     setOtpCode(['', '', '', '', '', '']);
     setOtpError('');
+    setGuestResendCooldown(0); // Reset đếm ngược khi đóng dialog
   };
 
   const handleUseGuestCredentials = async () => {
@@ -826,6 +841,7 @@ export default function Login() {
         registerLoading={registerLoading}
         verifyLoading={verifyLoading}
         resendLoading={resendLoading}
+        resendCooldown={guestResendCooldown}
         onOpenChange={(open) => {
           setGuestModalOpen(open);
           if (!open) resetGuestForm();
