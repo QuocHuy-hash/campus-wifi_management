@@ -1,18 +1,24 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { fetchUserProfile } from '@/features/user/api/userApi';
-import type { MeResponse } from '@/features/auth/types';
+import { changeUserPassword, fetchUserProfile } from '@/features/user/api/userApi';
+import type { ChangePasswordPayload, MeResponse } from '@/features/auth/types';
 import { extractErrorMessage } from '@/features/auth/slices/authSlice';
 
 interface UserProfileState {
   profile: MeResponse | null;
   loading: boolean;
   error: string | null;
+  changePasswordLoading: boolean;
+  changePasswordError: string | null;
+  changePasswordSuccess: boolean;
 }
 
 const initialState: UserProfileState = {
   profile: null,
   loading: false,
   error: null,
+  changePasswordLoading: false,
+  changePasswordError: null,
+  changePasswordSuccess: false,
 };
 
 export const getUserProfile = createAsyncThunk(
@@ -20,6 +26,17 @@ export const getUserProfile = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       return await fetchUserProfile();
+    } catch (error) {
+      return rejectWithValue(extractErrorMessage(error));
+    }
+  }
+);
+
+export const changePassword = createAsyncThunk<void, ChangePasswordPayload>(
+  'user/changePassword',
+  async (payload, { rejectWithValue }) => {
+    try {
+      await changeUserPassword(payload);
     } catch (error) {
       return rejectWithValue(extractErrorMessage(error));
     }
@@ -40,6 +57,11 @@ const userProfileSlice = createSlice({
         state.profile = { ...state.profile, ...action.payload };
       }
     },
+    clearChangePasswordStatus: (state) => {
+      state.changePasswordLoading = false;
+      state.changePasswordError = null;
+      state.changePasswordSuccess = false;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -51,16 +73,30 @@ const userProfileSlice = createSlice({
         state.loading = false;
         state.profile = action.payload;
         state.error = null;
-        
-        // Also persist to localStorage for backward compatibility
+
         localStorage.setItem('portalUser', JSON.stringify(action.payload));
       })
       .addCase(getUserProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      .addCase(changePassword.pending, (state) => {
+        state.changePasswordLoading = true;
+        state.changePasswordError = null;
+        state.changePasswordSuccess = false;
+      })
+      .addCase(changePassword.fulfilled, (state) => {
+        state.changePasswordLoading = false;
+        state.changePasswordError = null;
+        state.changePasswordSuccess = true;
+      })
+      .addCase(changePassword.rejected, (state, action) => {
+        state.changePasswordLoading = false;
+        state.changePasswordError = action.payload as string;
+        state.changePasswordSuccess = false;
       });
   },
 });
 
-export const { clearProfile, updateProfileLocally } = userProfileSlice.actions;
+export const { clearProfile, updateProfileLocally, clearChangePasswordStatus } = userProfileSlice.actions;
 export default userProfileSlice.reducer;

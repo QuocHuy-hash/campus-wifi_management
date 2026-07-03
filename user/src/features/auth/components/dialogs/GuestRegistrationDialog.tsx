@@ -42,6 +42,7 @@ interface GuestRegistrationDialogProps {
   registerLoading: boolean;
   verifyLoading: boolean;
   resendLoading: boolean;
+  resendCooldown: number;
   onOpenChange: (open: boolean) => void;
   onBackStep: () => void;
   onSetGuestAuthMethod: (method: GuestAuthMethod) => void;
@@ -74,6 +75,7 @@ export default function GuestRegistrationDialog({
   registerLoading,
   verifyLoading,
   resendLoading,
+  resendCooldown,
   onOpenChange,
   onBackStep,
   onSetGuestAuthMethod,
@@ -321,10 +323,14 @@ export default function GuestRegistrationDialog({
             <div className="text-center">
               <button
                 onClick={onResendOtp}
-                disabled={isSendingOtp || resendLoading}
+                disabled={isSendingOtp || resendLoading || resendCooldown > 0}
                 className="text-sm text-blue-600 hover:underline disabled:opacity-50"
               >
-                {isSendingOtp || resendLoading ? 'Đang gửi lại...' : 'Gửi lại mã OTP'}
+                {isSendingOtp || resendLoading
+                  ? 'Đang gửi lại...'
+                  : resendCooldown > 0
+                    ? `Gửi lại sau ${resendCooldown}s`
+                    : 'Gửi lại mã OTP'}
               </button>
             </div>
           </div>

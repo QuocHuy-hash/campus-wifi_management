@@ -9,6 +9,8 @@ export const STORAGE_KEYS = {
   refreshToken: "refreshToken",
 } as const;
 
+export const AUTH_COOKIE_KEY = "access_token";
+
 export const HTTP_CONFIG = {
   DEFAULT_TIMEOUT_MS: 30000,
   DEFAULT_HEADERS: {

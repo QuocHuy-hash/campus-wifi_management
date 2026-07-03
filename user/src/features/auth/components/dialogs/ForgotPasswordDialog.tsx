@@ -38,6 +38,7 @@ interface ForgotPasswordDialogProps {
   isSendingOtp: boolean;
   isVerifyingOtp: boolean;
   isResettingPassword: boolean;
+  resendCooldown: number;
   onOpenChange: (open: boolean) => void;
   onBackStep: () => void;
   onSetMethod: (value: ForgotMethod) => void;
@@ -67,6 +68,7 @@ export default function ForgotPasswordDialog({
   isSendingOtp,
   isVerifyingOtp,
   isResettingPassword,
+  resendCooldown,
   onOpenChange,
   onBackStep,
   onSetMethod,
@@ -235,13 +237,18 @@ export default function ForgotPasswordDialog({
               )}
             </Button>
 
+            {/* Nút gửi lại OTP với đếm ngược 120s */}
             <div className="text-center">
               <button
                 onClick={onResendOtp}
-                disabled={isSendingOtp}
+                disabled={isSendingOtp || resendCooldown > 0}
                 className="text-sm text-blue-600 hover:underline disabled:opacity-50"
               >
-                {isSendingOtp ? 'Đang gửi lại...' : 'Gửi lại mã OTP'}
+                {isSendingOtp
+                  ? 'Đang gửi lại...'
+                  : resendCooldown > 0
+                    ? `Gửi lại sau ${resendCooldown}s`
+                    : 'Gửi lại mã OTP'}
               </button>
             </div>
           </div>

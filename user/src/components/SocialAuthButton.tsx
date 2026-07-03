@@ -16,7 +16,6 @@ export default function SocialAuthButton({
   icon,
   onClick,
   disabled = false,
-  colorClass,
   bgClass,
   hoverClass,
   large = false,
