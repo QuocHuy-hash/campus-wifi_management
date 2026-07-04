@@ -21,6 +21,8 @@ export function middleware(request: NextRequest) {
   // Allow public paths
   if (isPublicPath(pathname)) {
     // If logged in and going to /login, redirect to /session
+    // NOTE: Middleware chỉ check CÓ cookie, không validate token
+    // Nếu token hết hạn, /session page sẽ gọi API và tự redirect về /login qua axios interceptor
     if (pathname === "/login" && hasToken) {
       return NextResponse.redirect(new URL("/session", request.url));
     }

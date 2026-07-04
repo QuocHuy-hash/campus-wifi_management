@@ -90,7 +90,7 @@ export default function ForgotPasswordDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {(step === 'otp' || step === 'newpass') && (
-              <button onClick={onBackStep} className="p-1 hover:bg-gray-100 rounded-lg mr-1">
+              <button type="button" onClick={onBackStep} className="p-1 hover:bg-gray-100 rounded-lg mr-1">
                 <ArrowLeft size={16} />
               </button>
             )}

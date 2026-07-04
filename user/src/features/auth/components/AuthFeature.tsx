@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { useRouter } from 'next/navigation';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertCircle } from 'lucide-react';
@@ -47,6 +48,7 @@ async function setSessionCookie(accessToken: string): Promise<boolean> {
 const hcmusLogo = "/logo_hcmus.png";
 
 export default function Login() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<'internal' | 'guest'>('guest');
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -171,6 +173,9 @@ export default function Login() {
   // Handle redirect with existing session and captive portal context
   useEffect(() => {
     const handleRedirectWithSession = async () => {
+      // Skip if not on client side
+      if (typeof window === 'undefined') return;
+
       // Check if user is already logged in
       const isLoggedIn = localStorage.getItem(STORAGE_KEYS.portalLoggedIn) === 'true';
       const hasToken = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || !!localStorage.getItem(STORAGE_KEYS.accessToken);
@@ -197,10 +202,12 @@ export default function Login() {
         }
       }
 
-      // If user has token but no captive context, redirect to session
+      // If user has token but no captive context, let middleware handle redirect
+      // This avoids duplicate redirects between useEffect and middleware
       if (hasToken && !captiveContext) {
-        console.log('🚀 User has token - redirecting to session...');
-        window.location.href = '/session';
+        console.log('🚀 User has token - letting middleware handle redirect...');
+        // Use router.push instead of window.location.href to avoid full reload
+        router.push('/session');
         return;
       }
 
@@ -224,13 +231,13 @@ export default function Login() {
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
 
           // Redirect to network connecting screen
-          window.location.href = '/network-connecting';
+          router.push('/network-connecting');
         } catch (error) {
           console.error('❌ Failed to authorize device via redirect:', error);
           // Even if authorization fails, we can still show the connecting screen
           // The captive portal will handle the actual device authorization on the controller
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-          window.location.href = '/network-connecting';
+          router.push('/network-connecting');
         }
       }
     };
@@ -238,7 +245,7 @@ export default function Login() {
     // Run after a small delay to ensure initialization is complete
     const timer = setTimeout(handleRedirectWithSession, 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   const getLoginErrorMessage = (apiError: unknown): string => {
     if (typeof apiError === 'object' && apiError !== null) {
