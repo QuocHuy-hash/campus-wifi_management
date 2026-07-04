@@ -50,6 +50,7 @@ import {
   clearChangePasswordStatus,
 } from "@/features/user/slices/userProfileSlice";
 import type { UserPolicy } from "@/features/auth/types";
+import { performLogout } from "@/lib/auth";
 import { STORAGE_KEYS } from "@/constants/appKeys";
 
 function getDeviceIcon(deviceType: string, size: number = 16) {
@@ -155,12 +156,9 @@ export default function Account() {
 
   const todayUsage = getTodayUsage();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     dispatch(clearProfile());
-    localStorage.removeItem("portalLoggedIn");
-    localStorage.removeItem("portalUser");
-    localStorage.removeItem(STORAGE_KEYS.accessToken);
-    router.push("/");
+    await performLogout('/login');
   };
 
   // Tự động đóng modal khi đổi mật khẩu thành công

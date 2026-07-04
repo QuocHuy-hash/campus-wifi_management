@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { fetchUserSessions } from './api/sessionApi';
 import type { UserSession } from '@/features/auth/types';
 
 export default function Session() {
+  const router = useRouter();
   const [currentSession, setCurrentSession] = useState<UserSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
@@ -66,11 +68,10 @@ export default function Session() {
     ? Math.floor((currentTime - new Date(currentSession.startTime).getTime()) / 1000)
     : 0;
 
-  // Đăng xuất tất cả (xóa localStorage)
-  const handleLogout = () => {
-    localStorage.removeItem('portalLoggedIn');
-    localStorage.removeItem('portalUser');
-    window.location.href = '/';
+  // Đăng xuất tất cả (xóa localStorage và cookie)
+  const handleLogout = async () => {
+    const { performLogout } = await import('@/lib/auth');
+    await performLogout('/login');
   };
 
   // TODO: Gọi API logout session khi có endpoint

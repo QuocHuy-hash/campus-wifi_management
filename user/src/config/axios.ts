@@ -38,6 +38,8 @@ export const initializeAxios = (): void => {
     return;
   }
 
+  console.log('🚀 Initializing axios with baseURL:', API_BASE_URL);
+  
   axios.defaults.baseURL = API_BASE_URL;
   axios.defaults.withCredentials = true;
   axios.defaults.timeout = HTTP_CONFIG.DEFAULT_TIMEOUT_MS;
@@ -75,7 +77,7 @@ export const initializeAxios = (): void => {
       
       // Check if it's a 401 error and not already retried
       if (error.response?.status === 401 && !originalRequest._retry) {
-        console.log('🔒 Token expired, redirecting to login...');
+        console.log('🔒 Token expired, clearing auth state...');
         originalRequest._retry = true;
         
         // Clear auth state
@@ -90,9 +92,12 @@ export const initializeAxios = (): void => {
         const currentPath = window.location.pathname;
         const searchParams = window.location.search;
         
-        // Only redirect if not already on login page
-        if (!currentPath.includes('/login')) {
-          window.location.href = `/login?returnUrl=${encodeURIComponent(currentPath + searchParams)}`;
+        // Only redirect if not already on login page or public paths
+        if (!currentPath.includes('/login') && !currentPath.includes('/api/')) {
+          // Use setTimeout to avoid blocking the current operation
+          setTimeout(() => {
+            window.location.href = `/login?returnUrl=${encodeURIComponent(currentPath + searchParams)}`;
+          }, 100);
         }
         
         return Promise.reject(error);

@@ -18,7 +18,12 @@ COPY . .
 # Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build the application
+# Accept build arguments for NEXT_PUBLIC_* variables
+# These MUST be available at build time, not runtime
+ARG NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+
+# Build the application with environment variables baked in
 RUN npm run build
 
 # 3. Runtime stage - minimal image for production

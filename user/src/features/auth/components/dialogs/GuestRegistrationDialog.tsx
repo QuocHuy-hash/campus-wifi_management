@@ -97,7 +97,7 @@ export default function GuestRegistrationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {(guestStep === 'otp' || guestStep === 'newpass') && (
-              <button onClick={onBackStep} className="p-1 hover:bg-gray-100 rounded-lg mr-1">
+              <button type="button" onClick={onBackStep} className="p-1 hover:bg-gray-100 rounded-lg mr-1">
                 <ArrowLeft size={16} />
               </button>
             )}
