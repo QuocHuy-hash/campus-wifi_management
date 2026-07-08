@@ -49,7 +49,8 @@ import {
   changePassword,
   clearChangePasswordStatus,
 } from "@/features/user/slices/userProfileSlice";
-import type { UserPolicy } from "@/features/auth/types";
+import { getUserDevices } from "@/features/devices/slices/devicesSlice";
+import type { UserPolicy, UserDevice, DeviceUserInfo } from "@/features/auth/types";
 import { performLogout } from "@/lib/auth";
 import { STORAGE_KEYS } from "@/constants/appKeys";
 
@@ -130,6 +131,7 @@ export default function Account() {
   const dispatch = useAppDispatch();
   const { profile, loading, error, changePasswordLoading, changePasswordError, changePasswordSuccess } =
     useAppSelector((state) => state.userProfile);
+  const { devices: userDevices, loading: devicesLoading } = useAppSelector((state) => state.devices);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -138,12 +140,17 @@ export default function Account() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  
+  // FIX: Thêm state isMounted và fallbackUser để tránh hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
+  const [fallbackUser, setFallbackUser] = useState<any>(null);
 
   useEffect(() => {
+    setIsMounted(true);
+    setFallbackUser(safeParsePortalUser());
     dispatch(getUserProfile());
+    dispatch(getUserDevices());
   }, [dispatch]);
-
-  const fallbackUser = safeParsePortalUser();
   const user = profile || fallbackUser;
 
   const primaryRole =
@@ -217,8 +224,13 @@ export default function Account() {
         headerRight={
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-gray-900">{displayName}</p>
-              <p className="text-xs text-gray-500">{displayRole}</p>
+              {/* FIX: Hiển thị placeholder khi chưa mount để tránh hydration mismatch */}
+              <p className="text-sm font-medium text-gray-900">
+                {isMounted ? displayName : '\u00A0'}
+              </p>
+              <p className="text-xs text-gray-500">
+                {isMounted ? displayRole : '\u00A0'}
+              </p>
             </div>
             <Button
               variant="ghost"
@@ -508,7 +520,7 @@ export default function Account() {
         <Card className="p-4 border border-gray-200">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
-              <Laptop size={12} /> Thiết bị đang online
+              <Laptop size={12} /> Thiết bị đã duyệt
             </p>
             <span className="text-[10px] text-gray-500">
               {primaryPolicy
@@ -516,10 +528,77 @@ export default function Account() {
                 : "Không giới hạn thiết bị"}
             </span>
           </div>
-          <div className="text-center py-6">
-            <Wifi size={24} className="mx-auto text-gray-300 mb-2" />
-            <p className="text-xs text-gray-500">Không có thiết bị nào đang online</p>
-          </div>
+          {devicesLoading ? (
+            <div className="text-center py-6">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-2" />
+              <p className="text-xs text-gray-500">Đang tải danh sách thiết bị...</p>
+            </div>
+          ) : userDevices.length === 0 ? (
+            <div className="text-center py-6">
+              <Wifi size={24} className="mx-auto text-gray-300 mb-2" />
+              <p className="text-xs text-gray-500">Chưa có thiết bị nào được duyệt</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {userDevices.map((device: UserDevice) => (
+                <div
+                  key={device.id}
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100"
+                >
+                  <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                    {getDeviceIcon(device.deviceType, 16)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {device.deviceName}
+                      </p>
+                      <span
+                        className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                          device.isOnline ? 'bg-green-500' : 'bg-gray-300'
+                        }`}
+                        title={device.isOnline ? 'Đang online' : 'Offline'}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">{device.deviceMacAddress}</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {device.deviceType && (
+                        <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded">
+                          {device.deviceType}
+                        </span>
+                      )}
+                      {device.manufacturer && (
+                        <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded">
+                          {device.manufacturer}
+                        </span>
+                      )}
+                      {device.operatingSystem && (
+                        <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] rounded">
+                          {device.operatingSystem}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span
+                      className={`px-2 py-0.5 text-[10px] rounded-full font-medium ${
+                        device.status === 'ACTIVE'
+                          ? 'bg-green-100 text-green-700'
+                          : device.status === 'BLOCKED'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {device.status === 'ACTIVE' ? 'Hoạt động' : device.status === 'BLOCKED' ? 'Khóa' : 'Không hoạt động'}
+                    </span>
+                    {device.lastIpAddress && (
+                      <span className="text-[10px] text-gray-400">{device.lastIpAddress}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="mt-3 pt-3 border-t border-gray-100">
             <Button
               variant="outline"

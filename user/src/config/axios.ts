@@ -80,13 +80,19 @@ export const initializeAxios = (): void => {
         console.log('🔒 Token expired, clearing auth state...');
         originalRequest._retry = true;
         
-        // Clear auth state
+        // Clear auth state from localStorage
         localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.accessToken);
         localStorage.removeItem(STORAGE_KEYS.refreshToken);
         localStorage.removeItem(STORAGE_KEYS.portalLoggedIn);
         localStorage.removeItem(STORAGE_KEYS.portalUser);
+        
+        // CRITICAL FIX: Clear auth cookie to prevent middleware redirect loop
+        // Xóa cookie bằng cách set expired date
+        const AUTH_COOKIE_KEY = 'access_token'; // Match key in middleware
+        document.cookie = `${AUTH_COOKIE_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+        console.log('🗑️ Auth cookie cleared to prevent redirect loop');
         
         // Get current URL for return
         const currentPath = window.location.pathname;

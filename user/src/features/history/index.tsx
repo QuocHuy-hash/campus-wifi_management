@@ -194,7 +194,11 @@ export default function HistoryPage() {
 
   const [user, setUser] = useState<{ fullname: string; role: string } | null>(null);
 
+  // FIX: Thêm state isMounted để tránh hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
+    setIsMounted(true);
     const userStr = localStorage.getItem("portalUser");
     setUser(userStr ? JSON.parse(userStr) : null);
   }, []);
@@ -220,8 +224,13 @@ export default function HistoryPage() {
         activePage="history"
         headerRight={
           <div className="hidden sm:block text-right">
-            <p className="text-sm font-medium text-gray-900">{user?.fullname || "Guest"}</p>
-            <p className="text-xs text-gray-500">{user?.role || "Student"}</p>
+            {/* FIX: Hiển thị placeholder khi chưa mount để tránh hydration mismatch */}
+            <p className="text-sm font-medium text-gray-900">
+              {isMounted ? (user?.fullname || "Guest") : '\u00A0'}
+            </p>
+            <p className="text-xs text-gray-500">
+              {isMounted ? (user?.role || "Student") : '\u00A0'}
+            </p>
           </div>
         }
       >
