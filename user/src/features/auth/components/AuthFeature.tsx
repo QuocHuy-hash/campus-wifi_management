@@ -176,18 +176,39 @@ export default function Login() {
       // Skip if not on client side
       if (typeof window === 'undefined') return;
 
+      // CRITICAL FIX: Check cookie first to avoid redirect loop
+      // If no cookie exists, don't trust localStorage token (it may be expired)
+      const hasAuthCookie = document.cookie.split(';').some(cookie => {
+        const [name] = cookie.trim().split('=');
+        return name === AUTH_COOKIE_KEY;
+      });
+
       // Check if user is already logged in
       const isLoggedIn = localStorage.getItem(STORAGE_KEYS.portalLoggedIn) === 'true';
       const hasToken = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || !!localStorage.getItem(STORAGE_KEYS.accessToken);
       const captiveContext = getCaptivePortalContext('');
 
       console.log('🔄 Checking redirect with session...');
+      console.log('🔄 Has auth cookie:', hasAuthCookie);
       console.log('🔄 Is logged in:', isLoggedIn);
       console.log('🔄 Has token:', hasToken);
       console.log('🔄 Captive context:', captiveContext);
 
-      // If user has token, ensure cookie is set before redirecting
-      if (hasToken) {
+      // FIX: If localStorage has token but cookie doesn't exist,
+      // the token is stale/expired. Clear it to prevent loop.
+      if (hasToken && !hasAuthCookie) {
+        console.warn('⚠️ Token exists in localStorage but no cookie found - clearing stale session');
+        localStorage.removeItem(STORAGE_KEYS.accessToken);
+        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.refreshToken);
+        localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.portalLoggedIn);
+        localStorage.removeItem(STORAGE_KEYS.portalUser);
+        return;
+      }
+
+      // If user has token AND cookie, ensure cookie is set before redirecting
+      if (hasToken && hasAuthCookie) {
         const token = localStorage.getItem(STORAGE_KEYS.accessToken) || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
         if (token) {
           const cookieOk = await setSessionCookie(token);
@@ -204,15 +225,15 @@ export default function Login() {
 
       // If user has token but no captive context, let middleware handle redirect
       // This avoids duplicate redirects between useEffect and middleware
-      if (hasToken && !captiveContext) {
-        console.log('🚀 User has token - letting middleware handle redirect...');
+      if (hasToken && hasAuthCookie && !captiveContext) {
+        console.log('🚀 User has valid session - letting middleware handle redirect...');
         // Use router.push instead of window.location.href to avoid full reload
         router.push('/session');
         return;
       }
 
       // If user is logged in and has captive context, auto authorize device
-      if (isLoggedIn && hasToken && captiveContext) {
+      if (isLoggedIn && hasToken && hasAuthCookie && captiveContext) {
         console.log('🚀 User already logged in with captive context - auto authorizing device...');
         
         // Set axios auth token if available

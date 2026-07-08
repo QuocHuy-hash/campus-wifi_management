@@ -50,7 +50,7 @@ import {
   clearChangePasswordStatus,
 } from "@/features/user/slices/userProfileSlice";
 import { getUserDevices } from "@/features/devices/slices/devicesSlice";
-import type { UserPolicy, UserDevice } from "@/features/auth/types";
+import type { UserPolicy, UserDevice, DeviceUserInfo } from "@/features/auth/types";
 import { performLogout } from "@/lib/auth";
 import { STORAGE_KEYS } from "@/constants/appKeys";
 
@@ -140,13 +140,17 @@ export default function Account() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  
+  // FIX: Thêm state isMounted và fallbackUser để tránh hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
+  const [fallbackUser, setFallbackUser] = useState<any>(null);
 
   useEffect(() => {
+    setIsMounted(true);
+    setFallbackUser(safeParsePortalUser());
     dispatch(getUserProfile());
     dispatch(getUserDevices());
   }, [dispatch]);
-
-  const fallbackUser = safeParsePortalUser();
   const user = profile || fallbackUser;
 
   const primaryRole =
@@ -220,8 +224,13 @@ export default function Account() {
         headerRight={
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-gray-900">{displayName}</p>
-              <p className="text-xs text-gray-500">{displayRole}</p>
+              {/* FIX: Hiển thị placeholder khi chưa mount để tránh hydration mismatch */}
+              <p className="text-sm font-medium text-gray-900">
+                {isMounted ? displayName : '\u00A0'}
+              </p>
+              <p className="text-xs text-gray-500">
+                {isMounted ? displayRole : '\u00A0'}
+              </p>
             </div>
             <Button
               variant="ghost"

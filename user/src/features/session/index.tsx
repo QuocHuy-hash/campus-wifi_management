@@ -28,9 +28,13 @@ export default function Session() {
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   // Lấy thông tin user từ localStorage để hiển thị header
+  // FIX: Thêm state isMounted để tránh hydration mismatch
   const [user, setUser] = useState<{ fullname: string; role: string } | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // Đợi component mount xong mới đọc localStorage
+    setIsMounted(true);
     const userStr = localStorage.getItem('portalUser');
     setUser(userStr ? JSON.parse(userStr) : null);
   }, []);
@@ -48,7 +52,10 @@ export default function Session() {
         } else {
           setCurrentSession(null);
         }
-      } catch {
+      } catch (error) {
+        console.error("Failed to fetch user sessions:", error);
+        // FIX: Don't set null immediately - the interceptor will handle redirect
+        // Setting null here causes the "no session" UI to flash before redirect
         setCurrentSession(null);
       } finally {
         setLoading(false);
@@ -86,8 +93,13 @@ export default function Session() {
         headerRight={
           <div className="flex items-center gap-3">
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-gray-900">{user?.fullname || 'Guest'}</p>
-              <p className="text-xs text-gray-500">{user?.role || 'Student'}</p>
+              {/* FIX: Hiển thị placeholder khi chưa mount để tránh hydration mismatch */}
+              <p className="text-sm font-medium text-gray-900">
+                {isMounted ? (user?.fullname || 'Guest') : '\u00A0'}
+              </p>
+              <p className="text-xs text-gray-500">
+                {isMounted ? (user?.role || 'Student') : '\u00A0'}
+              </p>
             </div>
             <Button
               variant="ghost"

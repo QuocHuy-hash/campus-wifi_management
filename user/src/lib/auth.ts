@@ -11,8 +11,9 @@ import { AUTH_COOKIE_KEY } from "@/constants/appKeys";
 export function clearAuthCookie(): void {
   if (typeof document === 'undefined') return;
   
+  // CRITICAL: Must match the cookie key used throughout the app
   // Xóa cookie bằng cách set expired
-  document.cookie = `${AUTH_COOKIE_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+  document.cookie = `${AUTH_COOKIE_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
   console.log('🗑️ Auth cookie cleared');
 }
 
