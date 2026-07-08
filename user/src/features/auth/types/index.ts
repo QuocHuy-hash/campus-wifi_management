@@ -229,3 +229,19 @@ export interface UserSessionQueryParams {
   page?: number;           // Số trang (default: 1)
   size?: number;           // Số bản ghi/trang (default: 10)
 }
+
+// Device types - Response from GET /api/v1/users/devices
+export interface UserDevice {
+  id: number;
+  deviceMacAddress: string;
+  deviceType: string;
+  deviceName: string;
+  operatingSystem: string;
+  manufacturer: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
+  lastIpAddress: string;
+  lastSessionStatus: 'ACTIVE' | 'ENDED' | 'EXPIRED' | 'FAILED';
+  isOnline: boolean;
+}
