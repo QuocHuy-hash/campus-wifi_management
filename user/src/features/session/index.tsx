@@ -70,6 +70,24 @@ export default function Session() {
     return () => clearInterval(interval);
   }, []);
 
+  // Gọi API refresh session mỗi 150s
+  useEffect(() => {
+    const refreshSession = async () => {
+      try {
+        const data = await fetchUserSessions({ page: 1, size: 1 });
+        if (data.records.length > 0 && data.records[0].status === 'ACTIVE') {
+          setCurrentSession(data.records[0]);
+        } else {
+          setCurrentSession(null);
+        }
+      } catch (error) {
+        console.error("Failed to refresh session:", error);
+      }
+    };
+    const interval = setInterval(refreshSession, 150000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Tính thời lượng online hiện tại (giây)
   const activeDuration = currentSession
     ? Math.floor((currentTime - new Date(currentSession.startTime).getTime()) / 1000)
