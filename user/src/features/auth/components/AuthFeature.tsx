@@ -583,6 +583,12 @@ export default function Login() {
   };
 
   const handleUseGuestCredentials = async () => {
+    if (!agreeTerms) {
+      setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
+      setIsLoading(false);
+      return;
+    }
+
     const guestIdentifier = getGuestIdentifier();
     setGuestModalOpen(false);
     setIsLoading(true);
@@ -631,6 +637,12 @@ export default function Login() {
   };
 
   const handleStandardLogin = async () => {
+    if (!agreeTerms) {
+      setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
