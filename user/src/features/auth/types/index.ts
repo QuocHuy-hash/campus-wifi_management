@@ -230,6 +230,18 @@ export interface UserSessionQueryParams {
   size?: number;           // Số bản ghi/trang (default: 10)
 }
 
+// Usage types - Response from GET /api/v1/user-sessions/me/usage
+export interface UserDailyUsage {
+  date: string;                 // Ngày (yyyy-MM-dd)
+  totalDownloadBytes: number;   // Tổng download (bytes)
+  totalUploadBytes: number;     // Tổng upload (bytes)
+  totalBytes: number;           // Tổng cộng (bytes)
+}
+
+export interface UserDailyUsageQueryParams {
+  date?: string; // Ngày cần lấy (yyyy-MM-dd), mặc định hôm nay
+}
+
 // Device types - Response from GET /api/v1/users/devices
 export interface UserDevice {
   id: number;

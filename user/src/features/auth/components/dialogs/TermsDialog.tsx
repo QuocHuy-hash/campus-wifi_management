@@ -79,7 +79,7 @@ export default function TermsDialog({
             <h4 className="font-semibold text-gray-900 mb-2">4. Xử lý vi phạm</h4>
             <div className="bg-red-50 rounded-xl p-4 space-y-2 text-sm">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-xs font-bold">
+                <span className="w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-xs font-bold">
                   1
                 </span>
                 <span>Cảnh cáo, khóa tài khoản 30 phút</span>

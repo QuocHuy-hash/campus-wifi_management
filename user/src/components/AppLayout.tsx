@@ -2,7 +2,9 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Menu, X, Wifi, Activity, History, User, HelpCircle } from "lucide-react";
+import { Menu, X, Wifi, Activity, History, User, HelpCircle, LogOut } from "lucide-react";
+import { performLogout } from "@/lib/auth";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type ActivePage = "session" | "history" | "account";
 
@@ -24,28 +26,31 @@ export default function AppLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border sticky top-0 z-40">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <button
-              className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
+              className="md:hidden p-2 hover:bg-accent rounded-lg text-foreground"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
             <div className="flex items-center gap-2">
-              <Wifi size={20} className="text-gray-700" />
-              <span className="font-semibold text-gray-900 hidden sm:inline">Campus WiFi</span>
+              <Wifi size={20} className="text-foreground" />
+              <span className="font-semibold text-foreground hidden sm:inline">Campus WiFi</span>
             </div>
           </div>
-          {headerRight}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {headerRight}
+          </div>
         </div>
       </header>
 
       <div className="flex">
         <aside
-          className={`fixed md:sticky top-[57px] left-0 h-[calc(100vh-57px)] w-60 bg-white border-r border-gray-200 transform transition-transform duration-300 z-30 ${
+          className={`fixed md:sticky top-[57px] left-0 h-[calc(100vh-57px)] w-60 bg-card border-r border-border transform transition-transform duration-300 z-30 flex flex-col ${
             mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
           }`}
         >
@@ -59,8 +64,8 @@ export default function AppLayout({
                   href={item.href}
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm ${
                     isActive
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50"
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:bg-accent"
                   }`}
                 >
                   <Icon size={18} />
@@ -70,12 +75,21 @@ export default function AppLayout({
             })}
             <a
               href="#"
-              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-accent"
             >
               <HelpCircle size={18} />
               Trợ giúp
             </a>
           </nav>
+          <div className="px-4 pb-4">
+            <button
+              onClick={() => performLogout()}
+              className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+            >
+              <LogOut size={18} />
+              Đăng xuất
+            </button>
+          </div>
         </aside>
 
         {mobileMenuOpen && (

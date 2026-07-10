@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import PasswordStrengthChecklist from '@/components/PasswordStrengthChecklist';
 import {
   AlertCircle,
   ArrowLeft,
@@ -228,6 +229,8 @@ export default function GuestRegistrationDialog({
               </div>
             </div>
 
+            <PasswordStrengthChecklist password={guestForm.password} />
+
             {otpError && (
               <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
                 <AlertCircle size={16} />
@@ -366,73 +369,6 @@ export default function GuestRegistrationDialog({
               </div>
             </div>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
-              <p className="text-xs font-medium text-gray-700">Yêu cầu mật khẩu:</p>
-              <div className="grid grid-cols-2 gap-1.5 text-xs">
-                <div
-                  className={`flex items-center gap-1.5 ${
-                    guestNewPassword.length >= 8 ? 'text-green-600' : 'text-gray-400'
-                  }`}
-                >
-                  {guestNewPassword.length >= 8 ? (
-                    <CheckCircle size={12} />
-                  ) : (
-                    <div className="w-3 h-3 rounded-full border border-current" />
-                  )}
-                  <span>Tối thiểu 8 ký tự</span>
-                </div>
-                <div
-                  className={`flex items-center gap-1.5 ${
-                    /[A-Z]/.test(guestNewPassword) ? 'text-green-600' : 'text-gray-400'
-                  }`}
-                >
-                  {/[A-Z]/.test(guestNewPassword) ? (
-                    <CheckCircle size={12} />
-                  ) : (
-                    <div className="w-3 h-3 rounded-full border border-current" />
-                  )}
-                  <span>Chữ hoa (A-Z)</span>
-                </div>
-                <div
-                  className={`flex items-center gap-1.5 ${
-                    /[a-z]/.test(guestNewPassword) ? 'text-green-600' : 'text-gray-400'
-                  }`}
-                >
-                  {/[a-z]/.test(guestNewPassword) ? (
-                    <CheckCircle size={12} />
-                  ) : (
-                    <div className="w-3 h-3 rounded-full border border-current" />
-                  )}
-                  <span>Chữ thường (a-z)</span>
-                </div>
-                <div
-                  className={`flex items-center gap-1.5 ${
-                    /[0-9]/.test(guestNewPassword) ? 'text-green-600' : 'text-gray-400'
-                  }`}
-                >
-                  {/[0-9]/.test(guestNewPassword) ? (
-                    <CheckCircle size={12} />
-                  ) : (
-                    <div className="w-3 h-3 rounded-full border border-current" />
-                  )}
-                  <span>Số (0-9)</span>
-                </div>
-                <div
-                  className={`flex items-center gap-1.5 col-span-2 ${
-                    /[!@#$%^&*(),.?":{}|<>]/.test(guestNewPassword)
-                      ? 'text-green-600'
-                      : 'text-gray-400'
-                  }`}
-                >
-                  {/[!@#$%^&*(),.?":{}|<>]/.test(guestNewPassword) ? (
-                    <CheckCircle size={12} />
-                  ) : (
-                    <div className="w-3 h-3 rounded-full border border-current" />
-                  )}
-                  <span>Ký tự đặc biệt (!@#$%^&*...)</span>
-                </div>
-              </div>
-            </div>
 
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Xác nhận mật khẩu</Label>
@@ -452,6 +388,7 @@ export default function GuestRegistrationDialog({
                 </p>
               )}
             </div>
+            <PasswordStrengthChecklist password={guestNewPassword} />
 
             <Button
               onClick={onSetGuestPassword}

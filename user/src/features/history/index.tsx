@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { formatBytes, formatDuration, formatDurationShort, formatDateTime, formatDateTimeShort } from "@/data/mockData";
 import { fetchUserSessions } from "@/features/session/api/sessionApi";
-import type { UserSession } from "@/features/auth/types";
+import type { UserSession, UserSessionQueryParams } from "@/features/auth/types";
 
 // Icon thiết bị dựa trên deviceType
 function getDeviceIcon(deviceType: string | null, size: number = 14) {
@@ -78,31 +78,31 @@ function getStatusBadge(session: UserSession, compact = false) {
   switch (session.status) {
     case "ACTIVE":
       return (
-        <span className={`${baseClass} bg-emerald-100 text-emerald-700`}>
+        <span className={`${baseClass} bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400`}>
           <Activity size={10} className="animate-pulse" /> Online
         </span>
       );
     case "ENDED":
       return (
-        <span className={`${baseClass} bg-gray-100 text-gray-600`}>
+        <span className={`${baseClass} bg-muted text-muted-foreground`}>
           <CheckCircle size={10} /> Kết thúc
         </span>
       );
     case "EXPIRED":
       return (
-        <span className={`${baseClass} bg-amber-50 text-amber-600`}>
+        <span className={`${baseClass} bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400`}>
           <Clock size={10} /> Hết hạn
         </span>
       );
     case "FAILED":
       return (
-        <span className={`${baseClass} bg-red-50 text-red-600`}>
+        <span className={`${baseClass} bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400`}>
           <XCircle size={10} /> Thất bại
         </span>
       );
     default:
       return (
-        <span className={`${baseClass} bg-gray-100 text-gray-600`}>
+        <span className={`${baseClass} bg-muted text-muted-foreground`}>
           <CheckCircle size={10} /> Kết thúc
         </span>
       );
@@ -163,16 +163,23 @@ export default function HistoryPage() {
   const loadSessions = useCallback(async () => {
     try {
       setLoading(true);
-      const params: Record<string, string | number> = {
+      const params: UserSessionQueryParams = {
         page: currentPage,
         size: ITEMS_PER_PAGE,
         startDate: dateFrom,
         endDate: dateTo,
+        ...(statusFilter !== "all" && { status: statusFilter }),
+        ...(ssidFilter.trim() && { ssid: ssidFilter.trim() }),
       };
-      if (statusFilter !== "all") params.status = statusFilter;
-      if (ssidFilter.trim()) params.ssid = ssidFilter.trim();
 
-      const data = await fetchUserSessions(params);
+      let data = await fetchUserSessions(params);
+      // Client-side filter fallback (server không hỗ trợ lọc theo status)
+      if (statusFilter !== "all") {
+        data = {
+          ...data,
+          records: data.records.filter((r) => r.status === statusFilter),
+        };
+      }
       setPageData(data);
     } catch {
       setPageData(prev => ({ ...prev, records: [], total: 0, pages: 0 }));
@@ -225,25 +232,25 @@ export default function HistoryPage() {
         headerRight={
           <div className="hidden sm:block text-right">
             {/* FIX: Hiển thị placeholder khi chưa mount để tránh hydration mismatch */}
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-medium text-card-foreground">
               {isMounted ? (user?.fullname || "Guest") : '\u00A0'}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {isMounted ? (user?.role || "Student") : '\u00A0'}
             </p>
           </div>
         }
       >
-        <Card className="overflow-hidden border border-gray-200">
+        <Card className="overflow-hidden border-border">
           {/* Header */}
-          <div className="p-3 border-b border-gray-100">
+          <div className="p-3 border-b border-border">
             <div className="flex items-center justify-between gap-2 mb-2">
               <div>
-                <h1 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                <h1 className="text-sm font-semibold text-card-foreground flex items-center gap-1.5">
                   <History size={14} />
                   Lịch sử đăng nhập
                 </h1>
-                <p className="text-[10px] text-gray-500">{pageData.total} phiên</p>
+                <p className="text-[10px] text-muted-foreground">{pageData.total} phiên</p>
               </div>
               <div className="flex gap-1.5">
                 <Button
@@ -264,10 +271,10 @@ export default function HistoryPage() {
 
             {/* Bộ lọc */}
             {showFilters && (
-              <div className="pt-2 border-t border-gray-100">
+              <div className="pt-2 border-t border-border">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div>
-                    <Label className="text-[10px] text-gray-500">Từ ngày</Label>
+                    <Label className="text-[10px] text-muted-foreground">Từ ngày</Label>
                     <Input
                       type="date"
                       value={dateFrom}
@@ -279,7 +286,7 @@ export default function HistoryPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-[10px] text-gray-500">Đến ngày</Label>
+                    <Label className="text-[10px] text-muted-foreground">Đến ngày</Label>
                     <Input
                       type="date"
                       value={dateTo}
@@ -291,7 +298,7 @@ export default function HistoryPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-[10px] text-gray-500">Trạng thái</Label>
+                    <Label className="text-[10px] text-muted-foreground">Trạng thái</Label>
                     <Select
                       value={statusFilter}
                       onValueChange={(v) => {
@@ -340,8 +347,8 @@ export default function HistoryPage() {
           {/* Loading spinner */}
           {loading && (
             <div className="p-8 text-center">
-              <Loader2 size={24} className="mx-auto mb-2 text-gray-300 animate-spin" />
-              <p className="text-xs text-gray-500">Đang tải...</p>
+              <Loader2 size={24} className="mx-auto mb-2 text-muted-foreground animate-spin" />
+              <p className="text-xs text-muted-foreground">Đang tải...</p>
             </div>
           )}
 
@@ -349,58 +356,58 @@ export default function HistoryPage() {
           {!loading && (
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-xs">
-                <thead className="bg-gray-50">
+                <thead className="bg-muted/50">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">Thời gian</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">Thiết bị</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">Mạng</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">Thời lượng</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">Lưu lượng</th>
-                    <th className="px-3 py-2 text-center font-medium text-gray-500">Trạng thái</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Thời gian</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Thiết bị</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Mạng</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Thời lượng</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Lưu lượng</th>
+                    <th className="px-3 py-2 text-center font-medium text-muted-foreground">Trạng thái</th>
                     <th className="px-3 py-2 w-8"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border">
                   {pageData.records.map((session) => (
                     <tr
                       key={session.sessionId}
-                      className="hover:bg-gray-50 cursor-pointer"
+                      className="hover:bg-muted/30 cursor-pointer"
                       onClick={() => openSessionDetail(session)}
                     >
                       <td className="px-3 py-2">
-                        <div className="text-gray-900">
+                        <div className="text-card-foreground">
                           {formatDateTimeShort(session.startTime)}
                         </div>
                         {session.endTime && (
-                          <div className="text-[12px] text-gray-400">
+                          <div className="text-[12px] text-muted-foreground">
                             → {formatDateTimeShort(session.endTime)}
                           </div>
                         )}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-gray-500">
+                          <div className="w-6 h-6 bg-muted rounded flex items-center justify-center text-muted-foreground">
                             {getDeviceIcon(session.deviceUserInfo.deviceType, 12)}
                           </div>
                           <div>
-                            <div className="text-gray-900 truncate max-w-[120px]">
+                            <div className="text-card-foreground truncate max-w-[120px]">
                               {session.deviceUserInfo.deviceName}
                             </div>
-                            <div className="text-[10px] text-gray-400 font-mono">
+                            <div className="text-[10px] text-muted-foreground font-mono">
                               {session.deviceUserInfo.macAddress}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-3 py-2">
-                        <div className="text-gray-900 truncate max-w-[100px]">
+                        <div className="text-card-foreground truncate max-w-[100px]">
                           {session.ssid}
                         </div>
-                        <div className="text-[10px] text-gray-400 font-mono truncate max-w-[100px]">
+                        <div className="text-[10px] text-muted-foreground font-mono truncate max-w-[100px]">
                           {session.apMac}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-gray-900">
+                      <td className="px-3 py-2 text-card-foreground">
                         {session.status === "ACTIVE"
                           ? formatDurationShort(
                               Math.floor(
@@ -416,16 +423,16 @@ export default function HistoryPage() {
                           : "--"}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="text-blue-600">
+                        <div className="text-blue-600 dark:text-blue-400">
                           ↓{getTraffic(session, 'download')}
                         </div>
-                        <div className="text-[10px] text-green-600">
+                        <div className="text-[10px] text-green-600 dark:text-green-400">
                           ↑{getTraffic(session, 'upload')}
                         </div>
                       </td>
                       <td className="px-3 py-2 text-center">{getStatusBadge(session, true)}</td>
                       <td className="px-3 py-2">
-                        <ChevronRight size={14} className="text-gray-300" />
+                        <ChevronRight size={14} className="text-muted-foreground" />
                       </td>
                     </tr>
                   ))}
@@ -436,28 +443,28 @@ export default function HistoryPage() {
 
           {/* Danh sách mobile */}
           {!loading && (
-            <div className="md:hidden divide-y divide-gray-100">
+            <div className="md:hidden divide-y divide-border">
               {pageData.records.map((session) => (
                 <div
                   key={session.sessionId}
-                  className="p-3 hover:bg-gray-50"
+                  className="p-3 hover:bg-muted/30"
                   onClick={() => openSessionDetail(session)}
                 >
                   <div className="flex items-start justify-between mb-1.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 bg-gray-100 rounded flex items-center justify-center text-gray-500">
+                      <div className="w-7 h-7 bg-muted rounded flex items-center justify-center text-muted-foreground">
                         {getDeviceIcon(session.deviceUserInfo.deviceType, 12)}
                       </div>
                       <div>
-                        <div className="text-xs font-medium text-gray-900">
+                        <div className="text-xs font-medium text-card-foreground">
                           {session.deviceUserInfo.deviceName}
                         </div>
-                        <div className="text-[10px] text-gray-400">{session.ssid}</div>
+                        <div className="text-[10px] text-muted-foreground">{session.ssid}</div>
                       </div>
                     </div>
                     {getStatusBadge(session, true)}
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-gray-500">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     <span>{formatDateTimeShort(session.startTime)}</span>
                     <span className="flex items-center gap-2">
                       <span>
@@ -475,7 +482,7 @@ export default function HistoryPage() {
                             )
                           : "--"}
                       </span>
-                      <span className="text-gray-900 font-medium">
+                      <span className="text-card-foreground font-medium">
                         {getTrafficTotal(session)}
                       </span>
                     </span>
@@ -488,8 +495,8 @@ export default function HistoryPage() {
           {/* Empty state */}
           {!loading && pageData.records.length === 0 && (
             <div className="p-8 text-center">
-              <History size={32} className="mx-auto mb-2 text-gray-300" />
-              <p className="text-xs text-gray-500">Không tìm thấy phiên nào</p>
+              <History size={32} className="mx-auto mb-2 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Không tìm thấy phiên nào</p>
               <Button
                 variant="ghost"
                 size="sm"
@@ -503,8 +510,8 @@ export default function HistoryPage() {
 
           {/* Phân trang */}
           {!loading && pageData.records.length > 0 && (
-            <div className="px-3 py-2 border-t border-gray-100 flex items-center justify-between">
-              <span className="text-[10px] text-gray-500">
+            <div className="px-3 py-2 border-t border-border flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">
                 {(pageData.current - 1) * pageData.size + 1}-
                 {Math.min(pageData.current * pageData.size, pageData.total)} /{" "}
                 {pageData.total}
@@ -519,7 +526,7 @@ export default function HistoryPage() {
                 >
                   <ChevronLeft size={12} />
                 </Button>
-                <span className="text-[10px] text-gray-600 px-2">
+                <span className="text-[10px] text-muted-foreground px-2">
                   {pageData.current}/{pageData.pages}
                 </span>
                 <Button
@@ -551,19 +558,19 @@ export default function HistoryPage() {
             <div className="space-y-2 py-1">
               {/* Trạng thái */}
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Trạng thái</span>
+                <span className="text-xs text-muted-foreground">Trạng thái</span>
                 {getStatusBadge(selectedSession)}
               </div>
 
               {/* Thông tin người dùng */}
-              <div className="bg-gray-50 rounded-lg p-2">
-                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+              <div className="bg-muted/50 rounded-lg p-2">
+                <p className="text-xs font-semibold text-card-foreground mb-3 flex items-center gap-1.5">
                   <User size={14} /> Người dùng
                 </p>
                 <div className="grid grid-cols-2 gap-6 text-sm">
                   <div className="mb-2">
-                    <p className="text-gray-400 text-xs mb-0.5">Username</p>
-                    <p className="font-mono">{selectedSession.deviceUserInfo.userName}</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">Username</p>
+                    <p className="font-mono text-card-foreground">{selectedSession.deviceUserInfo.userName}</p>
                   </div>       
                 </div> 
                   {/* <div>
@@ -573,18 +580,18 @@ export default function HistoryPage() {
               </div>
 
               {/* Thời gian */}
-              <div className="bg-gray-50 rounded-lg p-2">
-                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+              <div className="bg-muted/50 rounded-lg p-2">
+                <p className="text-xs font-semibold text-card-foreground mb-3 flex items-center gap-1.5">
                   <Clock size={14} /> Thời gian
                 </p>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Bắt đầu</p>
-                    <p>{formatDateTime(selectedSession.startTime)}</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">Bắt đầu</p>
+                    <p className="text-card-foreground">{formatDateTime(selectedSession.startTime)}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Kết thúc</p>
-                    <p>
+                    <p className="text-muted-foreground text-xs mb-0.5">Kết thúc</p>
+                    <p className="text-card-foreground">
                       {selectedSession.endTime ? (
                         formatDateTime(selectedSession.endTime)
                       ) : (
@@ -593,8 +600,8 @@ export default function HistoryPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Thời lượng</p>
-                    <p>
+                    <p className="text-muted-foreground text-xs mb-0.5">Thời lượng</p>
+                    <p className="text-card-foreground">
                       {selectedSession.status === "ACTIVE"
                         ? formatDuration(
                             Math.floor(
@@ -611,82 +618,74 @@ export default function HistoryPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Lý do kết thúc</p>
-                    <p>{getTerminateCauseLabel(selectedSession.terminateCause)}</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">Lý do kết thúc</p>
+                    <p className="text-card-foreground">{getTerminateCauseLabel(selectedSession.terminateCause)}</p>
                   </div>
                 </div>
               </div>
 
               {/* Thiết bị */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="text-xs font-semibold text-card-foreground mb-3 flex items-center gap-1.5">
                   <Laptop size={14} /> Thiết bị
                 </p>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Tên</p>
-                    <p>{selectedSession.deviceUserInfo.deviceName}</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">Tên</p>
+                    <p className="text-card-foreground">{selectedSession.deviceUserInfo.deviceName}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Loại</p>
-                    <p>{selectedSession.deviceUserInfo.deviceType || "--"}</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">Loại</p>
+                    <p className="text-card-foreground">{selectedSession.deviceUserInfo.deviceType || "--"}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">MAC</p>
-                    <p className="font-mono text-xs">{selectedSession.deviceUserInfo.macAddress}</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">MAC</p>
+                    <p className="font-mono text-xs text-card-foreground">{selectedSession.deviceUserInfo.macAddress}</p>
                   </div>
                 </div>
               </div>
 
               {/* Mạng */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="text-xs font-semibold text-card-foreground mb-3 flex items-center gap-1.5">
                   <Network size={14} /> Mạng
                 </p>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">SSID</p>
-                    <p>{selectedSession.ssid}</p>
-                  </div>
-                  {/* <div>
-                    <p className="text-gray-400 text-xs mb-0.5">IP</p>
-                    <p className="font-mono text-xs">{selectedSession.ipAddress}</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">SSID</p>
+                    <p className="text-card-foreground">{selectedSession.ssid}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">VLAN</p>
-                    <p>{selectedSession.vlan}</p>
-                  </div> */}
-                  <div>
-                    <p className="text-gray-400 text-xs mb-0.5">AP MAC</p>
-                    <p className="font-mono text-xs">{selectedSession.apMac}</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">AP MAC</p>
+                    <p className="font-mono text-xs text-card-foreground">{selectedSession.apMac}</p>
                   </div>
                 </div>
               </div>
 
               {/* Lưu lượng */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="text-xs font-semibold text-card-foreground mb-3 flex items-center gap-1.5">
                   <Activity size={14} /> Lưu lượng
                 </p>
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-1 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="text-center p-1 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900">
                     <Download size={16} className="mx-auto text-blue-500 mb-1" />
-                    <p className="text-xs text-gray-500">Download</p>
-                    <p className="text-sm  text-blue-600">
+                    <p className="text-xs text-muted-foreground">Download</p>
+                    <p className="text-sm text-blue-600 dark:text-blue-400">
                       {getTraffic(selectedSession, 'download')}
                     </p>
                   </div>
-                  <div className="text-center p-1 bg-green-50 rounded-lg border border-green-100">
+                  <div className="text-center p-1 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-100 dark:border-green-900">
                     <Upload size={16} className="mx-auto text-green-500 mb-1" />
-                    <p className="text-xs text-gray-500">Upload</p>
-                    <p className="text-sm  text-green-600">
+                    <p className="text-xs text-muted-foreground">Upload</p>
+                    <p className="text-sm text-green-600 dark:text-green-400">
                       {getTraffic(selectedSession, 'upload')}
                     </p>
                   </div>
-                  <div className="text-center p-1 bg-violet-50 rounded-lg border border-violet-100">
-                    <Activity size={16} className="mx-auto text-violet-500 mb-1" />
-                    <p className="text-xs text-gray-500">Tổng</p>
-                    <p className="text-sm  text-violet-600">
+                  <div className="text-center p-1 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900">
+                    <Activity size={16} className="mx-auto text-indigo-500 mb-1" />
+                    <p className="text-xs text-muted-foreground">Tổng</p>
+                    <p className="text-sm text-indigo-600 dark:text-indigo-400">
                       {getTrafficTotal(selectedSession)}
                     </p>
                   </div>
