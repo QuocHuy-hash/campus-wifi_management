@@ -153,10 +153,10 @@ export default function ModalShowcase() {
                     <p className="text-xs text-gray-500">Upload</p>
                     <p className="text-sm font-semibold text-green-600">{formatBytes(sampleSession.acctoutputoctets)}</p>
                   </div>
-                  <div className="text-center p-3 bg-violet-50 rounded-lg border border-violet-100">
-                    <Activity size={16} className="mx-auto text-violet-500 mb-1" />
+                  <div className="text-center p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <Activity size={16} className="mx-auto text-indigo-500 mb-1" />
                     <p className="text-xs text-gray-500">Tổng</p>
-                    <p className="text-sm font-semibold text-violet-600">{formatBytes(sampleSession.acctinputoctets + sampleSession.acctoutputoctets)}</p>
+                    <p className="text-sm font-semibold text-indigo-600">{formatBytes(sampleSession.acctinputoctets + sampleSession.acctoutputoctets)}</p>
                   </div>
                 </div>
               </div>

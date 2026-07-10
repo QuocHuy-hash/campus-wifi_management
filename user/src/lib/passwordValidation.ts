@@ -36,6 +36,7 @@ export function validatePassword(password: string): string | null {
   if (!password) return "Vui lòng nhập mật khẩu";
   for (const rule of PASSWORD_RULES) {
     if (!rule.test(password)) {
+      if (rule.key === "minLength") return "Mật khẩu phải có ít nhất 8 ký tự";
       return `Mật khẩu phải có ít nhất 1 ${rule.label.toLowerCase()}`;
     }
   }
