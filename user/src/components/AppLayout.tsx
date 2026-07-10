@@ -2,7 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Menu, X, Wifi, Activity, History, User, HelpCircle } from "lucide-react";
+import { Menu, X, Wifi, Activity, History, User, HelpCircle, LogOut } from "lucide-react";
+import { performLogout } from "@/lib/auth";
 
 type ActivePage = "session" | "history" | "account";
 
@@ -45,7 +46,7 @@ export default function AppLayout({
 
       <div className="flex">
         <aside
-          className={`fixed md:sticky top-[57px] left-0 h-[calc(100vh-57px)] w-60 bg-white border-r border-gray-200 transform transition-transform duration-300 z-30 ${
+          className={`fixed md:sticky top-[57px] left-0 h-[calc(100vh-57px)] w-60 bg-white border-r border-gray-200 transform transition-transform duration-300 z-30 flex flex-col ${
             mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
           }`}
         >
@@ -59,7 +60,7 @@ export default function AppLayout({
                   href={item.href}
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm ${
                     isActive
-                      ? "bg-gray-100 text-gray-900 font-medium"
+                      ? "bg-blue-100 text-blue-900 font-medium"
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
                 >
@@ -76,6 +77,15 @@ export default function AppLayout({
               Trợ giúp
             </a>
           </nav>
+          <div className="px-4 pb-4">
+            <button
+              onClick={() => performLogout()}
+              className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50"
+            >
+              <LogOut size={18} />
+              Đăng xuất
+            </button>
+          </div>
         </aside>
 
         {mobileMenuOpen && (

@@ -16,12 +16,13 @@ import {
   Activity, Globe, Network, Loader2
 } from 'lucide-react';
 import { formatBytes, formatDurationShort } from '@/data/mockData';
-import { fetchUserSessions } from './api/sessionApi';
-import type { UserSession } from '@/features/auth/types';
+import { fetchUserSessions, fetchUserDailyUsage } from './api/sessionApi';
+import type { UserSession, UserDailyUsage } from '@/features/auth/types';
 
 export default function Session() {
   const router = useRouter();
   const [currentSession, setCurrentSession] = useState<UserSession | null>(null);
+  const [dailyUsage, setDailyUsage] = useState<UserDailyUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [logoutAllDialogOpen, setLogoutAllDialogOpen] = useState(false);
@@ -44,19 +45,20 @@ export default function Session() {
     const loadSession = async () => {
       try {
         setLoading(true);
-        const data = await fetchUserSessions({ page: 1, size: 1 });
-        console.log("Fetched user sessions:", data);
-        // Kiểm tra record đầu tiên có status ACTIVE hay không
-        if (data.records.length > 0 && data.records[0].status === 'ACTIVE') {
-          setCurrentSession(data.records[0]);
+        const [sessionsData, usageData] = await Promise.all([
+          fetchUserSessions({ page: 1, size: 1 }),
+          fetchUserDailyUsage(),
+        ]);
+        if (sessionsData.records.length > 0 && sessionsData.records[0].status === 'ACTIVE') {
+          setCurrentSession(sessionsData.records[0]);
         } else {
           setCurrentSession(null);
         }
+        setDailyUsage(usageData);
       } catch (error) {
         console.error("Failed to fetch user sessions:", error);
-        // FIX: Don't set null immediately - the interceptor will handle redirect
-        // Setting null here causes the "no session" UI to flash before redirect
         setCurrentSession(null);
+        setDailyUsage(null);
       } finally {
         setLoading(false);
       }
@@ -139,7 +141,7 @@ export default function Session() {
           </Card>
         ) : currentSession ? (
           // Có phiên ACTIVE -> hiển thị thông tin phiên
-          <Card className="mb-5 overflow-hidden border border-gray-200">
+          <><Card className="mb-5 overflow-hidden border border-gray-200">
             <div className="p-5 space-y-5">
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 rounded-lg p-3">
@@ -245,6 +247,31 @@ export default function Session() {
               </div>
             </div>
           </Card>
+
+          {dailyUsage && (
+            <Card className="mb-5 overflow-hidden border border-gray-200">
+              <div className="p-5">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Thống kê sử dụng trong ngày</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-100">
+                    <Download size={18} className="mx-auto text-orange-500 mb-1.5" />
+                    <p className="text-xs text-gray-500">Download</p>
+                    <p className="text-sm text-orange-600">{formatBytes(dailyUsage.totalDownloadBytes)}</p>
+                  </div>
+                  <div className="text-center p-3 bg-cyan-50 rounded-lg border border-cyan-100">
+                    <Upload size={18} className="mx-auto text-cyan-500 mb-1.5" />
+                    <p className="text-xs text-gray-500">Upload</p>
+                    <p className="text-sm text-cyan-600">{formatBytes(dailyUsage.totalUploadBytes)}</p>
+                  </div>
+                  <div className="text-center p-3 bg-violet-50 rounded-lg border border-violet-100">
+                    <Activity size={18} className="mx-auto text-violet-500 mb-1.5" />
+                    <p className="text-xs text-gray-500">Tổng</p>
+                    <p className="text-sm text-violet-600">{formatBytes(dailyUsage.totalBytes)}</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}</>
         ) : (
           // Không có phiên ACTIVE -> thông báo chưa có phiên nào
           <Card className="p-8 text-center border border-gray-200">

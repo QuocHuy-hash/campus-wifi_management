@@ -41,7 +41,9 @@ import {
   Globe,
   Facebook,
 } from "lucide-react";
-import { formatBytes, getTodayUsage } from "@/data/mockData";
+import { formatBytes } from "@/data/mockData";
+import { fetchUserDailyUsage } from "@/features/session/api/sessionApi";
+import type { UserDailyUsage } from "@/features/auth/types";
 import { useAppDispatch, useAppSelector } from "@/stores/hooks";
 import {
   getUserProfile,
@@ -53,6 +55,8 @@ import { getUserDevices } from "@/features/devices/slices/devicesSlice";
 import type { UserPolicy, UserDevice, DeviceUserInfo } from "@/features/auth/types";
 import { performLogout } from "@/lib/auth";
 import { STORAGE_KEYS } from "@/constants/appKeys";
+import { validatePassword } from "@/lib/passwordValidation";
+import PasswordStrengthChecklist from "@/components/PasswordStrengthChecklist";
 
 function getDeviceIcon(deviceType: string, size: number = 16) {
   switch (deviceType) {
@@ -144,12 +148,16 @@ export default function Account() {
   // FIX: Thêm state isMounted và fallbackUser để tránh hydration mismatch
   const [isMounted, setIsMounted] = useState(false);
   const [fallbackUser, setFallbackUser] = useState<any>(null);
+  const [dailyUsage, setDailyUsage] = useState<UserDailyUsage | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
     setFallbackUser(safeParsePortalUser());
     dispatch(getUserProfile());
     dispatch(getUserDevices());
+    fetchUserDailyUsage()
+      .then(setDailyUsage)
+      .catch(() => setDailyUsage(null));
   }, [dispatch]);
   const user = profile || fallbackUser;
 
@@ -160,8 +168,6 @@ export default function Account() {
   const displayName =
     user?.fullName || user?.fullname || user?.username || "Guest";
   const displayRole = primaryRole !== "Unknown" ? primaryRole : user?.role || "Student";
-
-  const todayUsage = getTodayUsage();
 
   const handleLogout = async () => {
     dispatch(clearProfile());
@@ -196,12 +202,9 @@ export default function Account() {
       setPasswordError("Vui lòng nhập mật khẩu hiện tại");
       return;
     }
-    if (!newPassword) {
-      setPasswordError("Vui lòng nhập mật khẩu mới");
-      return;
-    }
-    if (newPassword.length < 6) {
-      setPasswordError("Mật khẩu mới phải có ít nhất 6 ký tự");
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      setPasswordError(passwordError);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -482,19 +485,19 @@ export default function Account() {
               <div className="p-2 bg-blue-50 rounded border border-blue-100 text-center">
                 <Download size={14} className="mx-auto text-blue-500 mb-0.5" />
                 <p className="text-xs font-semibold text-blue-600">
-                  {formatBytes(todayUsage.download)}
+                  {dailyUsage ? formatBytes(dailyUsage.totalDownloadBytes) : 'Đang tải...'}
                 </p>
               </div>
               <div className="p-2 bg-green-50 rounded border border-green-100 text-center">
                 <Upload size={14} className="mx-auto text-green-500 mb-0.5" />
                 <p className="text-xs font-semibold text-green-600">
-                  {formatBytes(todayUsage.upload)}
+                  {dailyUsage ? formatBytes(dailyUsage.totalUploadBytes) : 'Đang tải...'}
                 </p>
               </div>
               <div className="p-2 bg-violet-50 rounded border border-violet-100 text-center">
                 <Activity size={14} className="mx-auto text-violet-500 mb-0.5" />
                 <p className="text-xs font-semibold text-violet-600">
-                  {formatBytes(todayUsage.total)}
+                  {dailyUsage ? formatBytes(dailyUsage.totalBytes) : 'Đang tải...'}
                 </p>
               </div>
             </div>
@@ -625,9 +628,6 @@ export default function Account() {
               <Key size={18} />
               Đổi mật khẩu
             </DialogTitle>
-            <DialogDescription>
-              Nhập mật khẩu hiện tại và mật khẩu mới
-            </DialogDescription>
           </DialogHeader>
 
           {changePasswordSuccess ? (
@@ -717,6 +717,8 @@ export default function Account() {
                   </button>
                 </div>
               </div>
+
+              <PasswordStrengthChecklist password={newPassword} />
 
               <DialogFooter className="pt-4 gap-2">
                 <Button variant="outline" onClick={() => setPasswordModalOpen(false)}>

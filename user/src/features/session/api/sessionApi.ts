@@ -3,6 +3,8 @@ import {
   type ApiEnvelope,
   type UserSessionPageResponse,
   type UserSessionQueryParams,
+  type UserDailyUsage,
+  type UserDailyUsageQueryParams,
 } from "@/features/auth/types";
 
 const SESSION_ENDPOINT = `/user-sessions`;
@@ -14,13 +16,26 @@ const SESSION_ENDPOINT = `/user-sessions`;
 export async function fetchUserSessions(
   params: UserSessionQueryParams = {}
 ): Promise<UserSessionPageResponse> {
-  // Đảm bảo axios đã được cấu hình baseURL trước khi gọi API
   initializeAxios();
 
   const response = await apiClient.get<ApiEnvelope<UserSessionPageResponse>>(
     `${SESSION_ENDPOINT}/me`,
     { params }
   );
-console.log("API Response:", response.data); // Log the entire response for debugging
+  return response.data.data;
+}
+
+/**
+ * Lấy tổng dung lượng sử dụng của user hiện tại trong ngày.
+ */
+export async function fetchUserDailyUsage(
+  params: UserDailyUsageQueryParams = {}
+): Promise<UserDailyUsage> {
+  initializeAxios();
+
+  const response = await apiClient.get<ApiEnvelope<UserDailyUsage>>(
+    `${SESSION_ENDPOINT}/me/usage`,
+    { params }
+  );
   return response.data.data;
 }

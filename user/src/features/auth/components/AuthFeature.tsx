@@ -27,6 +27,7 @@ import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPassw
 import { STORAGE_KEYS, AUTH_COOKIE_KEY } from '@/constants/appKeys';
 import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
+import { validatePassword } from '@/lib/passwordValidation';
 
 async function setSessionCookie(accessToken: string): Promise<boolean> {
   try {
@@ -456,17 +457,17 @@ export default function Login() {
   const handleSendOtp = async () => {
     const contact = getGuestIdentifier();
     if (!contact || !guestForm.password) return;
-    
-    // Validate passwords
-    if (guestForm.password.length < 8) {
-      setOtpError('Mật khẩu phải có ít nhất 8 ký tự');
+
+    const passwordError = validatePassword(guestForm.password);
+    if (passwordError) {
+      setOtpError(passwordError);
       return;
     }
     if (guestForm.password !== guestForm.confirmPassword) {
       setOtpError('Xác nhận mật khẩu không khớp');
       return;
     }
-    
+
     setOtpError('');
 
     try {
@@ -526,32 +527,16 @@ export default function Login() {
   };
 
   const handleSetGuestPassword = () => {
-    // Validate password policy
-    if (!guestNewPassword || guestNewPassword.length < 8) {
-      setOtpError('Mật khẩu phải có ít nhất 8 ký tự');
-      return;
-    }
-    if (!/[A-Z]/.test(guestNewPassword)) {
-      setOtpError('Mật khẩu phải có ít nhất 1 chữ hoa (A-Z)');
-      return;
-    }
-    if (!/[a-z]/.test(guestNewPassword)) {
-      setOtpError('Mật khẩu phải có ít nhất 1 chữ thường (a-z)');
-      return;
-    }
-    if (!/[0-9]/.test(guestNewPassword)) {
-      setOtpError('Mật khẩu phải có ít nhất 1 số (0-9)');
-      return;
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(guestNewPassword)) {
-      setOtpError('Mật khẩu phải có ít nhất 1 ký tự đặc biệt');
+    const error = validatePassword(guestNewPassword);
+    if (error) {
+      setOtpError(error);
       return;
     }
     if (guestNewPassword !== guestConfirmPassword) {
       setOtpError('Xác nhận mật khẩu không khớp');
       return;
     }
-    
+
     setIsSettingGuestPassword(true);
     setOtpError('');
     
@@ -758,25 +743,9 @@ export default function Login() {
   };
 
   const handleResetPassword = async () => {
-    // Validate password policy
-    if (!newPassword || newPassword.length < 8) {
-      setForgotOtpError('Mật khẩu phải có ít nhất 8 ký tự');
-      return;
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      setForgotOtpError('Mật khẩu phải có ít nhất 1 chữ hoa (A-Z)');
-      return;
-    }
-    if (!/[a-z]/.test(newPassword)) {
-      setForgotOtpError('Mật khẩu phải có ít nhất 1 chữ thường (a-z)');
-      return;
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      setForgotOtpError('Mật khẩu phải có ít nhất 1 số (0-9)');
-      return;
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
-      setForgotOtpError('Mật khẩu phải có ít nhất 1 ký tự đặc biệt');
+    const error = validatePassword(newPassword);
+    if (error) {
+      setForgotOtpError(error);
       return;
     }
     if (newPassword !== confirmNewPassword) {

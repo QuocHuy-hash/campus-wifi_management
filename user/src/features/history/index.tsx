@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { formatBytes, formatDuration, formatDurationShort, formatDateTime, formatDateTimeShort } from "@/data/mockData";
 import { fetchUserSessions } from "@/features/session/api/sessionApi";
-import type { UserSession } from "@/features/auth/types";
+import type { UserSession, UserSessionQueryParams } from "@/features/auth/types";
 
 // Icon thiết bị dựa trên deviceType
 function getDeviceIcon(deviceType: string | null, size: number = 14) {
@@ -163,16 +163,23 @@ export default function HistoryPage() {
   const loadSessions = useCallback(async () => {
     try {
       setLoading(true);
-      const params: Record<string, string | number> = {
+      const params: UserSessionQueryParams = {
         page: currentPage,
         size: ITEMS_PER_PAGE,
         startDate: dateFrom,
         endDate: dateTo,
+        ...(statusFilter !== "all" && { status: statusFilter }),
+        ...(ssidFilter.trim() && { ssid: ssidFilter.trim() }),
       };
-      if (statusFilter !== "all") params.status = statusFilter;
-      if (ssidFilter.trim()) params.ssid = ssidFilter.trim();
 
-      const data = await fetchUserSessions(params);
+      let data = await fetchUserSessions(params);
+      // Client-side filter fallback (server không hỗ trợ lọc theo status)
+      if (statusFilter !== "all") {
+        data = {
+          ...data,
+          records: data.records.filter((r) => r.status === statusFilter),
+        };
+      }
       setPageData(data);
     } catch {
       setPageData(prev => ({ ...prev, records: [], total: 0, pages: 0 }));
