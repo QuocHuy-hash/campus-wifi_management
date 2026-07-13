@@ -23,7 +23,9 @@ export function middleware(request: NextRequest) {
     // CRITICAL FIX: Only redirect /login -> /session if token exists AND pathname is exactly /login
     // This prevents redirect loop when interceptor redirects to /login with returnUrl
     if (pathname === "/login" && hasToken && !search.includes("returnUrl")) {
-      return NextResponse.redirect(new URL("/session", request.url));
+      const sessionUrl = new URL("/session", request.url);
+      sessionUrl.search = search;
+      return NextResponse.redirect(sessionUrl);
     }
     return NextResponse.next();
   }

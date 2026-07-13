@@ -16,7 +16,8 @@ import {
   Activity, Globe, Network, Loader2
 } from 'lucide-react';
 import { formatBytes, formatDurationShort } from '@/data/mockData';
-import { fetchUserSessions, fetchUserDailyUsage } from './api/sessionApi';
+import { fetchCurrentSession, fetchUserDailyUsage } from './api/sessionApi';
+import { useCaptiveAuthorization } from '@/features/auth/hooks/useCaptiveAuthorization';
 import type { UserSession, UserDailyUsage } from '@/features/auth/types';
 
 export default function Session() {
@@ -40,23 +41,22 @@ export default function Session() {
     setUser(userStr ? JSON.parse(userStr) : null);
   }, []);
 
-  // Gọi API lấy phiên hiện tại (chỉ lấy 1 record)
+  // Authorize thiết bị nếu còn captive context, sau đó lấy phiên active
+  const { authorize: authorizeDeviceIfNeeded } = useCaptiveAuthorization();
+
   useEffect(() => {
     const loadSession = async () => {
       try {
         setLoading(true);
-        const [sessionsData, usageData] = await Promise.all([
-          fetchUserSessions({ page: 1, size: 1 }),
+        await authorizeDeviceIfNeeded();
+        const [session, usageData] = await Promise.all([
+          fetchCurrentSession(),
           fetchUserDailyUsage(),
         ]);
-        if (sessionsData.records.length > 0 && sessionsData.records[0].status === 'ACTIVE') {
-          setCurrentSession(sessionsData.records[0]);
-        } else {
-          setCurrentSession(null);
-        }
+        setCurrentSession(session);
         setDailyUsage(usageData);
       } catch (error) {
-        console.error("Failed to fetch user sessions:", error);
+        console.error("Failed to fetch current session:", error);
         setCurrentSession(null);
         setDailyUsage(null);
       } finally {
@@ -64,7 +64,7 @@ export default function Session() {
       }
     };
     loadSession();
-  }, []);
+  }, [authorizeDeviceIfNeeded]);
 
   // Cập nhật thời gian online mỗi 60s
   useEffect(() => {
@@ -76,12 +76,8 @@ export default function Session() {
   useEffect(() => {
     const refreshSession = async () => {
       try {
-        const data = await fetchUserSessions({ page: 1, size: 1 });
-        if (data.records.length > 0 && data.records[0].status === 'ACTIVE') {
-          setCurrentSession(data.records[0]);
-        } else {
-          setCurrentSession(null);
-        }
+        const session = await fetchCurrentSession();
+        setCurrentSession(session);
       } catch (error) {
         console.error("Failed to refresh session:", error);
       }
@@ -192,39 +188,21 @@ export default function Session() {
                     <Download size={18} className="mx-auto text-blue-500 mb-1.5" />
                     <p className="text-xs text-muted-foreground">Download</p>
                     <p className="text-sm text-blue-600 dark:text-blue-400">
-                      {currentSession.deviceUserInfo?.downloadBytes || formatBytes(currentSession.downloadBytes)}
+                      {formatBytes(currentSession.downloadBytes)}
                     </p>
                   </div>
                   <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-100 dark:border-green-900">
                     <Upload size={18} className="mx-auto text-green-500 mb-1.5" />
                     <p className="text-xs text-muted-foreground">Upload</p>
                     <p className="text-sm text-green-600 dark:text-green-400">
-                      {currentSession.deviceUserInfo?.uploadBytes || formatBytes(currentSession.uploadBytes)}
+                      {formatBytes(currentSession.uploadBytes)}
                     </p>
                   </div>
                   <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900">
                     <Activity size={18} className="mx-auto text-indigo-500 mb-1.5" />
                     <p className="text-xs text-muted-foreground">Tổng</p>
                     <p className="text-sm text-indigo-600">
-                      {(() => {
-                        const down = currentSession.deviceUserInfo?.downloadBytes;
-                        const up = currentSession.deviceUserInfo?.uploadBytes;
-                        if (down && up) {
-                          // Parse formatted strings like "4.29 MB", "124.37 MB"
-                          const parseNumber = (s: string) => {
-                            const parts = s.split(' ');
-                            const val = parseFloat(parts[0]);
-                            const unit = parts[1]?.toLowerCase();
-                            if (unit === 'gb') return val * 1024;
-                            if (unit === 'mb') return val;
-                            if (unit === 'kb') return val / 1024;
-                            return val;
-                          };
-                          const totalMB = parseNumber(down) + parseNumber(up);
-                          return `${totalMB.toFixed(2)} MB`;
-                        }
-                        return formatBytes(currentSession.downloadBytes + currentSession.uploadBytes);
-                      })()}
+                      {formatBytes(currentSession.downloadBytes + currentSession.uploadBytes)}
                     </p>
                   </div>
                 </div>
