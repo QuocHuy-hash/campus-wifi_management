@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { formatBytes, formatDuration, formatDurationShort, formatDateTime, formatDateTimeShort } from "@/data/mockData";
 import { fetchUserSessions } from "@/features/session/api/sessionApi";
+import { useCaptiveAuthorization } from "@/features/auth/hooks/useCaptiveAuthorization";
 import type { UserSession, UserSessionQueryParams } from "@/features/auth/types";
 
 // Icon thiết bị dựa trên deviceType
@@ -52,20 +53,11 @@ function getDeviceIcon(deviceType: string | null, size: number = 14) {
   }
 }
 
-// Ưu tiên deviceUserInfo (realtime UniFi) rồi mới đến top-level (DB sync 5p)
 function getTraffic(session: UserSession, type: 'download' | 'upload'): string {
-  const fromDevice = type === 'download' ? session.deviceUserInfo?.downloadBytes : session.deviceUserInfo?.uploadBytes;
-  if (fromDevice) return fromDevice;
   return formatBytes(type === 'download' ? session.downloadBytes : session.uploadBytes);
 }
 
 function getTrafficTotal(session: UserSession): string {
-  const down = session.deviceUserInfo?.downloadBytes;
-  const up = session.deviceUserInfo?.uploadBytes;
-  if (down && up) {
-    const parseMB = (s: string) => { const p = s.split(' '); const v = parseFloat(p[0]); const u = p[1]?.toLowerCase(); if (u === 'gb') return v * 1024; if (u === 'kb') return v / 1024; return v; };
-    return `${(parseMB(down) + parseMB(up)).toFixed(2)} MB`;
-  }
   return formatBytes(session.downloadBytes + session.uploadBytes);
 }
 
@@ -133,6 +125,9 @@ function toDateString(date: Date): string {
 }
 
 export default function HistoryPage() {
+  // Authorize thiết bị nếu còn captive context
+  const { authorize: authorizeDeviceIfNeeded } = useCaptiveAuthorization();
+
   const [showFilters, setShowFilters] = useState(false);
   const [selectedSession, setSelectedSession] = useState<UserSession | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -163,6 +158,7 @@ export default function HistoryPage() {
   const loadSessions = useCallback(async () => {
     try {
       setLoading(true);
+      await authorizeDeviceIfNeeded();
       const params: UserSessionQueryParams = {
         page: currentPage,
         size: ITEMS_PER_PAGE,
@@ -173,6 +169,7 @@ export default function HistoryPage() {
       };
 
       let data = await fetchUserSessions(params);
+      console.log('History records:', data.records.length, data.records);
       // Client-side filter fallback (server không hỗ trợ lọc theo status)
       if (statusFilter !== "all") {
         data = {
@@ -186,7 +183,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, dateFrom, dateTo, statusFilter, ssidFilter]);
+  }, [currentPage, dateFrom, dateTo, statusFilter, ssidFilter, authorizeDeviceIfNeeded]);
 
   // Load khi filters hoặc page thay đổi
   useEffect(() => {

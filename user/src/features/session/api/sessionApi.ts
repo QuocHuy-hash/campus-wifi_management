@@ -1,6 +1,7 @@
 import apiClient, { initializeAxios } from "@/config/axios";
 import {
   type ApiEnvelope,
+  type UserSession,
   type UserSessionPageResponse,
   type UserSessionQueryParams,
   type UserDailyUsage,
@@ -11,7 +12,7 @@ const SESSION_ENDPOINT = `/user-sessions`;
 
 /**
  * Lấy danh sách phiên đăng nhập của user hiện tại, có phân trang + lọc.
- * Dùng cho cả màn hình Session (page=1, size=1) và History.
+ * Dùng cho màn hình History.
  */
 export async function fetchUserSessions(
   params: UserSessionQueryParams = {}
@@ -23,6 +24,39 @@ export async function fetchUserSessions(
     { params }
   );
   return response.data.data;
+}
+
+/**
+ * Lấy phiên ACTIVE hiện tại của user.
+ * Hỗ trợ cả data là object đơn hoặc mảng (do backend có thể trả về mảng).
+ * Nếu không có phiên active, trả về null (không throw error).
+ * Dùng cho màn hình Session.
+ */
+export async function fetchCurrentSession(
+  xForwardedFor?: string
+): Promise<UserSession | null> {
+  initializeAxios();
+
+  const headers: Record<string, string> = {};
+  if (xForwardedFor) {
+    headers['X-Forwarded-For'] = xForwardedFor;
+  }
+
+  try {
+    const response = await apiClient.get<
+      ApiEnvelope<UserSession | UserSession[]>
+    >(`${SESSION_ENDPOINT}/me/current`, { headers });
+    const data = response.data.data;
+    if (Array.isArray(data)) {
+      return data.length > 0 ? data[0] : null;
+    }
+    return data;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 /**
