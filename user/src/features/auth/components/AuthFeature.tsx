@@ -75,8 +75,8 @@ export default function Login() {
   const [isSettingGuestPassword, setIsSettingGuestPassword] = useState(false);
 
   // Standard Login states for returned guests
-  const [loginUsername, setLoginUsername] = useState('huy343536@gmail.com');
-  const [loginPassword, setLoginPassword] = useState('abcd@1234');
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   // Forgot password states
