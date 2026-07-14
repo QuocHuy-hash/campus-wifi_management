@@ -46,6 +46,41 @@ async function setSessionCookie(accessToken: string): Promise<boolean> {
   }
 }
 
+type SavedGuestLoginCredentials = {
+  username: string;
+  password: string;
+};
+
+function getSavedGuestLoginCredentials(): SavedGuestLoginCredentials | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const rawCredentials = localStorage.getItem(STORAGE_KEYS.savedGuestLoginCredentials);
+    if (!rawCredentials) return null;
+
+    const credentials = JSON.parse(rawCredentials) as Partial<SavedGuestLoginCredentials>;
+    if (typeof credentials.username !== 'string' || typeof credentials.password !== 'string') {
+      return null;
+    }
+
+    return {
+      username: credentials.username,
+      password: credentials.password,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveGuestLoginCredentials(username: string, password: string): void {
+  if (typeof window === 'undefined') return;
+
+  localStorage.setItem(
+    STORAGE_KEYS.savedGuestLoginCredentials,
+    JSON.stringify({ username, password }),
+  );
+}
+
 const hcmusLogo = "/logo_hcmus.png";
 
 export default function Login() {
@@ -112,6 +147,14 @@ export default function Login() {
     () => providers.filter((provider) => provider.isActive).map((provider) => provider.provider),
     [providers],
   );
+
+  useEffect(() => {
+    const savedCredentials = getSavedGuestLoginCredentials();
+    if (!savedCredentials) return;
+
+    setLoginUsername(savedCredentials.username);
+    setLoginPassword(savedCredentials.password);
+  }, []);
 
   useEffect(() => {
     dispatch(getActiveProviders());
@@ -599,6 +642,7 @@ export default function Login() {
         return;
       }
       await persistSession(guestIdentifier, result.roles?.[0]);
+      saveGuestLoginCredentials(guestIdentifier, guestForm.password);
 
       // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
       const hasCaptiveContext = getCaptivePortalContext('');
@@ -657,6 +701,7 @@ export default function Login() {
         return;
       }
       await persistSession(loginUsername, result.roles?.[0]);
+      saveGuestLoginCredentials(loginUsername, loginPassword);
 
       // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
       const hasCaptiveContext = getCaptivePortalContext('');

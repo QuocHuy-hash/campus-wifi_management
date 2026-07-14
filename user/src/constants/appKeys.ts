@@ -7,6 +7,8 @@ export const STORAGE_KEYS = {
   oauthProvider: "oauthProvider",
   accessToken: "accessToken",
   refreshToken: "refreshToken",
+  currentDeviceMac: "currentDeviceMac",
+  savedGuestLoginCredentials: "savedGuestLoginCredentials",
 } as const;
 
 export const AUTH_COOKIE_KEY = "access_token";

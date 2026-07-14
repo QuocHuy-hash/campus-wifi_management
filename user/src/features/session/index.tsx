@@ -1,106 +1,111 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel,
-  AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  Wifi, LogOut, History, Clock, Download, Upload,
-  Activity, Globe, Network, Loader2
-} from 'lucide-react';
-import { formatBytes, formatDurationShort } from '@/data/mockData';
-import { fetchCurrentSession, fetchUserDailyUsage } from './api/sessionApi';
+import { Wifi, History, LogOut, Loader2 } from 'lucide-react';
+import { fetchActiveSessions, logoutAllSessions, fetchUserDailyUsage } from './api/sessionApi';
 import { useCaptiveAuthorization } from '@/features/auth/hooks/useCaptiveAuthorization';
+import { STORAGE_KEYS } from '@/constants/appKeys';
+import { getStoredCaptivePortalContext } from '@/lib/captivePortal';
+import SessionCard from './components/SessionCard';
+import DailyUsageCard from './components/DailyUsageCard';
+import LogoutConfirmDialog from './components/LogoutConfirmDialog';
+import ComingSoonDialog from '@/components/ComingSoonDialog';
 import type { UserSession, UserDailyUsage } from '@/features/auth/types';
 
 export default function Session() {
-  const router = useRouter();
-  const [currentSession, setCurrentSession] = useState<UserSession | null>(null);
+  const [sessions, setSessions] = useState<UserSession[]>([]);
   const [dailyUsage, setDailyUsage] = useState<UserDailyUsage | null>(null);
   const [loading, setLoading] = useState(true);
-  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
-  const [logoutAllDialogOpen, setLogoutAllDialogOpen] = useState(false);
-  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
-  // Lấy thông tin user từ localStorage để hiển thị header
-  // FIX: Thêm state isMounted để tránh hydration mismatch
+  const [logoutAllDialogOpen, setLogoutAllDialogOpen] = useState(false);
+  const [comingSoonOpen, setComingSoonOpen] = useState(false);
+
+  const [currentDeviceMac, setCurrentDeviceMac] = useState<string | null>(null);
   const [user, setUser] = useState<{ fullname: string; role: string } | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    // Đợi component mount xong mới đọc localStorage
     setIsMounted(true);
-    const userStr = localStorage.getItem('portalUser');
-    setUser(userStr ? JSON.parse(userStr) : null);
+    const raw = localStorage.getItem('portalUser');
+    setUser(raw ? JSON.parse(raw) : null);
   }, []);
 
-  // Authorize thiết bị nếu còn captive context, sau đó lấy phiên active
-  const { authorize: authorizeDeviceIfNeeded } = useCaptiveAuthorization();
+  const { authorize } = useCaptiveAuthorization();
 
   useEffect(() => {
-    const loadSession = async () => {
+    const ctx = getStoredCaptivePortalContext();
+    if (ctx?.id) {
+      localStorage.setItem(STORAGE_KEYS.currentDeviceMac, ctx.id);
+      setCurrentDeviceMac(ctx.id);
+    } else {
+      const mac = localStorage.getItem(STORAGE_KEYS.currentDeviceMac);
+      if (mac) setCurrentDeviceMac(mac);
+    }
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
       try {
         setLoading(true);
-        await authorizeDeviceIfNeeded();
-        const [session, usageData] = await Promise.all([
-          fetchCurrentSession(),
+        await authorize();
+        const [s, u] = await Promise.all([
+          fetchActiveSessions(),
           fetchUserDailyUsage(),
         ]);
-        setCurrentSession(session);
-        setDailyUsage(usageData);
+        setSessions(s);
+        setDailyUsage(u);
       } catch (error) {
-        console.error("Failed to fetch current session:", error);
-        setCurrentSession(null);
+        console.error("Failed to fetch sessions:", error);
+        setSessions([]);
         setDailyUsage(null);
       } finally {
         setLoading(false);
       }
     };
-    loadSession();
-  }, [authorizeDeviceIfNeeded]);
+    load();
+  }, [authorize]);
 
-  // Cập nhật thời gian online mỗi 60s
   useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(Date.now()), 60000);
+    const interval = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // Gọi API refresh session mỗi 150s
   useEffect(() => {
-    const refreshSession = async () => {
+    const interval = setInterval(async () => {
       try {
-        const session = await fetchCurrentSession();
-        setCurrentSession(session);
+        const s = await fetchActiveSessions();
+        setSessions(s);
       } catch (error) {
-        console.error("Failed to refresh session:", error);
+        console.error("Failed to refresh sessions:", error);
       }
-    };
-    const interval = setInterval(refreshSession, 150000);
+    }, 150000);
     return () => clearInterval(interval);
   }, []);
 
-  // Tính thời lượng online hiện tại (giây)
-  const activeDuration = currentSession
-    ? Math.floor((currentTime - new Date(currentSession.startTime).getTime()) / 1000)
-    : 0;
+  const handleLogoutAll = useCallback(async () => {
+    try {
+      await logoutAllSessions();
+      setSessions([]);
+      setLogoutAllDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to logout all sessions:", error);
+    }
+  }, []);
 
-  // Đăng xuất tất cả (xóa localStorage và cookie)
-  const handleLogout = async () => {
-    const { performLogout } = await import('@/lib/auth');
-    await performLogout('/login');
+  const isCurrentDevice = (session: UserSession, index: number) => {
+    if (currentDeviceMac !== null) {
+      const match = session.deviceUserInfo.macAddress?.toUpperCase() === currentDeviceMac.toUpperCase();
+      if (match) return true;
+    }
+    return index === 0 && sessions.length > 0;
   };
 
-  // TODO: Gọi API logout session khi có endpoint
-  const handleSessionLogout = () => {
-    setLogoutDialogOpen(false);
-  };
+  const sessionCount = sessions.length;
 
   return (
     <>
@@ -109,7 +114,6 @@ export default function Session() {
         headerRight={
           <div className="flex items-center gap-3">
             <div className="hidden sm:block text-right">
-              {/* FIX: Hiển thị placeholder khi chưa mount để tránh hydration mismatch */}
               <p className="text-sm font-medium text-card-foreground">
                 {isMounted ? (user?.fullname || 'Guest') : '\u00A0'}
               </p>
@@ -130,128 +134,11 @@ export default function Session() {
         }
       >
         {loading ? (
-          // Trạng thái loading
           <Card className="p-8 text-center border-border">
             <Loader2 size={32} className="mx-auto text-muted-foreground mb-4 animate-spin" />
             <p className="text-sm text-muted-foreground">Đang tải...</p>
           </Card>
-        ) : currentSession ? (
-          // Có phiên ACTIVE -> hiển thị thông tin phiên
-          <><Card className="mb-5 overflow-hidden border-border">
-            <div className="p-5 space-y-5">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-muted/50 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1">
-                    <Wifi size={12} /> SSID
-                  </p>
-                  <p className="text-sm font-medium text-card-foreground">{currentSession.ssid}</p>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1">
-                    <Globe size={12} /> IP
-                  </p>
-                  <p className="text-sm font-mono text-card-foreground">{currentSession.ipAddress}</p>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1">
-                    <Network size={12} /> MAC
-                  </p>
-                  <p className="text-sm font-mono text-card-foreground">{currentSession.deviceUserInfo.macAddress}</p>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1">
-                    <Clock size={12} /> Online
-                  </p>
-                  <p className="text-sm font-semibold text-teal-600">{formatDurationShort(activeDuration)}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Thiết bị</p>
-                    <p className="text-sm font-medium text-card-foreground truncate">{currentSession.deviceUserInfo.deviceName}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">AP MAC</p>
-                    <p className="text-sm font-mono text-card-foreground truncate">{currentSession.apMac}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-card-foreground mb-3">Lưu lượng phiên</p>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900">
-                    <Download size={18} className="mx-auto text-blue-500 mb-1.5" />
-                    <p className="text-xs text-muted-foreground">Download</p>
-                    <p className="text-sm text-blue-600 dark:text-blue-400">
-                      {formatBytes(currentSession.downloadBytes)}
-                    </p>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-100 dark:border-green-900">
-                    <Upload size={18} className="mx-auto text-green-500 mb-1.5" />
-                    <p className="text-xs text-muted-foreground">Upload</p>
-                    <p className="text-sm text-green-600 dark:text-green-400">
-                      {formatBytes(currentSession.uploadBytes)}
-                    </p>
-                  </div>
-                  <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900">
-                    <Activity size={18} className="mx-auto text-indigo-500 mb-1.5" />
-                    <p className="text-xs text-muted-foreground">Tổng</p>
-                    <p className="text-sm text-indigo-600">
-                      {formatBytes(currentSession.downloadBytes + currentSession.uploadBytes)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t border-border">
-                <Button
-                  className="flex-1 bg-gray-900 hover:bg-gray-800 dark:bg-primary dark:hover:bg-primary/90"
-                  onClick={() => setLogoutDialogOpen(true)}
-                >
-                  <LogOut size={16} className="mr-2" />
-                  Đăng xuất WiFi
-                </Button>
-                <Link href="/history">
-                  <Button variant="outline">
-                    <History size={16} className="mr-2" />
-                    Lịch sử
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </Card>
-
-          {dailyUsage && (
-            <Card className="mb-5 overflow-hidden border-border">
-              <div className="p-5">
-                <h3 className="text-sm font-medium text-card-foreground mb-3">Thống kê sử dụng trong ngày</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-100 dark:border-orange-900">
-                    <Download size={18} className="mx-auto text-orange-500 mb-1.5" />
-                    <p className="text-xs text-muted-foreground">Download</p>
-                    <p className="text-sm text-orange-600 dark:text-orange-400">{formatBytes(dailyUsage.totalDownloadBytes)}</p>
-                  </div>
-                  <div className="text-center p-3 bg-teal-50 dark:bg-teal-950/30 rounded-lg border border-teal-100 dark:border-teal-900">
-                    <Upload size={18} className="mx-auto text-teal-500 mb-1.5" />
-                    <p className="text-xs text-muted-foreground">Upload</p>
-                    <p className="text-sm text-teal-600 dark:text-teal-400">{formatBytes(dailyUsage.totalUploadBytes)}</p>
-                  </div>
-                  <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900">
-                    <Activity size={18} className="mx-auto text-indigo-500 mb-1.5" />
-                    <p className="text-xs text-muted-foreground">Tổng</p>
-                    <p className="text-sm text-indigo-600 dark:text-indigo-400">{formatBytes(dailyUsage.totalBytes)}</p>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}</>
-        ) : (
-          // Không có phiên ACTIVE -> thông báo chưa có phiên nào
+        ) : sessionCount === 0 ? (
           <Card className="p-8 text-center border-border">
             <Wifi size={40} className="mx-auto text-muted-foreground mb-4" />
             <h2 className="text-lg font-semibold text-card-foreground mb-2">Chưa có phiên nào</h2>
@@ -263,44 +150,49 @@ export default function Session() {
               </Button>
             </Link>
           </Card>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-medium text-muted-foreground">Phiên đang hoạt động</h2>
+              <span className="text-xs text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-full">
+                {sessionCount} thiết bị
+              </span>
+            </div>
+
+            {sessions.map((session, index) => (
+              <SessionCard
+                key={session.sessionId}
+                session={session}
+                isCurrentDevice={isCurrentDevice(session, index)}
+                now={now}
+                onLogout={() => setComingSoonOpen(true)}
+              />
+            ))}
+
+            {dailyUsage && (
+              <DailyUsageCard usage={dailyUsage} deviceCount={sessionCount} />
+            )}
+
+            <button
+              onClick={() => setLogoutAllDialogOpen(true)}
+              className="mt-4 w-full text-sm text-muted-foreground bg-card border border-border px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-muted transition-colors"
+            >
+              <LogOut size={15} /> Đăng xuất tất cả thiết bị
+            </button>
+          </>
         )}
       </AppLayout>
 
-      {/* Dialog xác nhận đăng xuất WiFi */}
-      <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Đăng xuất WiFi?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn sẽ ngắt kết nối. Thời lượng phiên: {formatDurationShort(activeDuration)}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSessionLogout} className="bg-gray-900 hover:bg-gray-800 dark:bg-primary dark:hover:bg-primary/90">
-              Đăng xuất
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <LogoutConfirmDialog
+        open={logoutAllDialogOpen}
+        onOpenChange={setLogoutAllDialogOpen}
+        onConfirm={handleLogoutAll}
+        title="Đăng xuất tất cả?"
+        description="Tất cả thiết bị sẽ ngắt kết nối WiFi."
+        confirmText="Đăng xuất tất cả"
+      />
 
-      {/* Dialog xác nhận đăng xuất tất cả */}
-      <AlertDialog open={logoutAllDialogOpen} onOpenChange={setLogoutAllDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Đăng xuất tất cả?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tất cả thiết bị sẽ ngắt kết nối WiFi.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLogout} className="bg-gray-900 hover:bg-gray-800 dark:bg-primary dark:hover:bg-primary/90">
-              Đăng xuất tất cả
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ComingSoonDialog open={comingSoonOpen} onOpenChange={setComingSoonOpen} />
     </>
   );
 }

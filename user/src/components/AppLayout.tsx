@@ -43,7 +43,7 @@ export default function AppLayout({
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            {headerRight}
+            {/* {headerRight} */}
           </div>
         </div>
       </header>
