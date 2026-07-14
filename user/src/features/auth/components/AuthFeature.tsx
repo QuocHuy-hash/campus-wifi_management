@@ -46,39 +46,43 @@ async function setSessionCookie(accessToken: string): Promise<boolean> {
   }
 }
 
-type SavedGuestLoginCredentials = {
-  username: string;
-  password: string;
-};
+const LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY = 'savedGuestLoginCredentials';
 
-function getSavedGuestLoginCredentials(): SavedGuestLoginCredentials | null {
-  if (typeof window === 'undefined') return null;
+function getSavedGuestLoginUsername(): string {
+  if (typeof window === 'undefined') return '';
 
   try {
-    const rawCredentials = localStorage.getItem(STORAGE_KEYS.savedGuestLoginCredentials);
-    if (!rawCredentials) return null;
+    const savedUsername = localStorage.getItem(STORAGE_KEYS.savedGuestLoginUsername);
+    const legacyCredentials = localStorage.getItem(LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY);
 
-    const credentials = JSON.parse(rawCredentials) as Partial<SavedGuestLoginCredentials>;
-    if (typeof credentials.username !== 'string' || typeof credentials.password !== 'string') {
-      return null;
+    if (savedUsername) {
+      if (legacyCredentials) {
+        localStorage.removeItem(LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY);
+      }
+      return savedUsername;
     }
 
-    return {
-      username: credentials.username,
-      password: credentials.password,
-    };
+    if (!legacyCredentials) return '';
+
+    const parsedCredentials = JSON.parse(legacyCredentials) as { username?: unknown };
+    localStorage.removeItem(LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY);
+
+    if (typeof parsedCredentials.username === 'string') {
+      localStorage.setItem(STORAGE_KEYS.savedGuestLoginUsername, parsedCredentials.username);
+      return parsedCredentials.username;
+    }
   } catch {
-    return null;
+    localStorage.removeItem(LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY);
   }
+
+  return '';
 }
 
-function saveGuestLoginCredentials(username: string, password: string): void {
+function saveGuestLoginUsername(username: string): void {
   if (typeof window === 'undefined') return;
 
-  localStorage.setItem(
-    STORAGE_KEYS.savedGuestLoginCredentials,
-    JSON.stringify({ username, password }),
-  );
+  localStorage.removeItem(LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY);
+  localStorage.setItem(STORAGE_KEYS.savedGuestLoginUsername, username);
 }
 
 const hcmusLogo = "/logo_hcmus.png";
@@ -149,11 +153,10 @@ export default function Login() {
   );
 
   useEffect(() => {
-    const savedCredentials = getSavedGuestLoginCredentials();
-    if (!savedCredentials) return;
+    const savedUsername = getSavedGuestLoginUsername();
+    if (!savedUsername) return;
 
-    setLoginUsername(savedCredentials.username);
-    setLoginPassword(savedCredentials.password);
+    setLoginUsername(savedUsername);
   }, []);
 
   useEffect(() => {
@@ -642,7 +645,7 @@ export default function Login() {
         return;
       }
       await persistSession(guestIdentifier, result.roles?.[0]);
-      saveGuestLoginCredentials(guestIdentifier, guestForm.password);
+      saveGuestLoginUsername(guestIdentifier);
 
       // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
       const hasCaptiveContext = getCaptivePortalContext('');
@@ -701,7 +704,7 @@ export default function Login() {
         return;
       }
       await persistSession(loginUsername, result.roles?.[0]);
-      saveGuestLoginCredentials(loginUsername, loginPassword);
+      saveGuestLoginUsername(loginUsername);
 
       // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
       const hasCaptiveContext = getCaptivePortalContext('');

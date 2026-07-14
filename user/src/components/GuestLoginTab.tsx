@@ -62,6 +62,7 @@ export default function GuestLoginTab({
             <Input 
               id="guest-login-username"
               type="text" 
+              autoComplete="username"
               placeholder="Nhập email hoặc số ĐT Zalo"
               value={username}
               onChange={(e) => onUsernameChange(e.target.value)}
@@ -78,6 +79,7 @@ export default function GuestLoginTab({
             <Input 
               id="guest-login-password"
               type={showPassword ? 'text' : 'password'} 
+              autoComplete="current-password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => onPasswordChange(e.target.value)}

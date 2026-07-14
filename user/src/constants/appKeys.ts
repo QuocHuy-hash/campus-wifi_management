@@ -8,7 +8,7 @@ export const STORAGE_KEYS = {
   accessToken: "accessToken",
   refreshToken: "refreshToken",
   currentDeviceMac: "currentDeviceMac",
-  savedGuestLoginCredentials: "savedGuestLoginCredentials",
+  savedGuestLoginUsername: "savedGuestLoginUsername",
 } as const;
 
 export const AUTH_COOKIE_KEY = "access_token";
