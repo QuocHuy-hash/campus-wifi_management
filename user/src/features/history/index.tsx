@@ -365,9 +365,9 @@ export default function HistoryPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {pageData.records.map((session) => (
+                  {pageData.records.map((session, index) => (
                     <tr
-                      key={session.sessionId}
+                      key={session.sessionId || `sess-${index}`}
                       className="hover:bg-muted/30 cursor-pointer"
                       onClick={() => openSessionDetail(session)}
                     >
@@ -441,9 +441,9 @@ export default function HistoryPage() {
           {/* Danh sách mobile */}
           {!loading && (
             <div className="md:hidden divide-y divide-border">
-              {pageData.records.map((session) => (
+              {pageData.records.map((session, index) => (
                 <div
-                  key={session.sessionId}
+                  key={session.sessionId || `sess-m-${index}`}
                   className="p-3 hover:bg-muted/30"
                   onClick={() => openSessionDetail(session)}
                 >

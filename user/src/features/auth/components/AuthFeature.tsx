@@ -46,6 +46,45 @@ async function setSessionCookie(accessToken: string): Promise<boolean> {
   }
 }
 
+const LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY = 'savedGuestLoginCredentials';
+
+function getSavedGuestLoginUsername(): string {
+  if (typeof window === 'undefined') return '';
+
+  try {
+    const savedUsername = localStorage.getItem(STORAGE_KEYS.savedGuestLoginUsername);
+    const legacyCredentials = localStorage.getItem(LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY);
+
+    if (savedUsername) {
+      if (legacyCredentials) {
+        localStorage.removeItem(LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY);
+      }
+      return savedUsername;
+    }
+
+    if (!legacyCredentials) return '';
+
+    const parsedCredentials = JSON.parse(legacyCredentials) as { username?: unknown };
+    localStorage.removeItem(LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY);
+
+    if (typeof parsedCredentials.username === 'string') {
+      localStorage.setItem(STORAGE_KEYS.savedGuestLoginUsername, parsedCredentials.username);
+      return parsedCredentials.username;
+    }
+  } catch {
+    localStorage.removeItem(LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY);
+  }
+
+  return '';
+}
+
+function saveGuestLoginUsername(username: string): void {
+  if (typeof window === 'undefined') return;
+
+  localStorage.removeItem(LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY);
+  localStorage.setItem(STORAGE_KEYS.savedGuestLoginUsername, username);
+}
+
 const hcmusLogo = "/logo_hcmus.png";
 
 export default function Login() {
@@ -112,6 +151,13 @@ export default function Login() {
     () => providers.filter((provider) => provider.isActive).map((provider) => provider.provider),
     [providers],
   );
+
+  useEffect(() => {
+    const savedUsername = getSavedGuestLoginUsername();
+    if (!savedUsername) return;
+
+    setLoginUsername(savedUsername);
+  }, []);
 
   useEffect(() => {
     dispatch(getActiveProviders());
@@ -599,6 +645,7 @@ export default function Login() {
         return;
       }
       await persistSession(guestIdentifier, result.roles?.[0]);
+      saveGuestLoginUsername(guestIdentifier);
 
       // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
       const hasCaptiveContext = getCaptivePortalContext('');
@@ -657,6 +704,7 @@ export default function Login() {
         return;
       }
       await persistSession(loginUsername, result.roles?.[0]);
+      saveGuestLoginUsername(loginUsername);
 
       // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
       const hasCaptiveContext = getCaptivePortalContext('');
