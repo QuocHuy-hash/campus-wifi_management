@@ -1,12 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { AlertCircle } from 'lucide-react';
-import { currentUser, qosPolicies, formatBytes } from '@/data/mockData';
-import InternalLoginTab from '@/components/InternalLoginTab';
-import GuestLoginTab from '@/components/GuestLoginTab';
+import { currentUser } from '@/data/mockData';
 import { authorizeDevice, getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
 import {
   clearForgotToken,
@@ -18,10 +13,12 @@ import {
   verifyForgotOtp,
   submitResetPassword,
 } from '@/features/auth/slices/authSlice';
-import type {  ProviderConfig } from '@/features/auth/types';
+import type { LoginResult, ProviderConfig } from '@/features/auth/types';
 import { useAppDispatch } from '@/stores/hooks';
 import type { RootState } from '@/stores/store';
-import TermsDialog from '@/features/auth/components/dialogs/TermsDialog';
+import AuthLoginCard, { type AuthTab } from '@/features/auth/components/AuthLoginCard';
+import AuthPageLayout from '@/features/auth/components/AuthPageLayout';
+import AuthTermsDialog from '@/features/auth/components/dialogs/AuthTermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
 import { STORAGE_KEYS, AUTH_COOKIE_KEY } from '@/constants/appKeys';
@@ -36,11 +33,11 @@ async function setSessionCookie(accessToken: string): Promise<boolean> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accessToken }),
     });
-    // Fallback: set non-httpOnly cookie directly so middleware always sees it
+    // Cookie phía client là phương án dự phòng để middleware vẫn nhận diện phiên.
     document.cookie = `${AUTH_COOKIE_KEY}=${accessToken};path=/;max-age=3600;SameSite=Lax`;
     return res.ok;
   } catch {
-    // Even if API fails, try document.cookie as last resort
+    // API lỗi vẫn không được làm gián đoạn luồng chuyển hướng sau đăng nhập.
     document.cookie = `${AUTH_COOKIE_KEY}=${accessToken};path=/;max-age=3600;SameSite=Lax`;
     return true;
   }
@@ -85,12 +82,10 @@ function saveGuestLoginUsername(username: string): void {
   localStorage.setItem(STORAGE_KEYS.savedGuestLoginUsername, username);
 }
 
-const hcmusLogo = "/logo_hcmus.png";
-
 export default function Login() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const [activeTab, setActiveTab] = useState<'internal' | 'guest'>('guest');
+  const [activeTab, setActiveTab] = useState<AuthTab>('guest');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -113,12 +108,12 @@ export default function Login() {
   const [showGuestPassword, setShowGuestPassword] = useState(false);
   const [isSettingGuestPassword, setIsSettingGuestPassword] = useState(false);
 
-  // Standard Login states for returned guests
+  // Thông tin đăng nhập của khách đã từng tạo tài khoản.
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  // Forgot password states
+  // Trạng thái riêng cho luồng quên mật khẩu.
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [forgotMethod, setForgotMethod] = useState<'email' | 'phone'>('email');
   const [forgotContact, setForgotContact] = useState('');
@@ -145,8 +140,6 @@ export default function Login() {
 
   const { providers, registerLoading, verifyLoading, resendLoading, forgotLoading, forgotToken } = authState;
 
-  const studentPolicy = qosPolicies.Student;
-
   const activeProviderCodes = useMemo(
     () => providers.filter((provider) => provider.isActive).map((provider) => provider.provider),
     [providers],
@@ -163,7 +156,7 @@ export default function Login() {
     dispatch(getActiveProviders());
   }, [dispatch]);
 
-  // Khởi tạo axios khi component mount
+  // Khởi tạo interceptor một lần trước khi thực hiện các request xác thực.
   useEffect(() => {
     initializeAxios();
   }, []);
@@ -190,7 +183,7 @@ export default function Login() {
     return () => clearInterval(timer);
   }, [guestResendCooldown]);
 
-  // Lưu captive context ngay khi component mount
+  // Giữ lại thông tin captive portal trước khi URL bị thay đổi bởi luồng đăng nhập.
   useEffect(() => {
     const currentSearch = window.location.search;
 
@@ -217,20 +210,17 @@ export default function Login() {
     }
   }, []);
 
-  // Handle redirect with existing session and captive portal context
+  // Khôi phục phiên hợp lệ và tiếp tục luồng cấp quyền cho thiết bị nếu cần.
   useEffect(() => {
     const handleRedirectWithSession = async () => {
-      // Skip if not on client side
       if (typeof window === 'undefined') return;
 
-      // CRITICAL FIX: Check cookie first to avoid redirect loop
-      // If no cookie exists, don't trust localStorage token (it may be expired)
+      // Chỉ tin token localStorage khi cookie phiên vẫn tồn tại để tránh vòng lặp redirect.
       const hasAuthCookie = document.cookie.split(';').some(cookie => {
         const [name] = cookie.trim().split('=');
         return name === AUTH_COOKIE_KEY;
       });
 
-      // Check if user is already logged in
       const isLoggedIn = localStorage.getItem(STORAGE_KEYS.portalLoggedIn) === 'true';
       const hasToken = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || !!localStorage.getItem(STORAGE_KEYS.accessToken);
       const captiveContext = getCaptivePortalContext('');
@@ -241,8 +231,7 @@ export default function Login() {
       console.log('🔄 Has token:', hasToken);
       console.log('🔄 Captive context:', captiveContext);
 
-      // FIX: If localStorage has token but cookie doesn't exist,
-      // the token is stale/expired. Clear it to prevent loop.
+      // Token không còn cookie đi kèm được xem là phiên cũ và phải dọn sạch.
       if (hasToken && !hasAuthCookie) {
         console.warn('⚠️ Token exists in localStorage but no cookie found - clearing stale session');
         localStorage.removeItem(STORAGE_KEYS.accessToken);
@@ -254,13 +243,12 @@ export default function Login() {
         return;
       }
 
-      // If user has token AND cookie, ensure cookie is set before redirecting
+      // Đồng bộ lại cookie qua API trước khi chuyển sang trang được bảo vệ.
       if (hasToken && hasAuthCookie) {
         const token = localStorage.getItem(STORAGE_KEYS.accessToken) || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
         if (token) {
           const cookieOk = await setSessionCookie(token);
           if (!cookieOk) {
-            // Cookie API failed → token is stale. Clear it so we don't loop.
             console.warn('⚠️ Failed to set session cookie, clearing stale token');
             localStorage.removeItem(STORAGE_KEYS.accessToken);
             localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -270,50 +258,42 @@ export default function Login() {
         }
       }
 
-      // If user has token but no captive context, let middleware handle redirect
-      // This avoids duplicate redirects between useEffect and middleware
+      // Không còn captive context thì middleware tiếp quản việc điều hướng phiên.
       if (hasToken && hasAuthCookie && !captiveContext) {
         console.log('🚀 User has valid session - letting middleware handle redirect...');
-        // Use router.push instead of window.location.href to avoid full reload
         router.push('/session');
         return;
       }
 
-      // If user is logged in and has captive context, auto authorize device
+      // Phiên cũ quay lại từ captive portal cần được cấp quyền thiết bị tự động.
       if (isLoggedIn && hasToken && hasAuthCookie && captiveContext) {
         console.log('🚀 User already logged in with captive context - auto authorizing device...');
         
-        // Set axios auth token if available
         const token = localStorage.getItem(STORAGE_KEYS.accessToken) || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
         if (token) {
           setAxiosAuthToken(token);
         }
 
         try {
-          // Call authorize device API
           const payload = buildAuthorizeDevicePayload(captiveContext);
           await authorizeDevice(payload);
           console.log('✅ Device authorized successfully via redirect');
 
-          // Clear captive context after successful authorization
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-
-          // Redirect to network connecting screen
           router.push('/network-connecting');
         } catch (error) {
           console.error('❌ Failed to authorize device via redirect:', error);
-          // Even if authorization fails, we can still show the connecting screen
-          // The captive portal will handle the actual device authorization on the controller
+          // Controller vẫn có thể hoàn tất cấp quyền nên không chặn màn hình kết nối.
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
           router.push('/network-connecting');
         }
       }
     };
 
-    // Run after a small delay to ensure initialization is complete
+    // Chờ axios và localStorage khởi tạo xong trước khi kiểm tra phiên.
     const timer = setTimeout(handleRedirectWithSession, 100);
     return () => clearTimeout(timer);
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
   const getLoginErrorMessage = (apiError: unknown): string => {
     if (typeof apiError === 'object' && apiError !== null) {
@@ -346,7 +326,7 @@ export default function Login() {
 
       if (maybeAxios.message) {
         if (maybeAxios.message.includes('Network Error') || maybeAxios.message.includes('ECONNREFUSED')) {
-          return 'Không thể kết nối đến servidor. Vui lòng kiểm tra mạng và thử lại.';
+          return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.';
         }
         if (maybeAxios.message.includes('timeout')) {
           return 'Hết thời gian kết nối. Vui lòng thử lại.';
@@ -358,29 +338,10 @@ export default function Login() {
     return 'Đăng nhập thất bại. Vui lòng thử lại.';
   };
 
-  // const getAuthorizeErrorMessage = (apiError: unknown): string => {
-  //   if (typeof apiError === 'object' && apiError !== null) {
-  //     const maybeAxios = apiError as {
-  //       response?: { data?: { message?: string } };
-  //       message?: string;
-  //     };
-
-  //     if (maybeAxios.response?.data?.message) {
-  //       return maybeAxios.response.data.message;
-  //     }
-
-  //     if (maybeAxios.message) {
-  //       return maybeAxios.message;
-  //     }
-  //   }
-
-  //   return 'Xác thực thiết bị thất bại. Vui lòng thử lại.';
-  // };
-
   const getGuestIdentifier = () =>
     guestAuthMethod === 'email' ? guestForm.email.trim() : guestForm.phone.trim();
 
-  // FIX: Sửa lại hàm này để chạy ngầm - KHÔNG redirect ở đây
+  // Cấp quyền thiết bị là tác vụ nền; hàm gọi sẽ quyết định trang đích.
   const authorizeDeviceInBackground = async (): Promise<void> => {
     try {
       const captiveContext = getCaptivePortalContext('');
@@ -398,7 +359,6 @@ export default function Login() {
 
       console.log('✅ Device authorized successfully');
 
-      // Xóa context sau khi authorize thành công
       localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
     } catch (error) {
       console.error('❌ Failed to authorize device (non-blocking):', error);
@@ -427,7 +387,7 @@ export default function Login() {
       );
     } catch (error) {
       console.error('❌ getMeProfile failed:', error);
-      // Fallback: vẫn lưu session nhưng với data cơ bản
+      // Vẫn lưu phiên tối thiểu để giao diện hoạt động khi API hồ sơ tạm lỗi.
       localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
       localStorage.setItem(
         STORAGE_KEYS.portalUser,
@@ -443,6 +403,41 @@ export default function Login() {
         }),
       );
     }
+  };
+
+  const establishPasswordSession = async (
+    result: LoginResult,
+    identifier: string,
+  ): Promise<boolean> => {
+    localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
+    if (result.refreshToken) {
+      localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
+    }
+
+    setAxiosAuthToken(result.accessToken);
+    const cookieOk = await setSessionCookie(result.accessToken);
+    if (!cookieOk) {
+      localStorage.removeItem(STORAGE_KEYS.accessToken);
+      localStorage.removeItem(STORAGE_KEYS.refreshToken);
+      setError('Không thể thiết lập phiên đăng nhập. Vui lòng thử lại.');
+      setIsLoading(false);
+      return false;
+    }
+
+    await persistSession(identifier, result.roles?.[0]);
+    saveGuestLoginUsername(identifier);
+    return true;
+  };
+
+  const redirectAfterDeviceAuthorization = async (): Promise<void> => {
+    // Captive context phải được đọc trước vì quá trình cấp quyền sẽ xóa dữ liệu này.
+    const hasCaptiveContext = Boolean(getCaptivePortalContext(''));
+    await authorizeDeviceInBackground();
+
+    // Tải lại toàn trang để cookie phiên được gửi ngay ở request kế tiếp.
+    window.location.href = hasCaptiveContext
+      ? '/network-connecting'
+      : '/session';
   };
 
   const handleSSOLogin = async (provider: string) => {
@@ -464,7 +459,7 @@ export default function Login() {
       return;
     }
 
-    // Temporary fallback for providers not available in backend OAuth2 yet.
+    // Provider chưa được backend hỗ trợ dùng luồng mô phỏng hiện có của hệ thống.
     setIsLoading(true);
     setTimeout(async () => {
       const linkedAccount = {
@@ -483,19 +478,7 @@ export default function Login() {
         linkedAccounts: [linkedAccount]
       }));
 
-      // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
-      const hasCaptiveContext = getCaptivePortalContext('');
-      
-      // Gọi authorize device ngầm
-      await authorizeDeviceInBackground();
-
-      // Kiểm tra flag đã lưu để quyết định redirect
-      // Dùng window.location.href để full page reload - đảm bảo cookie được gửi
-      if (hasCaptiveContext) {
-        window.location.href = '/network-connecting';
-      } else {
-        window.location.href = '/session';
-      }
+      await redirectAfterDeviceAuthorization();
       setIsLoading(false);
     }, 1200);
   };
@@ -536,7 +519,7 @@ export default function Login() {
     newOtp[index] = value;
     setOtpCode(newOtp);
     
-    // Auto focus next input
+    // Chuyển nhanh sang ô OTP tiếp theo khi người dùng vừa nhập xong một số.
     if (value && index < 5) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       nextInput?.focus();
@@ -631,37 +614,14 @@ export default function Login() {
         password: guestForm.password,
       });
 
-      localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
-      if (result.refreshToken) {
-        localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
-      }
-      setAxiosAuthToken(result.accessToken);
-      const cookieOk = await setSessionCookie(result.accessToken);
-      if (!cookieOk) {
-        localStorage.removeItem(STORAGE_KEYS.accessToken);
-        localStorage.removeItem(STORAGE_KEYS.refreshToken);
-        setError('Không thể thiết lập phiên đăng nhập. Vui lòng thử lại.');
-        setIsLoading(false);
-        return;
-      }
-      await persistSession(guestIdentifier, result.roles?.[0]);
-      saveGuestLoginUsername(guestIdentifier);
-
-      // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
-      const hasCaptiveContext = getCaptivePortalContext('');
-      
-      // Gọi authorize device ngầm
-      await authorizeDeviceInBackground();
+      const sessionReady = await establishPasswordSession(
+        result,
+        guestIdentifier,
+      );
+      if (!sessionReady) return;
 
       resetGuestForm();
-
-      // Kiểm tra flag đã lưu để quyết định redirect
-      // Dùng window.location.href để full page reload - đảm bảo cookie được gửi
-      if (hasCaptiveContext) {
-        window.location.href = '/network-connecting';
-      } else {
-        window.location.href = '/session';
-      }
+      await redirectAfterDeviceAuthorization();
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
       setIsLoading(false);
@@ -690,35 +650,13 @@ export default function Login() {
         password: loginPassword,
       });
 
-      localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
-      if (result.refreshToken) {
-        localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
-      }
-      setAxiosAuthToken(result.accessToken);
-      const cookieOk = await setSessionCookie(result.accessToken);
-      if (!cookieOk) {
-        localStorage.removeItem(STORAGE_KEYS.accessToken);
-        localStorage.removeItem(STORAGE_KEYS.refreshToken);
-        setError('Không thể thiết lập phiên đăng nhập. Vui lòng thử lại.');
-        setIsLoading(false);
-        return;
-      }
-      await persistSession(loginUsername, result.roles?.[0]);
-      saveGuestLoginUsername(loginUsername);
+      const sessionReady = await establishPasswordSession(
+        result,
+        loginUsername,
+      );
+      if (!sessionReady) return;
 
-      // FIX: Lưu flag TRƯỚC khi authorize (vì authorize sẽ xóa context)
-      const hasCaptiveContext = getCaptivePortalContext('');
-      
-      // Gọi authorize device ngầm
-      await authorizeDeviceInBackground();
-
-      // Kiểm tra flag đã lưu để quyết định redirect
-      // Dùng window.location.href để full page reload - đảm bảo cookie được gửi
-      if (hasCaptiveContext) {
-        window.location.href = '/network-connecting';
-      } else {
-        window.location.href = '/session';
-      }
+      await redirectAfterDeviceAuthorization();
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
       setIsLoading(false);
@@ -838,105 +776,31 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="relative w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <img src={hcmusLogo} alt="HCMUS Logo" className="w-14 h-14 object-contain" />
-            <p className="text-gray-600 font-sans">Trường Đại học KHTN - ĐHQG HCM</p>
-          </div>
-        </div>
+    <>
+      <AuthPageLayout>
+        <AuthLoginCard
+          activeTab={activeTab}
+          agreeTerms={agreeTerms}
+          isLoading={isLoading}
+          loginUsername={loginUsername}
+          loginPassword={loginPassword}
+          showLoginPassword={showLoginPassword}
+          loginError={activeTab === 'guest' ? error : ''}
+          onTabChange={setActiveTab}
+          onAgreeTermsChange={setAgreeTerms}
+          onSSOLogin={handleSSOLogin}
+          onOpenGuestModal={() => setGuestModalOpen(true)}
+          onUsernameChange={setLoginUsername}
+          onPasswordChange={setLoginPassword}
+          onTogglePassword={() => setShowLoginPassword((visible) => !visible)}
+          onLogin={handleStandardLogin}
+          onOpenForgotModal={() => setForgotModalOpen(true)}
+          onOpenTermsModal={() => setTermsModalOpen(true)}
+        />
+      </AuthPageLayout>
 
-        {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          <div className="p-6">
-            {/* {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
-                <AlertCircle size={16} />
-                <span className="text-sm">{error}</span>
-              </div>
-            )} */}
-
-            {/* Segmented Control */}
-            <div className="flex p-1 bg-gray-100 rounded-xl">
-              <button
-                onClick={() => setActiveTab('internal')}
-                className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  activeTab === 'internal'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Cán bộ / Sinh viên
-              </button>
-              <button
-                onClick={() => setActiveTab('guest')}
-                className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  activeTab === 'guest'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Khách
-              </button>
-            </div>
-
-            {activeTab === 'internal' ? (
-              <InternalLoginTab 
-                isLoading={isLoading} 
-                onSSOLogin={handleSSOLogin} 
-              />
-            ) : (
-              <GuestLoginTab 
-                isLoading={isLoading}
-                onSSOLogin={handleSSOLogin}
-                onOpenGuestModal={() => setGuestModalOpen(true)}
-                username={loginUsername}
-                onUsernameChange={setLoginUsername}
-                password={loginPassword}
-                onPasswordChange={setLoginPassword}
-                showPassword={showLoginPassword}
-                onTogglePassword={() => setShowLoginPassword(!showLoginPassword)}
-                onLogin={handleStandardLogin}
-                onOpenForgotModal={() => setForgotModalOpen(true)}
-                loginError={activeTab === 'guest' ? error : ''}
-              />
-            )}
-
-            {/* Terms Checkbox */}
-            <div className="flex items-start space-x-3 pt-4 border-t border-gray-100 mt-2">
-              <Checkbox 
-                id="terms" 
-                checked={agreeTerms}
-                onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
-                className="mt-0.5 rounded"
-              />
-              <Label htmlFor="terms" className="text-sm text-gray-600 cursor-pointer leading-relaxed">
-                Tôi đồng ý với{' '}
-                <button 
-                  type="button"
-                  onClick={() => setTermsModalOpen(true)}
-                  className="text-blue-600 hover:underline font-medium"
-                >
-                  Điều khoản sử dụng WiFi
-                </button>
-              </Label>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <p className="text-center text-gray-400 text-xs mt-6">
-          © 2026 HCMUS - Trường Đại học Khoa học Tự nhiên
-        </p>
-      </div>
-
-      <TermsDialog
+      <AuthTermsDialog
         open={termsModalOpen}
-        sessionTimeoutHours={studentPolicy.session_timeout / 3600}
-        bandwidthRange={`${qosPolicies.Student.bandwidth_limit}-${qosPolicies.Teacher.bandwidth_limit}`}
-        dailyQuota={formatBytes(studentPolicy.quota_daily)}
         onOpenChange={setTermsModalOpen}
         onAccept={() => {
           setTermsModalOpen(false);
@@ -1012,6 +876,6 @@ export default function Login() {
         onResetPassword={handleResetPassword}
         onUseForgotCredentials={handleUseForgotCredentials}
       />
-    </div>
+    </>
   );
 }

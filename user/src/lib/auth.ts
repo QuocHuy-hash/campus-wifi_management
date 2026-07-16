@@ -3,7 +3,7 @@
  */
 
 import { AUTH_COOKIE_KEY } from "@/constants/appKeys";
-
+import { logger } from "./logger";
 /**
  * Xóa cookie access_token từ client-side
  * Sử dụng khi cần force logout hoặc clear session
@@ -38,7 +38,7 @@ export async function performLogout(redirectTo: string = '/login'): Promise<void
     // Gọi API logout để xóa httpOnly cookie
     await fetch('/api/auth/logout', { method: 'POST' });
   } catch (error) {
-    console.error('Logout API failed:', error);
+    logger.error('Logout API failed:', error);
   }
   
   // Xóa localStorage

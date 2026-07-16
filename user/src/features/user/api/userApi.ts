@@ -10,6 +10,8 @@ const AUTH_ENDPOINT = `/auth`;
 
 export interface UserProfileData extends MeResponse {}
 
+export type UpdateUserProfilePayload = Pick<UserProfileData, "fullName" | "phone">;
+
 export async function fetchUserProfile(): Promise<UserProfileData> {
   const response = await apiClient.get<ApiEnvelope<UserProfileData>>(
     `${AUTH_ENDPOINT}/me`
@@ -18,7 +20,7 @@ export async function fetchUserProfile(): Promise<UserProfileData> {
 }
 
 export async function updateUserProfile(
-  payload: Partial<Pick<UserProfileData, 'fullName' | 'phone' | 'avatarUrl'>>
+  payload: UpdateUserProfilePayload
 ): Promise<UserProfileData> {
   const response = await apiClient.put<ApiEnvelope<UserProfileData>>(
     `${AUTH_ENDPOINT}/me`,

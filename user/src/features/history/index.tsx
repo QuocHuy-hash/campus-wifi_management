@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { logger } from "@/lib/logger";
 import {
   Select,
   SelectContent,
@@ -169,7 +170,7 @@ export default function HistoryPage() {
       };
 
       let data = await fetchUserSessions(params);
-      console.log('History records:', data.records.length, data.records);
+      logger.debug('History records:', data.records.length, data.records);
       // Client-side filter fallback (server không hỗ trợ lọc theo status)
       if (statusFilter !== "all") {
         data = {

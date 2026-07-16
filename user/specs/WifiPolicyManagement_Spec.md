@@ -1,208 +1,208 @@
-# TAI LIEU DAC TA: Quan ly Chinh sach WiFi (Tab Bang thong)
+# TÀI LIỆU ĐẶC TẢ: Quản lý Chính sách WiFi (Tab Băng thông)
 **System Name:** HCMUS WiFi Management  
 **Module:** Policy Management  
-**Ngay tao:** 2026-04-01  
+**Ngày tạo:** 2026-04-01  
 **Version:** 2.0
 
 ---
 
-## MUC LUC
+## MỤC LỤC
 
-1. [Tong quan](#1-tong-quan)
-2. [Bo cuc man hinh](#2-bo-cuc-man-hinh)
-3. [Luong xu ly (Sequence)](#3-luong-xu-ly-sequence)
-4. [Danh sach Screen Items](#4-danh-sach-screen-items)
+1. [Tổng quan](#1-tong-quan)
+2. [Bố cục màn hình](#2-bo-cuc-man-hinh)
+3. [Luồng xử lý (Sequence)](#3-luong-xu-ly-sequence)
+4. [Danh sách Screen Items](#4-danh-sach-screen-items)
 5. [Data Input Checking](#5-data-input-checking)
 6. [Data Items (API Contract)](#6-data-items-api-contract)
-7. [Mo ta chuc nang](#7-mo-ta-chuc-nang)
-8. [Ghi chu trien khai](#8-ghi-chu-trien-khai)
-9. [Anh xa source code](#9-anh-xa-source-code)
+7. [Mô tả chức năng](#7-mo-ta-chuc-nang)
+8. [Ghi chú triển khai](#8-ghi-chu-trien-khai)
+9. [Ánh xạ source code](#9-anh-xa-source-code)
 
 ---
 
-## 1. Tong quan
+## 1. Tổng quan
 
-### 1.1 Thong tin he thong
+### 1.1 Thông tin hệ thống
 
-| Truong | Gia tri |
+| Trường | Giá trị |
 |-------|--------|
 | **System Name** | HCMUS WiFi Management |
 | **Module** | Policy Management |
 | **Feature** | WiFi Policy Management |
-| **Pham vi** | Tab Bang thong va cac dialog CRUD lien quan |
+| **Phạm vi** | Tab Băng thông và các dialog CRUD liên quan |
 | **Create Date** | 2026-04-01 |
 | **Create By** | Development Team |
 
-### 1.2 Danh sach chuc nang
+### 1.2 Danh sách chức năng
 
-| Function ID | Ten chuc nang | Form ID | Form Name |
+| Function ID | Tên chức năng | Form ID | Form Name |
 |-------------|---------------|---------|-----------|
-| **WP001** | Hien thi danh sach policy tren tab Bang thong | POLICY-S1 | Bang thong - Danh sach chinh sach |
-| **WP002** | Tao moi chinh sach bang thong | POLICY-S2 | Them chinh sach |
-| **WP003** | Cap nhat chinh sach bang thong | POLICY-S3 | Chinh sua chinh sach |
-| **WP004** | Xoa chinh sach | POLICY-S4 | Xac nhan xoa chinh sach |
+| **WP001** | Hiển thị danh sách policy trên tab Băng thông | POLICY-S1 | Băng thông - Danh sách chính sách |
+| **WP002** | Tạo mới chính sách băng thông | POLICY-S2 | Thêm chính sách |
+| **WP003** | Cập nhật chính sách băng thông | POLICY-S3 | Chỉnh sửa chính sách |
+| **WP004** | Xóa chính sách | POLICY-S4 | Xác nhận xóa chính sách |
 
-### 1.3 Muc tieu nghiep vu
+### 1.3 Mục tiêu nghiệp vụ
 
-- Cho phep quan tri vien xem danh sach chinh sach WiFi tren tab Bang thong.
-- Cho phep tao moi, cap nhat, xoa chinh sach bang dialog dung chung cua module Policy.
-- Quan ly thong tin cot loi cua policy bang thong: ten, mo ta, gioi han download/upload, pham vi ap dung theo vai tro/khu vuc/thoi gian.
-- Dong bo du lieu voi backend thong qua API wifi-policies.
+- Cho phép quản trị viên xem danh sách chính sách WiFi trên tab Băng thông.
+- Cho phép tạo mới, cập nhật, xóa chính sách bằng dialog dùng chung của module Policy.
+- Quản lý thông tin cốt lõi của policy băng thông: tên, mô tả, giới hạn download/upload, phạm vi áp dụng theo vai trò/khu vực/thời gian.
+- Đồng bộ dữ liệu với backend thông qua API wifi-policies.
 
 ---
 
-## 2. Bo cuc man hinh
+## 2. Bố cục màn hình
 
-### 2.1 Man hinh tab Bang thong (POLICY-S1)
+### 2.1 Màn hình tab Băng thông (POLICY-S1)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ [Header] Quan tri Chinh sach                                                           │
-│ [Filter Bar] Vai tro | Khu vuc | Thoi gian | Controller | Tim kiem | Dat lai          │
+│ [Header] Quản trị Chính sách                                                           │
+│ [Filter Bar] Vai trò | Khu vực | Thời gian | Controller | Tìm kiếm | Đặt lại          │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
-│ [Tabs] Bang thong | Xac thuc | Kiem toan | Bao mat | Cap quyen                         │
+│ [Tabs] Băng thông | Xác thực | Kiểm toán | Bảo mật | Cấp quyền                         │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
-│ [Section] Chinh sach Bang thong                                       [+ Them chinh sach]│
+│ [Section] Chính sách Băng thông                                       [+ Thêm chính sách]│
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
 │ [Table]                                                                                 │
 │ ┌──────────────────────────────────────────────────────────────────────────────────────┐ │
-│ │ Ten chinh sach | Mo ta | Tai xuong | Tai len | Ap dung cho | Hanh dong            │ │
+│ │ Tên chính sách | Mô tả | Tải xuống | Tải lên | Áp dụng cho | Hành động            │ │
 │ │--------------------------------------------------------------------------------------│ │
-│ │ Bang thong Sinh vien | ... | 10 Mbps | 5 Mbps | [Sinh vien] | [Sua] [Xoa]         │ │
+│ │ Băng thông Sinh viên | ... | 10 Mbps | 5 Mbps | [Sinh viên] | [Sửa] [Xóa]         │ │
 │ └──────────────────────────────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 Dialog them/chinh sua (POLICY-S2/POLICY-S3)
+### 2.2 Dialog thêm/chỉnh sửa (POLICY-S2/POLICY-S3)
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Them/Chinh sua Chinh sach                                  [×]  │
+│ Thêm/Chỉnh sửa Chính sách                                  [×]  │
 ├──────────────────────────────────────────────────────────────────┤
-│ Ten Chinh sach                                                 │
-│ Mo ta                                                          │
+│ Tên Chính sách                                                 │
+│ Mô tả                                                          │
 │                                                                 │
-│ [Neu type = bandwidth]                                          │
-│ - Gioi han Tai xuong (Mbps)                                     │
-│ - Gioi han Tai len (Mbps)                                       │
+│ [Nếu type = bandwidth]                                          │
+│ - Giới hạn Tải xuống (Mbps)                                     │
+│ - Giới hạn Tải lên (Mbps)                                       │
 │                                                                 │
-│ Ap dung cho Vai tro: [Sinh vien] [Can bo] [Khach]              │
-│ Ap dung theo Khu vuc: [Select]                                 │
-│ Ap dung theo Thoi gian: [Select]                               │
+│ Áp dụng cho Vai trò: [Sinh viên] [Cán bộ] [Khách]              │
+│ Áp dụng theo Khu vực: [Select]                                 │
+│ Áp dụng theo Thời gian: [Select]                               │
 │                                                                 │
-│ [Huy]                                             [Tao/Luu]     │
+│ [Hủy]                                             [Tạo/Lưu]     │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.3 Dialog xac nhan xoa (POLICY-S4)
+### 2.3 Dialog xác nhận xóa (POLICY-S4)
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│ Xac nhan xoa chinh sach                                      │
+│ Xác nhận xóa chính sách                                      │
 ├───────────────────────────────────────────────────────────────┤
-│ Ban co chac chan muon xoa chinh sach <Ten chinh sach>?       │
-│ Cac nguoi dung dang ap dung chinh sach nay se bi anh huong.  │
+│ Bạn có chắc chắn muốn xóa chính sách <Tên chính sách>?       │
+│ Các người dùng đang áp dụng chính sách này sẽ bị ảnh hưởng.  │
 │                                                               │
-│ [Huy]                                 [Xoa]                   │
+│ [Hủy]                                 [Xóa]                   │
 └───────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Luong xu ly (Sequence)
+## 3. Luồng xử lý (Sequence)
 
-### 3.1 Tai danh sach policy cho tab Bang thong
+### 3.1 Tải danh sách policy cho tab Băng thông
 
 ```
-User -> Frontend (PoliciesFeature): Mo trang Policy
+User -> Frontend (PoliciesFeature): Mở trang Policy
 Frontend -> Redux: dispatch(loadWifiPolicies)
 Redux -> policiesApi: GET /wifi-policies
 policiesApi -> Backend: Request policy list
 Backend -> policiesApi: Policy[]
-policiesApi -> Redux: normalize du lieu
+policiesApi -> Redux: normalize dữ liệu
 Redux -> Frontend: update state.policies.policies.data
 Frontend -> BandwidthPolicyTab: render table
 ```
 
-### 3.2 Tao moi chinh sach bang thong
+### 3.2 Tạo mới chính sách băng thông
 
 ```
-User -> Frontend: Click "Them chinh sach"
+User -> Frontend: Click "Thêm chính sách"
 Frontend -> Redux: setPolicyForm({ type: 'bandwidth' }), setAddPolicyDialogOpen(true)
-User -> Dialog: Nhap du lieu va click "Tao chinh sach"
+User -> Dialog: Nhập dữ liệu và click "Tạo chính sách"
 Dialog -> Redux thunk: createWifiPolicyAsync(payload)
 Redux thunk -> policiesApi: POST /wifi-policies
-policiesApi -> Backend: Tao policy
-Backend -> policiesApi: Tra ve policy moi
+policiesApi -> Backend: Tạo policy
+Backend -> policiesApi: Trả về policy mới
 policiesApi -> Redux: Normalize response
-Redux -> Store: push record moi, dong dialog, reset form
-Frontend -> Table: render dong moi
+Redux -> Store: push record mới, đóng dialog, reset form
+Frontend -> Table: render dòng mới
 ```
 
-### 3.3 Cap nhat chinh sach
+### 3.3 Cập nhật chính sách
 
 ```
-User -> Table: Click Sua
-Table -> Redux: setSelectedPolicy + setPolicyForm + mo dialog edit
-User -> Dialog: Cap nhat thong tin va click "Luu thay doi"
+User -> Table: Click Sửa
+Table -> Redux: setSelectedPolicy + setPolicyForm + mở dialog edit
+User -> Dialog: Cập nhật thông tin và click "Lưu thay đổi"
 Dialog -> Redux thunk: updateWifiPolicyAsync(policy)
 Redux thunk -> policiesApi: PUT /wifi-policies/:id
-Backend -> policiesApi: Tra ve ban ghi da cap nhat
+Backend -> policiesApi: Trả về bản ghi đã cập nhật
 policiesApi -> Redux: Normalize response
-Redux -> Store: replace row theo id, dong dialog, clear selection/form
+Redux -> Store: replace row theo id, đóng dialog, clear selection/form
 ```
 
-### 3.4 Xoa chinh sach
+### 3.4 Xóa chính sách
 
 ```
-User -> Table: Click Xoa
-Table -> Redux: setSelectedPolicy + mo dialog xoa
-User -> Dialog: Xac nhan xoa
+User -> Table: Click Xóa
+Table -> Redux: setSelectedPolicy + mở dialog xóa
+User -> Dialog: Xác nhận xóa
 Dialog -> Redux thunk: deleteWifiPolicyAsync(id)
 Redux thunk -> policiesApi: DELETE /wifi-policies/:id
 Backend -> policiesApi: 200/204
-Redux -> Store: remove row, dong dialog, clear selection
-Frontend -> Table: dong du lieu bien mat khoi danh sach
+Redux -> Store: remove row, đóng dialog, clear selection
+Frontend -> Table: dòng dữ liệu biến mất khỏi danh sách
 ```
 
 ---
 
-## 4. Danh sach Screen Items
+## 4. Danh sách Screen Items
 
-### 4.1 Bang tab Bang thong (POLICY-S1)
-
-| STT | Item Name | Field Name | I/O | Type | Data Format | Required | Function ID | Notes |
-|-----|-----------|------------|-----|------|-------------|----------|-------------|-------|
-| 1 | Policy Name | name | O | Text | String | - | WP001 | Hien thi ten chinh sach |
-| 2 | Description | description | O | Text | String | - | WP001 | Cat ngan khi qua dai |
-| 3 | Download Limit | downloadLimit | O | Badge | Number (Mbps) | - | WP001 | Mac dinh 0 neu null/undefined |
-| 4 | Upload Limit | uploadLimit | O | Badge | Number (Mbps) | - | WP001 | Mac dinh 0 neu null/undefined |
-| 5 | Apply Roles | applyToRoles | O | Tag List | String[] | - | WP001 | Badge theo vai tro |
-| 6 | Edit Action | editBtn | I | Button | Icon | - | WP003 | Mo dialog chinh sua |
-| 7 | Delete Action | deleteBtn | I | Button | Icon | - | WP004 | Mo dialog xac nhan xoa |
-| 8 | Empty State | emptyState | O | Text | String | - | WP001 | "Chua co chinh sach bang thong nao" |
-
-### 4.2 Inputs dialog them/chinh sua (POLICY-S2/POLICY-S3)
+### 4.1 Bảng tab Băng thông (POLICY-S1)
 
 | STT | Item Name | Field Name | I/O | Type | Data Format | Required | Function ID | Notes |
 |-----|-----------|------------|-----|------|-------------|----------|-------------|-------|
-| 1 | Policy Name | name | I/O | Input | String | Khuyen nghi co | WP002/WP003 | Text tu do |
-| 2 | Description | description | I/O | Input | String | Khong | WP002/WP003 | Text ngan |
-| 3 | Download Limit | downloadLimit | I/O | Input number | Number | Khong | WP002/WP003 | Don vi Mbps |
-| 4 | Upload Limit | uploadLimit | I/O | Input number | Number | Khong | WP002/WP003 | Don vi Mbps |
-| 5 | Apply Roles | applyToRoles | I/O | Checkbox group | String[] | Khong | WP002/WP003 | Sinh vien/Can bo/Khach |
-| 6 | Apply Area | applyToArea | I/O | Select | String | Khong | WP002/WP003 | Rong = tat ca |
-| 7 | Apply Time | applyByTime | I/O | Select | String | Khong | WP002/WP003 | Rong = 24/7 |
-| 8 | Submit | submitBtn | I | Button | Action | - | WP002/WP003 | Tao moi hoac luu thay doi |
-| 9 | Cancel | cancelBtn | I | Button | Action | - | WP002/WP003 | Dong dialog |
+| 1 | Policy Name | name | O | Text | String | - | WP001 | Hiển thị tên chính sách |
+| 2 | Description | description | O | Text | String | - | WP001 | Cắt ngắn khi quá dài |
+| 3 | Download Limit | downloadLimit | O | Badge | Number (Mbps) | - | WP001 | Mặc định 0 nếu null/undefined |
+| 4 | Upload Limit | uploadLimit | O | Badge | Number (Mbps) | - | WP001 | Mặc định 0 nếu null/undefined |
+| 5 | Apply Roles | applyToRoles | O | Tag List | String[] | - | WP001 | Badge theo vai trò |
+| 6 | Edit Action | editBtn | I | Button | Icon | - | WP003 | Mở dialog chỉnh sửa |
+| 7 | Delete Action | deleteBtn | I | Button | Icon | - | WP004 | Mở dialog xác nhận xóa |
+| 8 | Empty State | emptyState | O | Text | String | - | WP001 | "Chưa có chính sách băng thông nào" |
 
-### 4.3 Items dialog xoa (POLICY-S4)
+### 4.2 Inputs dialog thêm/chỉnh sửa (POLICY-S2/POLICY-S3)
+
+| STT | Item Name | Field Name | I/O | Type | Data Format | Required | Function ID | Notes |
+|-----|-----------|------------|-----|------|-------------|----------|-------------|-------|
+| 1 | Policy Name | name | I/O | Input | String | Khuyến nghị có | WP002/WP003 | Text tự do |
+| 2 | Description | description | I/O | Input | String | Không | WP002/WP003 | Text ngắn |
+| 3 | Download Limit | downloadLimit | I/O | Input number | Number | Không | WP002/WP003 | Đơn vị Mbps |
+| 4 | Upload Limit | uploadLimit | I/O | Input number | Number | Không | WP002/WP003 | Đơn vị Mbps |
+| 5 | Apply Roles | applyToRoles | I/O | Checkbox group | String[] | Không | WP002/WP003 | Sinh viên/Cán bộ/Khách |
+| 6 | Apply Area | applyToArea | I/O | Select | String | Không | WP002/WP003 | Rỗng = tất cả |
+| 7 | Apply Time | applyByTime | I/O | Select | String | Không | WP002/WP003 | Rỗng = 24/7 |
+| 8 | Submit | submitBtn | I | Button | Action | - | WP002/WP003 | Tạo mới hoặc lưu thay đổi |
+| 9 | Cancel | cancelBtn | I | Button | Action | - | WP002/WP003 | Đóng dialog |
+
+### 4.3 Items dialog xóa (POLICY-S4)
 
 | STT | Item Name | Field Name | I/O | Type | Required | Function ID | Notes |
 |-----|-----------|------------|-----|------|----------|-------------|-------|
-| 1 | Confirmation Message | deleteMsg | O | Text | - | WP004 | Hien thi ten policy duoc chon |
-| 2 | Cancel Button | cancelDeleteBtn | I | Button | - | WP004 | Dong dialog |
-| 3 | Confirm Button | confirmDeleteBtn | I | Button | - | WP004 | Goi xoa policy |
+| 1 | Confirmation Message | deleteMsg | O | Text | - | WP004 | Hiển thị tên policy được chọn |
+| 2 | Cancel Button | cancelDeleteBtn | I | Button | - | WP004 | Đóng dialog |
+| 3 | Confirm Button | confirmDeleteBtn | I | Button | - | WP004 | Gọi xóa policy |
 
 ---
 
@@ -210,32 +210,32 @@ Frontend -> Table: dong du lieu bien mat khoi danh sach
 
 | System Name | HCMUS WiFi Management | CreateAt | 01/04/2026 |
 |-------------|------------------------|----------|------------|
-| Module | Policy Management (WiFi Policies) | Create By | Quoc Huy |
+| Module | Policy Management (WiFi Policies) | Create By | Quốc Huy |
 | Form ID | Policy Management Form | Update At | 01/04/2026 |
-| Form Name | Quan ly Chinh sach WiFi (Bang thong) | Update By | Quoc Huy |
+| Form Name | Quản lý Chính sách WiFi (Băng thông) | Update By | Quốc Huy |
 
-Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output  
+Ký hiệu: [(I/O)]:Input / O:Output / I/O:Input-Output  
 [(Type)L:Label / T:Text / TA:TextArea / S:Select / C:Checkbox / R:Radio / B:Button / H:Hidden / I:Image / Ln:Link / O:Other]
 
 ### Bandwidth Policy Input Validation
 
 | NO | Label Name | Field Name | I/O | Type | Data Format | Size | Required | Characters | Rule | MessageId | Event | Messages |
 |----|------------|------------|-----|------|-------------|------|----------|------------|------|-----------|-------|----------|
-| 1 | Ten Chinh sach | name | I | T | Text | 100 | X | UTF-8 | Required, Unique | ERR_WP001 | OnSubmit | Ten chinh sach khong duoc de trong |
-| 2 | Mo ta | description | I | TA | Text | 255 |  | UTF-8 | Optional |  |  |  |
-| 3 | Gioi han Tai xuong (Mbps) | downloadLimit | I | T | Number | 5 | X | 0-99999 | Required, Min(0) | ERR_WP002 | OnSubmit | Tai xuong phai lon hon hoac bang 0 |
-| 4 | Gioi han Tai len (Mbps) | uploadLimit | I | T | Number | 5 | X | 0-99999 | Required, Min(0) | ERR_WP003 | OnSubmit | Tai len phai lon hon hoac bang 0 |
-| 5 | Ap dung cho Vai tro | applyToRoles | I | C | List | 3 | X | Predefined Enum | Required, MinSelection(1) | ERR_WP004 | OnSubmit | Vui long chon it nhat mot vai tro |
-| 6 | Ap dung theo Khu vuc | applyToArea | I | S | Text | 120 |  | UTF-8 | Optional |  |  |  |
-| 7 | Ap dung theo Thoi gian | applyByTime | I | S | Text | 50 |  | UTF-8 | Optional |  |  |  |
-| 8 | Tao chinh sach | createBtn | I | B | Action | - | - | - | Trigger create API |  | OnClick |  |
-| 9 | Luu thay doi | updateBtn | I | B | Action | - | - | - | Trigger update API |  | OnClick |  |
-| 10 | Xoa chinh sach | deleteBtn | I | B | Action | - | - | - | Trigger delete confirmation |  | OnClick |  |
+| 1 | Tên Chính sách | name | I | T | Text | 100 | X | UTF-8 | Required, Unique | ERR_WP001 | OnSubmit | Tên chính sách không được để trống |
+| 2 | Mô tả | description | I | TA | Text | 255 |  | UTF-8 | Optional |  |  |  |
+| 3 | Giới hạn Tải xuống (Mbps) | downloadLimit | I | T | Number | 5 | X | 0-99999 | Required, Min(0) | ERR_WP002 | OnSubmit | Tải xuống phải lớn hơn hoặc bằng 0 |
+| 4 | Giới hạn Tải lên (Mbps) | uploadLimit | I | T | Number | 5 | X | 0-99999 | Required, Min(0) | ERR_WP003 | OnSubmit | Tải lên phải lớn hơn hoặc bằng 0 |
+| 5 | Áp dụng cho Vai trò | applyToRoles | I | C | List | 3 | X | Predefined Enum | Required, MinSelection(1) | ERR_WP004 | OnSubmit | Vui lòng chọn ít nhất một vai trò |
+| 6 | Áp dụng theo Khu vực | applyToArea | I | S | Text | 120 |  | UTF-8 | Optional |  |  |  |
+| 7 | Áp dụng theo Thời gian | applyByTime | I | S | Text | 50 |  | UTF-8 | Optional |  |  |  |
+| 8 | Tạo chính sách | createBtn | I | B | Action | - | - | - | Trigger create API |  | OnClick |  |
+| 9 | Lưu thay đổi | updateBtn | I | B | Action | - | - | - | Trigger update API |  | OnClick |  |
+| 10 | Xóa chính sách | deleteBtn | I | B | Action | - | - | - | Trigger delete confirmation |  | OnClick |  |
 
-### Ghi chu hanh vi UI thuc te
+### Ghi chú hành vi UI thực tế
 
-- Hien tai code chua enforce day du cac rule Required/Unique o tang UI cho name, downloadLimit, uploadLimit, applyToRoles.
-- Cac rule tren la chuan dac ta de backend va UI thong nhat khi trien khai validation chinh thuc.
+- Hiện tại code chưa enforce đầy đủ các rule Required/Unique ở tầng UI cho name, downloadLimit, uploadLimit, applyToRoles.
+- Các rule trên là chuẩn đặc tả để backend và UI thống nhất khi triển khai validation chính thức.
 
 ---
 
@@ -248,13 +248,13 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
 | Label Name | Get WiFi Policies |
 | Data Format | JSON |
 | I/O | Output |
-| Note | Lay toan bo danh sach chinh sach WiFi |
+| Note | Lấy toàn bộ danh sách chính sách WiFi |
 
 #### Params
 
-- Path Params: Khong co
-- Query Params: Khong co
-- Body: Khong co
+- Path Params: Không có
+- Query Params: Không có
+- Body: Không có
 
 #### Response data (JSON)
 
@@ -264,8 +264,8 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
   "data": [
     {
       "id": 1,
-      "name": "Bang thong Sinh vien",
-      "description": "Gioi han bang thong cho sinh vien",
+      "name": "Băng thông Sinh viên",
+      "description": "Giới hạn băng thông cho sinh viên",
       "type": "BANDWIDTH",
       "downloadLimit": 10,
       "uploadLimit": 5,
@@ -282,18 +282,18 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
 
 | Field | Type | I/O | Note |
 |-------|------|-----|------|
-| statusCode | number | Output | Ma trang thai response |
-| data | WifiPolicy[] | Output | Danh sach chinh sach |
-| message | string | Output | Thong diep ket qua |
-| data[].id | number | Output | ID chinh sach |
-| data[].name | string | Output | Ten chinh sach |
-| data[].description | string | Output | Mo ta chinh sach |
-| data[].type | string | Output | Loai policy (BANDWIDTH/AUTH/...) |
-| data[].downloadLimit | number | Output | Gioi han tai xuong (Mbps) |
-| data[].uploadLimit | number | Output | Gioi han tai len (Mbps) |
-| data[].applyToRoles | string[] | Output | Danh sach role ap dung |
-| data[].applyToArea | string | Output | Khu vuc ap dung |
-| data[].applyByTime | string | Output | Thoi gian ap dung |
+| statusCode | number | Output | Mã trạng thái response |
+| data | WifiPolicy[] | Output | Danh sách chính sách |
+| message | string | Output | Thông điệp kết quả |
+| data[].id | number | Output | ID chính sách |
+| data[].name | string | Output | Tên chính sách |
+| data[].description | string | Output | Mô tả chính sách |
+| data[].type | string | Output | Loại policy (BANDWIDTH/AUTH/...) |
+| data[].downloadLimit | number | Output | Giới hạn tải xuống (Mbps) |
+| data[].uploadLimit | number | Output | Giới hạn tải lên (Mbps) |
+| data[].applyToRoles | string[] | Output | Danh sách role áp dụng |
+| data[].applyToArea | string | Output | Khu vực áp dụng |
+| data[].applyByTime | string | Output | Thời gian áp dụng |
 
 ### 6.2 Endpoint: POST /api/v1/wifi-policies
 
@@ -302,25 +302,25 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
 | Label Name | Create WiFi Policy |
 | Data Format | JSON |
 | I/O | Input/Output |
-| Note | Tao moi chinh sach WiFi |
+| Note | Tạo mới chính sách WiFi |
 
 #### Params
 
-- Path Params: Khong co
-- Query Params: Khong co
+- Path Params: Không có
+- Query Params: Không có
 
 #### Body parameters
 
-| Ten truong | Loai du lieu | I/O | Ghi chu |
+| Tên trường | Loại dữ liệu | I/O | Ghi chú |
 |------------|--------------|-----|---------|
-| name | string | Input | Ten chinh sach (required) |
-| description | string | Input | Mo ta (optional) |
-| type | string | Input | Loai chinh sach, vi du BANDWIDTH (required) |
-| downloadLimit | number | Input | Gioi han tai xuong Mbps |
-| uploadLimit | number | Input | Gioi han tai len Mbps |
-| applyToRoles | string[] | Input | Danh sach role ap dung |
-| applyToArea | string | Input | Khu vuc ap dung |
-| applyByTime | string | Input | Khung thoi gian ap dung |
+| name | string | Input | Tên chính sách (required) |
+| description | string | Input | Mô tả (optional) |
+| type | string | Input | Loại chính sách, ví dụ BANDWIDTH (required) |
+| downloadLimit | number | Input | Giới hạn tải xuống Mbps |
+| uploadLimit | number | Input | Giới hạn tải lên Mbps |
+| applyToRoles | string[] | Input | Danh sách role áp dụng |
+| applyToArea | string | Input | Khu vực áp dụng |
+| applyByTime | string | Input | Khung thời gian áp dụng |
 
 #### Response data (JSON)
 
@@ -329,13 +329,13 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
   "statusCode": 201,
   "data": {
     "id": 13,
-    "name": "Bang thong Khach",
-    "description": "Gioi han bang thong cho khach",
+    "name": "Băng thông Khách",
+    "description": "Giới hạn băng thông cho khách",
     "type": "BANDWIDTH",
     "downloadLimit": 5,
     "uploadLimit": 2,
     "applyToRoles": ["guest"],
-    "applyToArea": "Co so Di An - Toa nha A",
+    "applyToArea": "Cơ sở Dĩ An - Tòa nhà A",
     "applyByTime": "8:00-17:00"
   },
   "message": "Created"
@@ -346,9 +346,9 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
 
 | Field | Type | I/O | Note |
 |-------|------|-----|------|
-| statusCode | number | Output | Ma trang thai response |
-| data | WifiPolicy | Output | Ban ghi vua tao |
-| message | string | Output | Thong diep ket qua |
+| statusCode | number | Output | Mã trạng thái response |
+| data | WifiPolicy | Output | Bản ghi vừa tạo |
+| message | string | Output | Thông điệp kết quả |
 
 ### 6.3 Endpoint: PUT /api/v1/wifi-policies/:id
 
@@ -357,32 +357,32 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
 | Label Name | Update WiFi Policy |
 | Data Format | JSON |
 | I/O | Input/Output |
-| Note | Cap nhat chinh sach theo ID |
+| Note | Cập nhật chính sách theo ID |
 
 #### Params
 
 ##### Path Params
 
-| Ten truong | Loai du lieu | I/O | Ghi chu |
+| Tên trường | Loại dữ liệu | I/O | Ghi chú |
 |------------|--------------|-----|---------|
-| id | number | Input | ID policy can cap nhat (required) |
+| id | number | Input | ID policy cần cập nhật (required) |
 
 ##### Query Params
 
-- Khong co
+- Không có
 
 #### Body parameters
 
-| Ten truong | Loai du lieu | I/O | Ghi chu |
+| Tên trường | Loại dữ liệu | I/O | Ghi chú |
 |------------|--------------|-----|---------|
-| name | string | Input | Ten chinh sach |
-| description | string | Input | Mo ta |
-| type | string | Input | Loai chinh sach |
-| downloadLimit | number | Input | Gioi han tai xuong Mbps |
-| uploadLimit | number | Input | Gioi han tai len Mbps |
-| applyToRoles | string[] | Input | Danh sach role ap dung |
-| applyToArea | string | Input | Khu vuc ap dung |
-| applyByTime | string | Input | Khung thoi gian ap dung |
+| name | string | Input | Tên chính sách |
+| description | string | Input | Mô tả |
+| type | string | Input | Loại chính sách |
+| downloadLimit | number | Input | Giới hạn tải xuống Mbps |
+| uploadLimit | number | Input | Giới hạn tải lên Mbps |
+| applyToRoles | string[] | Input | Danh sách role áp dụng |
+| applyToArea | string | Input | Khu vực áp dụng |
+| applyByTime | string | Input | Khung thời gian áp dụng |
 
 #### Response data (JSON)
 
@@ -391,8 +391,8 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
   "statusCode": 200,
   "data": {
     "id": 1,
-    "name": "Bang thong Sinh vien",
-    "description": "Gioi han bang thong cho sinh vien nam nhat",
+    "name": "Băng thông Sinh viên",
+    "description": "Giới hạn băng thông cho sinh viên năm nhất",
     "type": "BANDWIDTH",
     "downloadLimit": 15,
     "uploadLimit": 6,
@@ -406,9 +406,9 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
 
 | Field | Type | I/O | Note |
 |-------|------|-----|------|
-| statusCode | number | Output | Ma trang thai response |
-| data | WifiPolicy | Output | Ban ghi sau cap nhat |
-| message | string | Output | Thong diep ket qua |
+| statusCode | number | Output | Mã trạng thái response |
+| data | WifiPolicy | Output | Bản ghi sau cập nhật |
+| message | string | Output | Thông điệp kết quả |
 
 ### 6.4 Endpoint: DELETE /api/v1/wifi-policies/:id
 
@@ -417,23 +417,23 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
 | Label Name | Delete WiFi Policy |
 | Data Format | JSON |
 | I/O | Input/Output |
-| Note | Xoa chinh sach theo ID |
+| Note | Xóa chính sách theo ID |
 
 #### Params
 
 ##### Path Params
 
-| Ten truong | Loai du lieu | I/O | Ghi chu |
+| Tên trường | Loại dữ liệu | I/O | Ghi chú |
 |------------|--------------|-----|---------|
-| id | number | Input | ID policy can xoa (required) |
+| id | number | Input | ID policy cần xóa (required) |
 
 ##### Query Params
 
-- Khong co
+- Không có
 
 ##### Body
 
-- Khong co
+- Không có
 
 #### Response data (JSON)
 
@@ -449,57 +449,57 @@ Ky hieu: [(I/O)]:Input / O:Output / I/O:Input-Output
 
 | Field | Type | I/O | Note |
 |-------|------|-----|------|
-| statusCode | number | Output | Ma trang thai response |
-| data | null | Output | Khong co du lieu tra ve |
-| message | string | Output | Thong diep ket qua |
+| statusCode | number | Output | Mã trạng thái response |
+| data | null | Output | Không có dữ liệu trả về |
+| message | string | Output | Thông điệp kết quả |
 
 ---
 
-## 7. Mo ta chuc nang
+## 7. Mô tả chức năng
 
-### 7.1 WP001 - Hien thi danh sach policy tab Bang thong
+### 7.1 WP001 - Hiển thị danh sách policy tab Băng thông
 
-- Doc du lieu tu Redux store: state.policies.policies.data.
-- Render bang theo cot co dinh.
-- Co empty state neu khong co ban ghi.
+- Đọc dữ liệu từ Redux store: state.policies.policies.data.
+- Render bảng theo cột cố định.
+- Có empty state nếu không có bản ghi.
 
-### 7.2 WP002 - Tao moi chinh sach bang thong
+### 7.2 WP002 - Tạo mới chính sách băng thông
 
-- Nut Them chinh sach khoi tao policyForm voi type = bandwidth.
-- Dialog cho phep nhap cac truong chinh sach.
-- Submit goi createWifiPolicyAsync va dong bo backend.
+- Nút Thêm chính sách khởi tạo policyForm với type = bandwidth.
+- Dialog cho phép nhập các trường chính sách.
+- Submit gọi createWifiPolicyAsync và đồng bộ backend.
 
-### 7.3 WP003 - Chinh sua chinh sach
+### 7.3 WP003 - Chỉnh sửa chính sách
 
-- Moi dong co nut Sua de set selectedPolicy va policyForm theo du lieu hien tai.
-- Dialog edit cap nhat du lieu qua updateWifiPolicyAsync.
-- Thanh cong thi cap nhat lai ban ghi trong store.
+- Mỗi dòng có nút Sửa để set selectedPolicy và policyForm theo dữ liệu hiện tại.
+- Dialog edit cập nhật dữ liệu qua updateWifiPolicyAsync.
+- Thành công thì cập nhật lại bản ghi trong store.
 
-### 7.4 WP004 - Xoa chinh sach
+### 7.4 WP004 - Xóa chính sách
 
-- Nut Xoa mo dialog xac nhan theo selectedPolicy.
-- Xac nhan xoa goi deleteWifiPolicyAsync(policyId).
-- Thanh cong thi remove ban ghi khoi danh sach.
-
----
-
-## 8. Ghi chu trien khai
-
-1. Tab Bang thong hien render toan bo mang policies, chua filter theo type = bandwidth.
-2. Logic filter theo filterRole/filterArea/filterTime/filterSearch da co khung nhung dang comment.
-3. Filter Controller duoc luu o Redux nhung chua ap dung vao bang tab Bang thong.
-4. Anh xa role API/UI dang normalize tai tang API:
-   - API -> UI: user/student -> Sinh vien, staff/teacher/admin -> Can bo, guest -> Khach.
-   - UI -> API: Sinh vien -> user, Can bo -> employee, Khach -> guest.
+- Nút Xóa mở dialog xác nhận theo selectedPolicy.
+- Xác nhận xóa gọi deleteWifiPolicyAsync(policyId).
+- Thành công thì remove bản ghi khỏi danh sách.
 
 ---
 
-## 9. Anh xa source code
+## 8. Ghi chú triển khai
+
+1. Tab Băng thông hiện render toàn bộ mảng policies, chưa filter theo type = bandwidth.
+2. Logic filter theo filterRole/filterArea/filterTime/filterSearch đã có khung nhưng đang comment.
+3. Filter Controller được lưu ở Redux nhưng chưa áp dụng vào bảng tab Băng thông.
+4. Ánh xạ role API/UI đang normalize tại tầng API:
+   - API -> UI: user/student -> Sinh viên, staff/teacher/admin -> Cán bộ, guest -> Khách.
+   - UI -> API: Sinh viên -> user, Cán bộ -> employee, Khách -> guest.
+
+---
+
+## 9. Ánh xạ source code
 
 - Bandwidth tab UI: src/features/policies/components/tabs/BandwidthPolicyTab.tsx
-- Feature container va tab actions: src/features/policies/components/PoliciesFeature.tsx
+- Feature container và tab actions: src/features/policies/components/PoliciesFeature.tsx
 - Filter bar: src/features/policies/components/PoliciesFilterBar.tsx
 - Add/Edit/Delete dialogs: src/features/policies/components/dialogs/PolicyDialogs.tsx
-- Redux slice va async thunks: src/features/policies/slices/policiesSlice.ts
+- Redux slice và async thunks: src/features/policies/slices/policiesSlice.ts
 - API adapter: src/features/policies/api/policiesApi.ts
-- Data model va sample policies: src/data/mockData.ts
+- Data model và sample policies: src/data/mockData.ts

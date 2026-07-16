@@ -1,5 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { changeUserPassword, fetchUserProfile } from '@/features/user/api/userApi';
+import {
+  changeUserPassword,
+  fetchUserProfile,
+  updateUserProfile,
+  type UpdateUserProfilePayload,
+} from '@/features/user/api/userApi';
 import type { ChangePasswordPayload, MeResponse } from '@/features/auth/types';
 import { extractErrorMessage } from '@/features/auth/slices/authSlice';
 
@@ -7,6 +12,8 @@ interface UserProfileState {
   profile: MeResponse | null;
   loading: boolean;
   error: string | null;
+  updateLoading: boolean;
+  updateError: string | null;
   changePasswordLoading: boolean;
   changePasswordError: string | null;
   changePasswordSuccess: boolean;
@@ -16,6 +23,8 @@ const initialState: UserProfileState = {
   profile: null,
   loading: false,
   error: null,
+  updateLoading: false,
+  updateError: null,
   changePasswordLoading: false,
   changePasswordError: null,
   changePasswordSuccess: false,
@@ -43,6 +52,17 @@ export const changePassword = createAsyncThunk<void, ChangePasswordPayload>(
   }
 );
 
+export const updateProfile = createAsyncThunk<MeResponse, UpdateUserProfilePayload>(
+  'user/updateProfile',
+  async (payload, { rejectWithValue }) => {
+    try {
+      return await updateUserProfile(payload);
+    } catch (error) {
+      return rejectWithValue(extractErrorMessage(error));
+    }
+  }
+);
+
 const userProfileSlice = createSlice({
   name: 'userProfile',
   initialState,
@@ -56,6 +76,10 @@ const userProfileSlice = createSlice({
       if (state.profile) {
         state.profile = { ...state.profile, ...action.payload };
       }
+    },
+    clearUpdateProfileStatus: (state) => {
+      state.updateLoading = false;
+      state.updateError = null;
     },
     clearChangePasswordStatus: (state) => {
       state.changePasswordLoading = false;
@@ -80,6 +104,21 @@ const userProfileSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      .addCase(updateProfile.pending, (state) => {
+        state.updateLoading = true;
+        state.updateError = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.updateLoading = false;
+        state.updateError = null;
+        state.profile = action.payload;
+
+        localStorage.setItem('portalUser', JSON.stringify(action.payload));
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.updateLoading = false;
+        state.updateError = action.payload as string;
+      })
       .addCase(changePassword.pending, (state) => {
         state.changePasswordLoading = true;
         state.changePasswordError = null;
@@ -98,5 +137,10 @@ const userProfileSlice = createSlice({
   },
 });
 
-export const { clearProfile, updateProfileLocally, clearChangePasswordStatus } = userProfileSlice.actions;
+export const {
+  clearProfile,
+  updateProfileLocally,
+  clearUpdateProfileStatus,
+  clearChangePasswordStatus,
+} = userProfileSlice.actions;
 export default userProfileSlice.reducer;

@@ -40,7 +40,9 @@ import {
   AlertCircle,
   Globe,
   Facebook,
+  Pencil,
 } from "lucide-react";
+import { toast } from "sonner";
 import { formatBytes } from "@/data/mockData";
 import { fetchUserDailyUsage } from "@/features/session/api/sessionApi";
 import { useCaptiveAuthorization } from "@/features/auth/hooks/useCaptiveAuthorization";
@@ -50,6 +52,8 @@ import {
   getUserProfile,
   clearProfile,
   changePassword,
+  updateProfile,
+  clearUpdateProfileStatus,
   clearChangePasswordStatus,
 } from "@/features/user/slices/userProfileSlice";
 import { getUserDevices } from "@/features/devices/slices/devicesSlice";
@@ -134,9 +138,22 @@ const safeParsePortalUser = () => {
 export default function Account() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { profile, loading, error, changePasswordLoading, changePasswordError, changePasswordSuccess } =
+  const {
+    profile,
+    loading,
+    error,
+    updateLoading,
+    updateError,
+    changePasswordLoading,
+    changePasswordError,
+    changePasswordSuccess,
+  } =
     useAppSelector((state) => state.userProfile);
   const { devices: userDevices, loading: devicesLoading } = useAppSelector((state) => state.devices);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [profileFormError, setProfileFormError] = useState("");
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -177,6 +194,58 @@ export default function Account() {
   const handleLogout = async () => {
     dispatch(clearProfile());
     await performLogout('/login');
+  };
+
+  const openProfileModal = () => {
+    setFullName(user?.fullName || "");
+    setPhone(user?.phone || "");
+    setProfileFormError("");
+    dispatch(clearUpdateProfileStatus());
+    setProfileModalOpen(true);
+  };
+
+  const resetProfileForm = () => {
+    setFullName("");
+    setPhone("");
+    setProfileFormError("");
+    dispatch(clearUpdateProfileStatus());
+  };
+
+  const handleUpdateProfile = async () => {
+    const normalizedFullName = fullName.trim();
+    const normalizedPhone = phone.trim();
+
+    setProfileFormError("");
+    if (normalizedFullName.length < 2 || normalizedFullName.length > 100) {
+      setProfileFormError("Họ và tên phải có từ 2 đến 100 ký tự");
+      return;
+    }
+    if (
+      normalizedPhone &&
+      !/^[0-9+\s().-]{8,20}$/.test(normalizedPhone)
+    ) {
+      setProfileFormError("Số điện thoại không đúng định dạng");
+      return;
+    }
+
+    try {
+      await dispatch(
+        updateProfile({
+          fullName: normalizedFullName,
+          phone: normalizedPhone || null,
+        }),
+      ).unwrap();
+      setFallbackUser((current: any) => ({
+        ...current,
+        fullName: normalizedFullName,
+        phone: normalizedPhone || null,
+      }));
+      setProfileModalOpen(false);
+      resetProfileForm();
+      toast.success("Cập nhật thông tin cá nhân thành công");
+    } catch {
+      // Redux state displays the translated API error in the dialog.
+    }
   };
 
   // Tự động đóng modal khi đổi mật khẩu thành công
@@ -371,6 +440,15 @@ export default function Account() {
             </div>
 
             <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={openProfileModal}
+              >
+                <Pencil size={12} className="mr-1.5" />
+                Chỉnh sửa
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -619,6 +697,93 @@ export default function Account() {
           </div>
         </Card>
       </AppLayout>
+
+      <Dialog
+        open={profileModalOpen}
+        onOpenChange={(open) => {
+          setProfileModalOpen(open);
+          if (!open) resetProfileForm();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil size={18} />
+              Cập nhật thông tin cá nhân
+            </DialogTitle>
+            <DialogDescription>
+              Avatar, email và tên đăng nhập hiện chưa thể thay đổi.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {(profileFormError || updateError) && (
+              <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900 rounded-lg flex items-center gap-2 text-red-600">
+                <AlertCircle size={16} className="flex-shrink-0" />
+                <span className="text-sm">{updateError || profileFormError}</span>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-full-name" className="text-sm">
+                Họ và tên
+              </Label>
+              <Input
+                id="profile-full-name"
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                placeholder="Nhập họ và tên"
+                maxLength={100}
+                autoComplete="name"
+                disabled={updateLoading}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-phone" className="text-sm">
+                Số điện thoại
+              </Label>
+              <Input
+                id="profile-phone"
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="Nhập số điện thoại"
+                maxLength={20}
+                autoComplete="tel"
+                disabled={updateLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Có thể để trống nếu bạn không muốn lưu số điện thoại.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setProfileModalOpen(false)}
+              disabled={updateLoading}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={handleUpdateProfile}
+              disabled={updateLoading}
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-primary dark:hover:bg-primary/90"
+            >
+              {updateLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Đang lưu...
+                </div>
+              ) : (
+                "Lưu thay đổi"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={passwordModalOpen}

@@ -15,6 +15,7 @@ import {
   saveCaptivePortalContext,
 } from "@/lib/captivePortal";
 import { authorizeDevice } from "@/features/auth/api/authApi";
+import { logger } from "@/lib/logger";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -57,7 +58,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       try {
         await authorizeDevice(buildAuthorizeDevicePayload(captiveContext));
       } catch (error) {
-        console.error("Failed to authorize device from captive redirect:", error);
+        logger.error("Failed to authorize device from captive redirect:", error);
       } finally {
         localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
         if (!cancelled) {
