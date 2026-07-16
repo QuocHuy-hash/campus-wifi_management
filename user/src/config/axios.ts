@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api';
-import { API_HEADERS, HTTP_CONFIG, STORAGE_KEYS } from '@/constants/appKeys';
+import { API_HEADERS, HTTP_CONFIG,STORAGE_KEYS } from '@/constants/appKeys';
+import { logger } from '@/lib/logger';
 
 let hasInitialized = false;
 const PUBLIC_ENDPOINTS = [
@@ -38,7 +39,7 @@ export const initializeAxios = (): void => {
     return;
   }
 
-  console.log('🚀 Initializing axios with baseURL:', API_BASE_URL);
+  logger.debug('Initializing axios with baseURL:', API_BASE_URL);
   
   axios.defaults.baseURL = API_BASE_URL;
   axios.defaults.withCredentials = true;
@@ -54,16 +55,16 @@ export const initializeAxios = (): void => {
       if (config.headers) {
         delete config.headers[API_HEADERS.AUTHORIZATION];
       }
-      console.log('🌐 Public request, removing auth header:', config.url);
+      logger.debug('Public request, removing auth header:', config.url);
       return config;
     }
 
     if (token) {
       config.headers = config.headers ?? {};
       config.headers[API_HEADERS.AUTHORIZATION] = `Bearer ${token}`;
-      console.log('🔐 Added auth header to request:', config.url);
+      logger.debug('Added auth header to request:', config.url);
     } else {
-      console.log('⚠️ No token found for request:', config.url);
+      logger.debug('No token found for request:', config.url);
     }
 
     return config;

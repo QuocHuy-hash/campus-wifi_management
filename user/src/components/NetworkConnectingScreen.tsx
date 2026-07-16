@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle, Loader2 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface NetworkConnectingScreenProps {
   onComplete: () => void;
@@ -38,11 +39,11 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
     const startPolling = () => {
       // Cứ mỗi 2 giây gửi 1 request ping kiểm tra
       pollingInterval = setInterval(async () => {
-        console.log('🔄 Đang ping kiểm tra kết nối internet...');
+        logger.debug('Đang ping kiểm tra kết nối internet...');
         const hasInternet = await checkActualInternet();
 
         if (hasInternet) {
-          console.log('✅ Đã có Internet thực sự!');
+          logger.debug('Đã có Internet thực sự!');
           
           // 1. Dừng ping và đếm thời gian
           clearInterval(pollingInterval);
@@ -53,7 +54,7 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
 
           // 3. Chờ đúng 1 giây để iOS/Android kịp cập nhật nút "X" thành "Xong"
           completeTimeout = setTimeout(() => {
-            console.log('✅ Chuyển sang màn hình Session');
+            logger.debug('Chuyển sang màn hình Session');
             onComplete();
           }, 1000);
         }

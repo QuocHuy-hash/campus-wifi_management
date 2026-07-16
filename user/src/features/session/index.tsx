@@ -15,6 +15,7 @@ import DailyUsageCard from './components/DailyUsageCard';
 import LogoutConfirmDialog from './components/LogoutConfirmDialog';
 import ComingSoonDialog from '@/components/ComingSoonDialog';
 import type { UserSession, UserDailyUsage } from '@/features/auth/types';
+import { logger } from '@/lib/logger';
 
 export default function Session() {
   const [sessions, setSessions] = useState<UserSession[]>([]);
@@ -60,7 +61,7 @@ export default function Session() {
         setSessions(s);
         setDailyUsage(u);
       } catch (error) {
-        console.error("Failed to fetch sessions:", error);
+        logger.error("Failed to fetch sessions:", error);
         setSessions([]);
         setDailyUsage(null);
       } finally {
@@ -81,7 +82,7 @@ export default function Session() {
         const s = await fetchActiveSessions();
         setSessions(s);
       } catch (error) {
-        console.error("Failed to refresh sessions:", error);
+        logger.error("Failed to refresh sessions:", error);
       }
     }, 150000);
     return () => clearInterval(interval);
@@ -93,16 +94,19 @@ export default function Session() {
       setSessions([]);
       setLogoutAllDialogOpen(false);
     } catch (error) {
-      console.error("Failed to logout all sessions:", error);
+      logger.error("Failed to logout all sessions:", error);
     }
   }, []);
 
-  const isCurrentDevice = (session: UserSession, index: number) => {
-    if (currentDeviceMac !== null) {
-      const match = session.deviceUserInfo.macAddress?.toUpperCase() === currentDeviceMac.toUpperCase();
-      if (match) return true;
+  const isCurrentDevice = (session: UserSession) => {
+    if (!currentDeviceMac || !session.deviceUserInfo.macAddress) {
+      return false;
     }
-    return index === 0 && sessions.length > 0;
+
+    return (
+      session.deviceUserInfo.macAddress.toUpperCase() ===
+      currentDeviceMac.toUpperCase()
+    );
   };
 
   const sessionCount = sessions.length;
@@ -159,11 +163,11 @@ export default function Session() {
               </span>
             </div>
 
-            {sessions.map((session, index) => (
+            {sessions.map((session) => (
               <SessionCard
                 key={session.sessionId}
                 session={session}
-                isCurrentDevice={isCurrentDevice(session, index)}
+                isCurrentDevice={isCurrentDevice(session)}
                 now={now}
                 onLogout={() => setComingSoonOpen(true)}
               />
