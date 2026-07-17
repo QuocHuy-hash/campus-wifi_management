@@ -16,6 +16,7 @@ import {
 import type { LoginResult, ProviderConfig } from '@/features/auth/types';
 import { useAppDispatch } from '@/stores/hooks';
 import type { RootState } from '@/stores/store';
+import CaptiveInfoPopup from '@/features/auth/components/dialogs/CaptiveInfoPopup';
 import AuthLoginCard, { type AuthTab } from '@/features/auth/components/AuthLoginCard';
 import AuthPageLayout from '@/features/auth/components/AuthPageLayout';
 import AuthTermsDialog from '@/features/auth/components/dialogs/AuthTermsDialog';
@@ -108,6 +109,14 @@ export default function Login() {
   const [showGuestPassword, setShowGuestPassword] = useState(false);
   const [isSettingGuestPassword, setIsSettingGuestPassword] = useState(false);
 
+  const [captiveInfo, setCaptiveInfo] = useState<{
+    id: string;
+    ap: string;
+    ssid: string;
+    url: string;
+    t?: string;
+  } | null>(null);
+
   // Thông tin đăng nhập của khách đã từng tạo tài khoản.
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -183,7 +192,7 @@ export default function Login() {
     return () => clearInterval(timer);
   }, [guestResendCooldown]);
 
-  // Giữ lại thông tin captive portal trước khi URL bị thay đổi bởi luồng đăng nhập.
+  // Debug: hiển thị popup khi phát hiện tham số captive portal, chờ user bấm OK mới lưu context.
   useEffect(() => {
     const currentSearch = window.location.search;
 
@@ -191,12 +200,12 @@ export default function Login() {
     console.log('🔍 Search params:', currentSearch);
 
     if (currentSearch) {
-      const captiveContext = extractCaptivePortalContext(currentSearch);
-      console.log('🔍 Extracted context:', captiveContext);
+      const context = extractCaptivePortalContext(currentSearch);
+      console.log('🔍 Extracted context:', context);
 
-      if (captiveContext) {
-        saveCaptivePortalContext(captiveContext);
-        console.log('✅ Captive context saved to localStorage');
+      if (context) {
+        setCaptiveInfo(context);
+        console.log('⏸️ Waiting for user to review captive info before saving');
       } else {
         console.warn('⚠️ Failed to extract captive context from URL');
       }
@@ -772,8 +781,27 @@ export default function Login() {
     resetForgotForm();
   };
 
+  const handleDismissCaptiveInfo = () => {
+    if (captiveInfo) {
+      saveCaptivePortalContext(captiveInfo);
+      console.log('✅ Captive context saved to localStorage');
+    }
+    setCaptiveInfo(null);
+  };
+
   return (
     <>
+      {captiveInfo && (
+        <CaptiveInfoPopup
+          id={captiveInfo.id}
+          ap={captiveInfo.ap}
+          ssid={captiveInfo.ssid}
+          url={captiveInfo.url}
+          t={captiveInfo.t}
+          onClose={handleDismissCaptiveInfo}
+        />
+      )}
+
       <AuthPageLayout>
         <AuthLoginCard
           activeTab={activeTab}

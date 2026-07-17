@@ -88,10 +88,16 @@ export default function CaptiveInfoPopup({ id, ap, ssid, url, t, onClose }: Capt
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col gap-2">
           <p className="text-xs text-gray-400 text-center">
             These parameters are used to authorize your device on the network
           </p>
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+          >
+            OK
+          </button>
         </div>
       </div>
     </div>
