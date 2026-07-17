@@ -14,6 +14,20 @@ export default function OAuthSuccess() {
   const [isProcessing, setIsProcessing] = useState(true);
   const [showNetworkConnecting, setShowNetworkConnecting] = useState(false);
 
+  const onNetworkComplete = useCallback(() => {
+    const originalUrl = sessionStorage.getItem('captiveOriginalUrl');
+    const isApple = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+    sessionStorage.removeItem('captiveOriginalUrl');
+
+    if (originalUrl) {
+      window.location.assign(originalUrl);
+    } else if (isApple) {
+      window.location.assign('http://captive.apple.com/hotspot-detect.html');
+    } else {
+      window.location.assign("/session");
+    }
+  }, []);
+
   const completeOAuthFlow = useCallback(async () => {
     setIsProcessing(true);
     setError("");
@@ -93,19 +107,7 @@ export default function OAuthSuccess() {
   return (
     <>
       {showNetworkConnecting ? (
-        <NetworkConnectingScreen onComplete={() => {
-          const originalUrl = sessionStorage.getItem('captiveOriginalUrl');
-          const isApple = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
-          sessionStorage.removeItem('captiveOriginalUrl');
-
-          if (originalUrl) {
-            window.location.assign(originalUrl);
-          } else if (isApple) {
-            window.location.assign('http://captive.apple.com/hotspot-detect.html');
-          } else {
-            window.location.assign("/session");
-          }
-        }} />
+        <NetworkConnectingScreen onComplete={onNetworkComplete} />
       ) : (
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">
