@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
 import { useRouter } from "next/navigation";
 
@@ -13,7 +13,7 @@ export default function NetworkConnectingPage() {
     ? sessionStorage.getItem('captiveOriginalUrl')
     : null;
 
-  return <NetworkConnectingScreen onComplete={() => {
+  const onComplete = useCallback(() => {
     sessionStorage.removeItem('captiveOriginalUrl');
 
     if (originalUrl) {
@@ -23,5 +23,7 @@ export default function NetworkConnectingPage() {
     } else {
       router.replace("/session");
     }
-  }} />;
+  }, [originalUrl, router]);
+
+  return <NetworkConnectingScreen onComplete={onComplete} />;
 }
