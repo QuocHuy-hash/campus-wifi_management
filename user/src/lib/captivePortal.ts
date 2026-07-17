@@ -23,8 +23,16 @@ export function extractCaptivePortalContext(search: string): CaptivePortalContex
 }
 
 export function saveCaptivePortalContext(context: CaptivePortalContext): void {
-  localStorage.setItem(STORAGE_KEYS.portalCaptiveContext, JSON.stringify(context));
-  sessionStorage.setItem('captiveOriginalUrl', context.url);
+  try {
+    localStorage.setItem(STORAGE_KEYS.portalCaptiveContext, JSON.stringify(context));
+  } catch {
+    // localStorage may be unavailable (private browsing, quota)
+  }
+  try {
+    sessionStorage.setItem('captiveOriginalUrl', context.url);
+  } catch {
+    // sessionStorage may be unavailable (strict privacy mode)
+  }
 }
 
 export function getStoredCaptivePortalContext(): CaptivePortalContext | null {

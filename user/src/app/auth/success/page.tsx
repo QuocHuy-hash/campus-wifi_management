@@ -15,9 +15,19 @@ export default function OAuthSuccess() {
   const [showNetworkConnecting, setShowNetworkConnecting] = useState(false);
 
   const onNetworkComplete = useCallback(() => {
-    const originalUrl = sessionStorage.getItem('captiveOriginalUrl');
+    let originalUrl: string | null = null;
+    try {
+      originalUrl = sessionStorage.getItem('captiveOriginalUrl');
+    } catch {
+      // sessionStorage unavailable
+    }
+    try {
+      sessionStorage.removeItem('captiveOriginalUrl');
+    } catch {
+      // best-effort cleanup
+    }
+
     const isApple = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
-    sessionStorage.removeItem('captiveOriginalUrl');
 
     if (originalUrl) {
       window.location.assign(originalUrl);

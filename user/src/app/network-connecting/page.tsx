@@ -9,12 +9,19 @@ export default function NetworkConnectingPage() {
   const isApple = useRef(
     typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent)
   );
-  const originalUrl = typeof window !== 'undefined'
-    ? sessionStorage.getItem('captiveOriginalUrl')
-    : null;
 
   const onComplete = useCallback(() => {
-    sessionStorage.removeItem('captiveOriginalUrl');
+    let originalUrl: string | null = null;
+    try {
+      originalUrl = sessionStorage.getItem('captiveOriginalUrl');
+    } catch {
+      // sessionStorage unavailable — proceed to fallback
+    }
+    try {
+      sessionStorage.removeItem('captiveOriginalUrl');
+    } catch {
+      // best-effort cleanup
+    }
 
     if (originalUrl) {
       window.location.href = originalUrl;
@@ -23,7 +30,7 @@ export default function NetworkConnectingPage() {
     } else {
       router.replace("/session");
     }
-  }, [originalUrl, router]);
+  }, [router]);
 
   return <NetworkConnectingScreen onComplete={onComplete} />;
 }
