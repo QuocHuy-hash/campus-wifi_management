@@ -93,7 +93,19 @@ export default function OAuthSuccess() {
   return (
     <>
       {showNetworkConnecting ? (
-        <NetworkConnectingScreen onComplete={() => window.location.assign("/session")} />
+        <NetworkConnectingScreen onComplete={() => {
+          const originalUrl = sessionStorage.getItem('captiveOriginalUrl');
+          const isApple = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+          sessionStorage.removeItem('captiveOriginalUrl');
+
+          if (originalUrl) {
+            window.location.assign(originalUrl);
+          } else if (isApple) {
+            window.location.assign('http://captive.apple.com/hotspot-detect.html');
+          } else {
+            window.location.assign("/session");
+          }
+        }} />
       ) : (
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">
