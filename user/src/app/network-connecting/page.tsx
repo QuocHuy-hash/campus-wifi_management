@@ -1,36 +1,41 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
-import { useRouter } from "next/navigation";
+import type { CaptiveCompletionContext } from "@/features/auth/types";
+import {
+  clearCaptiveCompletionContext,
+  getCaptiveCompletionContext,
+  getCompletionTarget,
+} from "@/lib/captivePortal";
 
 export default function NetworkConnectingPage() {
-  const router = useRouter();
-  const isApple = useRef(
-    typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent)
+  const [completionContext] = useState<CaptiveCompletionContext | null>(() =>
+    getCaptiveCompletionContext(),
   );
 
+  useEffect(() => {
+    if (!completionContext) {
+      window.location.replace("/session");
+    }
+  }, [completionContext]);
+
   const onComplete = useCallback(() => {
-    let originalUrl: string | null = null;
-    try {
-      originalUrl = sessionStorage.getItem('captiveOriginalUrl');
-    } catch {
-      // sessionStorage unavailable — proceed to fallback
-    }
-    try {
-      sessionStorage.removeItem('captiveOriginalUrl');
-    } catch {
-      // best-effort cleanup
-    }
+    if (!completionContext) return;
 
-    if (originalUrl) {
-      window.location.href = originalUrl;
-    } else if (isApple.current) {
-      window.location.href = 'http://captive.apple.com/hotspot-detect.html';
-    } else {
-      router.replace("/session");
-    }
-  }, [router]);
+    const target = getCompletionTarget(completionContext);
+    clearCaptiveCompletionContext();
+    window.location.replace(target);
+  }, [completionContext]);
 
-  return <NetworkConnectingScreen onComplete={onComplete} />;
+  if (!completionContext) {
+    return null;
+  }
+
+  return (
+    <NetworkConnectingScreen
+      entryMode={completionContext.entryMode}
+      onComplete={onComplete}
+    />
+  );
 }

@@ -7,9 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Wifi, History, LogOut, Loader2 } from 'lucide-react';
 import { fetchActiveSessions, logoutAllSessions, fetchUserDailyUsage } from './api/sessionApi';
-import { useCaptiveAuthorization } from '@/features/auth/hooks/useCaptiveAuthorization';
 import { STORAGE_KEYS } from '@/constants/appKeys';
-import { getStoredCaptivePortalContext } from '@/lib/captivePortal';
 import SessionCard from './components/SessionCard';
 import DailyUsageCard from './components/DailyUsageCard';
 import LogoutConfirmDialog from './components/LogoutConfirmDialog';
@@ -36,24 +34,15 @@ export default function Session() {
     setUser(raw ? JSON.parse(raw) : null);
   }, []);
 
-  const { authorize } = useCaptiveAuthorization();
-
   useEffect(() => {
-    const ctx = getStoredCaptivePortalContext();
-    if (ctx?.id) {
-      localStorage.setItem(STORAGE_KEYS.currentDeviceMac, ctx.id);
-      setCurrentDeviceMac(ctx.id);
-    } else {
-      const mac = localStorage.getItem(STORAGE_KEYS.currentDeviceMac);
-      if (mac) setCurrentDeviceMac(mac);
-    }
+    const mac = localStorage.getItem(STORAGE_KEYS.currentDeviceMac);
+    if (mac) setCurrentDeviceMac(mac);
   }, []);
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        await authorize();
         const [s, u] = await Promise.all([
           fetchActiveSessions(),
           fetchUserDailyUsage(),
@@ -69,7 +58,7 @@ export default function Session() {
       }
     };
     load();
-  }, [authorize]);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 60000);

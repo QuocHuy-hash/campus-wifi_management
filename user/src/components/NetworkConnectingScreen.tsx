@@ -1,116 +1,158 @@
-import { useEffect, useState } from 'react';
-import { CheckCircle, Loader2 } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect, useState } from "react";
+import { CheckCircle, Loader2 } from "lucide-react";
+import type { CaptiveEntryMode } from "@/features/auth/types";
+import { APPLE_CAPTIVE_URL } from "@/lib/captivePortal";
+import { logger } from "@/lib/logger";
 
 interface NetworkConnectingScreenProps {
+  entryMode: CaptiveEntryMode;
   onComplete: () => void;
 }
 
-// 1. Hàm kiểm tra mạng thực tế (Ping ẩn)
-const checkActualInternet = (): Promise<boolean> => {
+const BROWSER_PROBE_URL = "https://www.google.com/favicon.ico";
+const PROBE_INTERVAL_MS = 2000;
+const PROBE_TIMEOUT_MS = 5000;
+
+function checkImageResource(url: string): Promise<boolean> {
   return new Promise((resolve) => {
     const img = new Image();
-    // Gắn thêm số ngẫu nhiên để tránh bị trình duyệt cache file ảnh
-    img.src = `https://www.google.com/favicon.ico?rand=${Math.random()}`;
-    
-    // Nếu mạng thông, Google trả về ảnh -> Thành công
-    img.onload = () => resolve(true);
-    
-    // Nếu UniFi chưa mở mạng, request sẽ bị chặn -> Thất bại
-    img.onerror = () => resolve(false);
-  });
-};
+    let settled = false;
 
-export default function NetworkConnectingScreen({ onComplete }: NetworkConnectingScreenProps) {
+    const finish = (result: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      img.onload = null;
+      img.onerror = null;
+      resolve(result);
+    };
+
+    const timeout = window.setTimeout(() => finish(false), PROBE_TIMEOUT_MS);
+    img.onload = () => finish(true);
+    img.onerror = () => finish(false);
+    img.src = `${url}?rand=${Date.now()}-${Math.random()}`;
+  });
+}
+
+async function checkAppleCaptiveEndpoint(): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+
+  try {
+    await fetch(`${APPLE_CAPTIVE_URL}?rand=${Date.now()}`, {
+      cache: "no-store",
+      mode: "no-cors",
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+function checkActualInternet(entryMode: CaptiveEntryMode): Promise<boolean> {
+  return entryMode === "cna"
+    ? checkAppleCaptiveEndpoint()
+    : checkImageResource(BROWSER_PROBE_URL);
+}
+
+export default function NetworkConnectingScreen({
+  entryMode,
+  onComplete,
+}: NetworkConnectingScreenProps) {
   const [isConnecting, setIsConnecting] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
 
   useEffect(() => {
-    // Để lưu trữ các ID của interval/timeout phục vụ cho việc cleanup
-    let pollingInterval: ReturnType<typeof setInterval>;
-    let completeTimeout: ReturnType<typeof setInterval>;
+    let cancelled = false;
+    let completed = false;
+    let pollingTimeout: ReturnType<typeof setTimeout> | undefined;
+    let completeTimeout: ReturnType<typeof setTimeout> | undefined;
 
-    // Bộ đếm thời gian đã trôi qua (cập nhật UI mỗi giây)
-    const timeInterval = setInterval(() => {
-      setElapsedTime((prev) => prev + 1);
+    const timeInterval = window.setInterval(() => {
+      setElapsedTime((previous) => previous + 1);
     }, 1000);
 
-    // Bắt đầu tiến trình Ping kiểm tra mạng
-    const startPolling = () => {
-      // Cứ mỗi 2 giây gửi 1 request ping kiểm tra
-      pollingInterval = setInterval(async () => {
-        logger.debug('Đang ping kiểm tra kết nối internet...');
-        const hasInternet = await checkActualInternet();
+    const poll = async () => {
+      logger.debug("Đang kiểm tra kết nối internet...", { entryMode });
+      const hasInternet = await checkActualInternet(entryMode);
 
-        if (hasInternet) {
-          logger.debug('Đã có Internet thực sự!');
-          
-          // 1. Dừng ping và đếm thời gian
-          clearInterval(pollingInterval);
-          clearInterval(timeInterval);
-          
-          // 2. Chuyển UI sang trạng thái Success
-          setIsConnecting(false);
+      if (cancelled) return;
 
-          // 3. Chờ đúng 1 giây để iOS/Android kịp cập nhật nút "X" thành "Xong"
-          completeTimeout = setTimeout(() => {
-            logger.debug('Chuyển sang màn hình Session');
-            onComplete();
-          }, 1000);
+      if (!hasInternet) {
+        pollingTimeout = setTimeout(() => {
+          void poll();
+        }, PROBE_INTERVAL_MS);
+        return;
+      }
+
+      if (completed) return;
+      completed = true;
+      window.clearInterval(timeInterval);
+      setIsConnecting(false);
+
+      completeTimeout = setTimeout(() => {
+        if (!cancelled) {
+          onComplete();
         }
-      }, 2000);
+      }, 1000);
     };
 
-    // Khởi chạy ping
-    startPolling();
+    void poll();
 
-    // Cleanup function: Chống memory leak khi component bị huỷ (unmount)
     return () => {
-      clearInterval(pollingInterval);
-      clearInterval(timeInterval);
-      clearTimeout(completeTimeout);
+      cancelled = true;
+      window.clearInterval(timeInterval);
+      if (pollingTimeout) clearTimeout(pollingTimeout);
+      if (completeTimeout) clearTimeout(completeTimeout);
     };
-  }, [onComplete]);
+  }, [entryMode, onComplete]);
+
+  const successMessage =
+    entryMode === "cna"
+      ? 'Kết nối thành công. Vui lòng bấm "Done" để đóng cửa sổ WiFi.'
+      : "Kết nối thành công. Đang chuyển tới trang bạn muốn truy cập.";
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
-      <div className="text-center space-y-6">
-        {/* Icon */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+      <div className="space-y-6 text-center">
         <div className="flex justify-center transition-all duration-500">
           {isConnecting ? (
-            <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+            <Loader2 className="h-16 w-16 animate-spin text-blue-500" />
           ) : (
-            <CheckCircle className="w-16 h-16 text-green-500 animate-[pulse_1s_ease-in-out]" />
+            <CheckCircle className="h-16 w-16 animate-[pulse_1s_ease-in-out] text-green-500" />
           )}
         </div>
 
-        {/* Main Text */}
         <div className="space-y-2">
-          <h1 className={`text-2xl font-bold transition-colors duration-500 ${isConnecting ? 'text-blue-600' : 'text-green-600'}`}>
-            {isConnecting ? 'Xác thực thành công!' : 'Kết nối mạng thành công!'}
+          <h1
+            className={`text-2xl font-bold transition-colors duration-500 ${
+              isConnecting ? "text-blue-600" : "text-green-600"
+            }`}
+          >
+            {isConnecting ? "Xác thực thành công!" : "Kết nối mạng thành công!"}
           </h1>
 
-          {/* Sub Text */}
-          <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed px-4">
+          <p className="mx-auto max-w-md px-4 text-sm leading-relaxed text-gray-500">
             {isConnecting
-              ? 'Đang thiết lập đường truyền thực tế, vui lòng giữ nguyên màn hình trong giây lát...'
-              : 'Bạn có thể sử dụng internet bình thường. Vui lòng bấm "Xong" ở góc màn hình.'
-            }
+              ? "Đang thiết lập kết nối Internet, vui lòng giữ nguyên màn hình."
+              : successMessage}
           </p>
         </div>
 
-        {/* Trạng thái Loading vô định hình thay vì đếm lùi */}
-        {isConnecting && (
-          <div className="w-64 mx-auto mt-6">
-            <div className="h-1 w-full bg-blue-100 rounded-full overflow-hidden">
-              {/* Hiệu ứng thanh chạy ngang liên tục */}
-              <div className="h-full bg-blue-500 rounded-full w-1/2 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+        {isConnecting ? (
+          <div className="mx-auto mt-6 w-64">
+            <div className="h-1 w-full overflow-hidden rounded-full bg-blue-100">
+              <div className="h-full w-1/2 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite] rounded-full bg-blue-500" />
             </div>
-            <p className="text-sm text-gray-400 mt-3 font-medium">
+            <p className="mt-3 text-sm font-medium text-gray-400">
               Đã chờ {elapsedTime}s...
             </p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

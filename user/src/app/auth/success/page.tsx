@@ -1,42 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { authorizeDevice, getMeProfile } from "@/features/auth/api/authApi";
 import { STORAGE_KEYS } from "@/constants/appKeys";
-import { getCaptivePortalContext, buildAuthorizeDevicePayload } from "@/lib/captivePortal";
-import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
+import {
+  buildAuthorizeDevicePayload,
+  continueToNetworkConnecting,
+  getCaptivePortalContext,
+} from "@/lib/captivePortal";
 
 export default function OAuthSuccess() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [isProcessing, setIsProcessing] = useState(true);
-  const [showNetworkConnecting, setShowNetworkConnecting] = useState(false);
-
-  const onNetworkComplete = useCallback(() => {
-    let originalUrl: string | null = null;
-    try {
-      originalUrl = sessionStorage.getItem('captiveOriginalUrl');
-    } catch {
-      // sessionStorage unavailable
-    }
-    try {
-      sessionStorage.removeItem('captiveOriginalUrl');
-    } catch {
-      // best-effort cleanup
-    }
-
-    const isApple = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
-
-    if (originalUrl) {
-      window.location.assign(originalUrl);
-    } else if (isApple) {
-      window.location.assign('http://captive.apple.com/hotspot-detect.html');
-    } else {
-      window.location.assign("/session");
-    }
-  }, []);
 
   const completeOAuthFlow = useCallback(async () => {
     setIsProcessing(true);
@@ -89,13 +66,11 @@ export default function OAuthSuccess() {
         const payload = buildAuthorizeDevicePayload(captiveContext);
         await authorizeDevice(payload);
 
-        localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
         sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
-
-        setShowNetworkConnecting(true);
+        continueToNetworkConnecting(captiveContext);
         return;
       } catch {
-        setError("Xác thực thiết bị thất bại. Vui lòng thử lại.");
+        setError("Đăng ký thiết bị thất bại. Vui lòng thử lại.");
         setIsProcessing(false);
         return;
       }
@@ -105,7 +80,7 @@ export default function OAuthSuccess() {
     sessionStorage.removeItem("oauth2_redirect_back");
     sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
     window.location.href = redirectPath;
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -115,28 +90,22 @@ export default function OAuthSuccess() {
   }, [completeOAuthFlow]);
 
   return (
-    <>
-      {showNetworkConnecting ? (
-        <NetworkConnectingScreen onComplete={onNetworkComplete} />
-      ) : (
-        <div className="min-h-screen flex items-center justify-center px-4">
-          <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">
-            {isProcessing ? <p>Đang hoàn tất đăng nhập...</p> : null}
-            {!isProcessing && error ? (
-              <>
-                <p className="text-red-600">{error}</p>
-                <button
-                  type="button"
-                  className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-                  onClick={() => void completeOAuthFlow()}
-                >
-                  Thử lại xác thực thiết bị
-                </button>
-              </>
-            ) : null}
-          </div>
-        </div>
-      )}
-    </>
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">
+        {isProcessing ? <p>Đang hoàn tất đăng nhập...</p> : null}
+        {!isProcessing && error ? (
+          <>
+            <p className="text-red-600">{error}</p>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => void completeOAuthFlow()}
+            >
+              Thử lại đăng ký thiết bị
+            </button>
+          </>
+        ) : null}
+      </div>
+    </div>
   );
 }

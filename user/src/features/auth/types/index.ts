@@ -51,12 +51,28 @@ export interface LoginResult {
   roles: string[];
 }
 
+export type CaptiveEntryMode = "cna" | "browser";
+
 export interface CaptivePortalContext {
+  version: 1;
+  flowId: string;
+  entryMode: CaptiveEntryMode;
   id: string;
   ap: string;
   ssid: string;
   url: string;
-  t?: string; // Optional timestamp parameter from controller
+  t?: string;
+  createdAt: number;
+  expiresAt: number;
+}
+
+export interface CaptiveCompletionContext {
+  version: 1;
+  flowId: string;
+  entryMode: CaptiveEntryMode;
+  destinationUrl: string | null;
+  createdAt: number;
+  expiresAt: number;
 }
 
 export interface AuthorizeDevicePayload {

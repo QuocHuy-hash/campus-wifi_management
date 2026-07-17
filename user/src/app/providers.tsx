@@ -7,7 +7,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { initializeAxios } from "@/config/axios";
 import { useEffect } from "react";
-import { extractCaptivePortalContext, saveCaptivePortalContext } from "@/lib/captivePortal";
+import {
+  clearCaptiveFlow,
+  extractCaptivePortalContext,
+  saveCaptivePortalContext,
+} from "@/lib/captivePortal";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -15,10 +19,28 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const search = new URLSearchParams(window.location.search).toString();
-    const captiveContext = extractCaptivePortalContext(search);
+    const captiveContext = extractCaptivePortalContext(window.location.search);
     if (captiveContext) {
       saveCaptivePortalContext(captiveContext);
+      return;
+    }
+
+    if (window.location.pathname === "/login") {
+      const params = new URLSearchParams(window.location.search);
+      const returnUrl = params.get("returnUrl");
+
+      if (returnUrl) {
+        const queryStart = returnUrl.indexOf("?");
+        if (queryStart >= 0) {
+          const returnContext = extractCaptivePortalContext(returnUrl.substring(queryStart));
+          if (returnContext) {
+            saveCaptivePortalContext(returnContext);
+            return;
+          }
+        }
+      }
+
+      clearCaptiveFlow();
     }
   }, []);
 

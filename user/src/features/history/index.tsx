@@ -37,7 +37,6 @@ import {
 } from "lucide-react";
 import { formatBytes, formatDuration, formatDurationShort, formatDateTime, formatDateTimeShort } from "@/data/mockData";
 import { fetchUserSessions } from "@/features/session/api/sessionApi";
-import { useCaptiveAuthorization } from "@/features/auth/hooks/useCaptiveAuthorization";
 import type { UserSession, UserSessionQueryParams } from "@/features/auth/types";
 
 // Icon thiết bị dựa trên deviceType
@@ -126,9 +125,6 @@ function toDateString(date: Date): string {
 }
 
 export default function HistoryPage() {
-  // Authorize thiết bị nếu còn captive context
-  const { authorize: authorizeDeviceIfNeeded } = useCaptiveAuthorization();
-
   const [showFilters, setShowFilters] = useState(false);
   const [selectedSession, setSelectedSession] = useState<UserSession | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -159,7 +155,6 @@ export default function HistoryPage() {
   const loadSessions = useCallback(async () => {
     try {
       setLoading(true);
-      await authorizeDeviceIfNeeded();
       const params: UserSessionQueryParams = {
         page: currentPage,
         size: ITEMS_PER_PAGE,
@@ -184,7 +179,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, dateFrom, dateTo, statusFilter, ssidFilter, authorizeDeviceIfNeeded]);
+  }, [currentPage, dateFrom, dateTo, statusFilter, ssidFilter]);
 
   // Load khi filters hoặc page thay đổi
   useEffect(() => {

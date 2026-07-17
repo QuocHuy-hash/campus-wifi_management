@@ -14,15 +14,27 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
+function hasCompleteCaptiveParams(request: NextRequest): boolean {
+  return ["id", "ap", "ssid", "url"].every((key) =>
+    Boolean(request.nextUrl.searchParams.get(key)?.trim())
+  );
+}
+
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const hasToken = isAuthenticated(request);
+  const hasCaptiveParams = hasCompleteCaptiveParams(request);
 
   // Allow public paths
   if (isPublicPath(pathname)) {
     // CRITICAL FIX: Only redirect /login -> /session if token exists AND pathname is exactly /login
     // This prevents redirect loop when interceptor redirects to /login with returnUrl
-    if (pathname === "/login" && hasToken && !search.includes("returnUrl")) {
+    if (
+      pathname === "/login" &&
+      hasToken &&
+      !hasCaptiveParams &&
+      !search.includes("returnUrl")
+    ) {
       const sessionUrl = new URL("/session", request.url);
       sessionUrl.search = search;
       return NextResponse.redirect(sessionUrl);

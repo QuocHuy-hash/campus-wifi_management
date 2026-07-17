@@ -45,7 +45,6 @@ import {
 import { toast } from "sonner";
 import { formatBytes } from "@/data/mockData";
 import { fetchUserDailyUsage } from "@/features/session/api/sessionApi";
-import { useCaptiveAuthorization } from "@/features/auth/hooks/useCaptiveAuthorization";
 import type { UserDailyUsage } from "@/features/auth/types";
 import { useAppDispatch, useAppSelector } from "@/stores/hooks";
 import {
@@ -163,9 +162,6 @@ export default function Account() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   
-  // Authorize thiết bị nếu còn captive context
-  const { authorize: authorizeDeviceIfNeeded } = useCaptiveAuthorization();
-
   // FIX: Thêm state isMounted và fallbackUser để tránh hydration mismatch
   const [isMounted, setIsMounted] = useState(false);
   const [fallbackUser, setFallbackUser] = useState<any>(null);
@@ -174,13 +170,12 @@ export default function Account() {
   useEffect(() => {
     setIsMounted(true);
     setFallbackUser(safeParsePortalUser());
-    authorizeDeviceIfNeeded();
     dispatch(getUserProfile());
     dispatch(getUserDevices());
     fetchUserDailyUsage()
       .then(setDailyUsage)
       .catch(() => setDailyUsage(null));
-  }, [dispatch, authorizeDeviceIfNeeded]);
+  }, [dispatch]);
   const user = profile || fallbackUser;
 
   const primaryRole =

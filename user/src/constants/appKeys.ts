@@ -4,6 +4,7 @@ export const STORAGE_KEYS = {
   portalLoggedIn: "portalLoggedIn",
   portalUser: "portalUser",
   portalCaptiveContext: "portalCaptiveContext",
+  captiveCompletionContext: "captiveCompletionContext",
   oauthProvider: "oauthProvider",
   accessToken: "accessToken",
   refreshToken: "refreshToken",

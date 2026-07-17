@@ -3,6 +3,20 @@ import { AUTH_COOKIE_KEY } from "@/constants/appKeys";
 
 const COOKIE_MAX_AGE = 60 * 60; // 1 hour
 
+export async function GET(request: NextRequest) {
+  const authenticated = Boolean(
+    request.cookies.get(AUTH_COOKIE_KEY)?.value,
+  );
+
+  return NextResponse.json(
+    { authenticated },
+    {
+      status: authenticated ? 200 : 401,
+      headers: { "Cache-Control": "no-store" },
+    },
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
