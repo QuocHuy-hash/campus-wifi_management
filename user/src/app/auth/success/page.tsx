@@ -93,7 +93,10 @@ export default function OAuthSuccess() {
   return (
     <>
       {showNetworkConnecting ? (
-        <NetworkConnectingScreen onComplete={() => window.location.assign("/session")} />
+        <NetworkConnectingScreen onComplete={() => {
+          sessionStorage.setItem('pendingCaptiveRedirect', 'true');
+          window.location.assign("/session");
+        }} />
       ) : (
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">

@@ -283,7 +283,6 @@ export default function Login() {
           router.push('/network-connecting');
         } catch (error) {
           console.error('❌ Failed to authorize device via redirect:', error);
-          // Controller vẫn có thể hoàn tất cấp quyền nên không chặn màn hình kết nối.
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
           router.push('/network-connecting');
         }
@@ -430,11 +429,9 @@ export default function Login() {
   };
 
   const redirectAfterDeviceAuthorization = async (): Promise<void> => {
-    // Captive context phải được đọc trước vì quá trình cấp quyền sẽ xóa dữ liệu này.
     const hasCaptiveContext = Boolean(getCaptivePortalContext(''));
     await authorizeDeviceInBackground();
 
-    // Tải lại toàn trang để cookie phiên được gửi ngay ở request kế tiếp.
     window.location.href = hasCaptiveContext
       ? '/network-connecting'
       : '/session';
