@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { currentUser } from '@/data/mockData';
@@ -117,6 +117,9 @@ export default function Login() {
     t?: string;
   } | null>(null);
 
+  const isCaptivePendingRef = useRef(false);
+  const sessionCheckRef = useRef<() => Promise<void>>(async () => {});
+
   // Thông tin đăng nhập của khách đã từng tạo tài khoản.
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -204,6 +207,7 @@ export default function Login() {
       console.log('🔍 Extracted context:', context);
 
       if (context) {
+        isCaptivePendingRef.current = true;
         setCaptiveInfo(context);
         console.log('⏸️ Waiting for user to review captive info before saving');
       } else {
@@ -222,6 +226,10 @@ export default function Login() {
   // Khôi phục phiên hợp lệ và tiếp tục luồng cấp quyền cho thiết bị nếu cần.
   useEffect(() => {
     const handleRedirectWithSession = async () => {
+      if (isCaptivePendingRef.current) {
+        console.log('⏸️ Captive debug popup is showing, deferring session check');
+        return;
+      }
       if (typeof window === 'undefined') return;
 
       // Chỉ tin token localStorage khi cookie phiên vẫn tồn tại để tránh vòng lặp redirect.
@@ -298,9 +306,12 @@ export default function Login() {
       }
     };
 
-    // Chờ axios và localStorage khởi tạo xong trước khi kiểm tra phiên.
-    const timer = setTimeout(handleRedirectWithSession, 100);
-    return () => clearTimeout(timer);
+    sessionCheckRef.current = handleRedirectWithSession;
+
+    if (!isCaptivePendingRef.current) {
+      const timer = setTimeout(handleRedirectWithSession, 100);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const getLoginErrorMessage = (apiError: unknown): string => {
@@ -786,7 +797,13 @@ export default function Login() {
       saveCaptivePortalContext(captiveInfo);
       console.log('✅ Captive context saved to localStorage');
     }
+    isCaptivePendingRef.current = false;
     setCaptiveInfo(null);
+
+    // Re-trigger session check after dismissing popup
+    setTimeout(() => {
+      sessionCheckRef.current?.();
+    }, 100);
   };
 
   return (
