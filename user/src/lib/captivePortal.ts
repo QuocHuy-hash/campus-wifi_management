@@ -24,6 +24,7 @@ export function extractCaptivePortalContext(search: string): CaptivePortalContex
 
 export function saveCaptivePortalContext(context: CaptivePortalContext): void {
   localStorage.setItem(STORAGE_KEYS.portalCaptiveContext, JSON.stringify(context));
+  sessionStorage.setItem('captiveOriginalUrl', context.url);
 }
 
 export function getStoredCaptivePortalContext(): CaptivePortalContext | null {

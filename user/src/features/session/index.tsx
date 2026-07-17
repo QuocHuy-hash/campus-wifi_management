@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Wifi, History, LogOut, Loader2 } from 'lucide-react';
 import { fetchActiveSessions, logoutAllSessions, fetchUserDailyUsage } from './api/sessionApi';
 import { useCaptiveAuthorization } from '@/features/auth/hooks/useCaptiveAuthorization';
-import { useSilentAppleRedirect } from '@/hooks/useSilentAppleRedirect';
 import { STORAGE_KEYS } from '@/constants/appKeys';
 import { getStoredCaptivePortalContext } from '@/lib/captivePortal';
 import SessionCard from './components/SessionCard';
@@ -19,8 +18,6 @@ import type { UserSession, UserDailyUsage } from '@/features/auth/types';
 import { logger } from '@/lib/logger';
 
 export default function Session() {
-  useSilentAppleRedirect();
-
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [dailyUsage, setDailyUsage] = useState<UserDailyUsage | null>(null);
   const [loading, setLoading] = useState(true);
