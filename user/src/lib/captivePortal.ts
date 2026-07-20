@@ -10,8 +10,17 @@ export function extractCaptivePortalContext(search: string): CaptivePortalContex
   const t = params.get("t")?.trim() || "";
 
   if (!id || !ap || !ssid || !url) {
+    console.log(
+      '[CaptivePortal] extractCaptivePortalContext - THIẾU tham số (không phải captive redirect)',
+      { search, id: id || '(missing)', ap: ap || '(missing)', ssid: ssid || '(missing)', url: url || '(missing)', t: t || '(none)' }
+    );
     return null;
   }
+
+  console.log(
+    '[CaptivePortal] extractCaptivePortalContext - ĐỦ tham số captive:',
+    { id, ap, ssid, url, t: t || '(none)' }
+  );
 
   return {
     id,

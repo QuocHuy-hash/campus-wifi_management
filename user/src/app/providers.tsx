@@ -31,10 +31,17 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const search = searchParams.toString();
+    console.log('[Providers] Current URL search params:', search || '(empty)');
+
     const captiveContext = extractCaptivePortalContext(search);
 
     // Only authorize requests that actually carry all required captive params.
-    if (!captiveContext) return;
+    if (!captiveContext) {
+      console.log('[Providers] Bỏ qua captive flow - không đủ tham số');
+      return;
+    }
+
+    console.log('[Providers] Captive context saved, redirect URL:', captiveContext.url);
 
     saveCaptivePortalContext(captiveContext);
 
@@ -59,6 +66,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
       try {
         await authorizeDevice(buildAuthorizeDevicePayload(captiveContext));
+        console.log('[Providers] Authorize thành công, chuyển đến /network-connecting');
         localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
         if (!cancelled) {
           router.replace("/network-connecting");
