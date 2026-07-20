@@ -1,36 +1,43 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
 import { useRouter } from "next/navigation";
+import { STORAGE_KEYS } from "@/constants/appKeys";
+import type { CaptiveEntryMode } from "@/features/auth/types";
 
 export default function NetworkConnectingPage() {
   const router = useRouter();
-  const isApple = useRef(
-    typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent)
-  );
+
+  // Đọc handoff từ sessionStorage — entryMode + URL đích đã được persist
+  // bởi registerDeviceAndRedirect TRƯỚC KHI xoá captive context.
+  const entryMode: CaptiveEntryMode =
+    (typeof sessionStorage !== 'undefined' &&
+      (sessionStorage.getItem(STORAGE_KEYS.captiveEntryMode) as CaptiveEntryMode)) ||
+    'browser';
 
   const onComplete = useCallback(() => {
-    let originalUrl: string | null = null;
+    let destinationUrl: string | null = null;
     try {
-      originalUrl = sessionStorage.getItem('captiveOriginalUrl');
+      destinationUrl = sessionStorage.getItem(STORAGE_KEYS.captiveOriginalUrl);
     } catch {
       // sessionStorage unavailable — proceed to fallback
     }
+
+    // Cleanup handoff keys
     try {
-      sessionStorage.removeItem('captiveOriginalUrl');
+      sessionStorage.removeItem(STORAGE_KEYS.captiveEntryMode);
+      sessionStorage.removeItem(STORAGE_KEYS.captiveOriginalUrl);
     } catch {
       // best-effort cleanup
     }
 
-    if (originalUrl) {
-      window.location.href = originalUrl;
-    } else if (isApple.current) {
-      window.location.href = 'http://captive.apple.com/hotspot-detect.html';
+    if (destinationUrl) {
+      window.location.href = destinationUrl;
     } else {
       router.replace("/session");
     }
   }, [router]);
 
-  return <NetworkConnectingScreen onComplete={onComplete} />;
+  return <NetworkConnectingScreen mode={entryMode} onComplete={onComplete} />;
 }

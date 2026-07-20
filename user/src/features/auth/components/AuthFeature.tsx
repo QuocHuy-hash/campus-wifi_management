@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { currentUser } from '@/data/mockData';
@@ -16,14 +16,20 @@ import {
 import type { LoginResult, ProviderConfig } from '@/features/auth/types';
 import { useAppDispatch } from '@/stores/hooks';
 import type { RootState } from '@/stores/store';
-import CaptiveInfoPopup from '@/features/auth/components/dialogs/CaptiveInfoPopup';
 import AuthLoginCard, { type AuthTab } from '@/features/auth/components/AuthLoginCard';
 import AuthPageLayout from '@/features/auth/components/AuthPageLayout';
 import AuthTermsDialog from '@/features/auth/components/dialogs/AuthTermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
 import { STORAGE_KEYS, AUTH_COOKIE_KEY } from '@/constants/appKeys';
-import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
+import {
+  extractCaptivePortalContext,
+  getCaptivePortalContext,
+  saveCaptivePortalContext,
+  buildAuthorizeDevicePayload,
+  persistNetworkConnectingHandoff,
+  clearCaptivePortalContext,
+} from '@/lib/captivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
 import { validatePassword } from '@/lib/passwordValidation';
 
@@ -109,16 +115,9 @@ export default function Login() {
   const [showGuestPassword, setShowGuestPassword] = useState(false);
   const [isSettingGuestPassword, setIsSettingGuestPassword] = useState(false);
 
-  const [captiveInfo, setCaptiveInfo] = useState<{
-    id: string;
-    ap: string;
-    ssid: string;
-    url: string;
-    t?: string;
-  } | null>(null);
-
-  const isCaptivePendingRef = useRef(false);
-  const sessionCheckRef = useRef<() => Promise<void>>(async () => {});
+  // Lỗi khi gọi register-device — hiển thị cùng nút "Thử lại", KHÔNG xoá captive context.
+  const [deviceAuthError, setDeviceAuthError] = useState('');
+  const [isRetryingDeviceAuth, setIsRetryingDeviceAuth] = useState(false);
 
   // Thông tin đăng nhập của khách đã từng tạo tài khoản.
   const [loginUsername, setLoginUsername] = useState('');
@@ -195,7 +194,8 @@ export default function Login() {
     return () => clearInterval(timer);
   }, [guestResendCooldown]);
 
-  // Debug: hiển thị popup khi phát hiện tham số captive portal, chờ user bấm OK mới lưu context.
+  // Lưu ngay captive context khi phát hiện tham số trên URL — không chặn luồng,
+  // tránh mất params nếu người dùng đóng CNA giữa chừng.
   useEffect(() => {
     const currentSearch = window.location.search;
 
@@ -207,9 +207,8 @@ export default function Login() {
       console.log('🔍 Extracted context:', context);
 
       if (context) {
-        isCaptivePendingRef.current = true;
-        setCaptiveInfo(context);
-        console.log('⏸️ Waiting for user to review captive info before saving');
+        saveCaptivePortalContext(context);
+        console.log('✅ Captive context saved to localStorage (entryMode:', context.entryMode, ')');
       } else {
         console.warn('⚠️ Failed to extract captive context from URL');
       }
@@ -226,10 +225,6 @@ export default function Login() {
   // Khôi phục phiên hợp lệ và tiếp tục luồng cấp quyền cho thiết bị nếu cần.
   useEffect(() => {
     const handleRedirectWithSession = async () => {
-      if (isCaptivePendingRef.current) {
-        console.log('⏸️ Captive debug popup is showing, deferring session check');
-        return;
-      }
       if (typeof window === 'undefined') return;
 
       // Chỉ tin token localStorage khi cookie phiên vẫn tồn tại để tránh vòng lặp redirect.
@@ -240,7 +235,7 @@ export default function Login() {
 
       const isLoggedIn = localStorage.getItem(STORAGE_KEYS.portalLoggedIn) === 'true';
       const hasToken = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || !!localStorage.getItem(STORAGE_KEYS.accessToken);
-      const captiveContext = getCaptivePortalContext('');
+      const captiveContext = getCaptivePortalContext(window.location.search);
 
       console.log('🔄 Checking redirect with session...');
       console.log('🔄 Has auth cookie:', hasAuthCookie);
@@ -285,33 +280,18 @@ export default function Login() {
       // Phiên cũ quay lại từ captive portal cần được cấp quyền thiết bị tự động.
       if (isLoggedIn && hasToken && hasAuthCookie && captiveContext) {
         console.log('🚀 User already logged in with captive context - auto authorizing device...');
-        
+
         const token = localStorage.getItem(STORAGE_KEYS.accessToken) || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
         if (token) {
           setAxiosAuthToken(token);
         }
 
-        try {
-          const payload = buildAuthorizeDevicePayload(captiveContext);
-          await authorizeDevice(payload);
-          console.log('✅ Device authorized successfully via redirect');
-
-          localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-          router.push('/network-connecting');
-        } catch (error) {
-          console.error('❌ Failed to authorize device via redirect:', error);
-          localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-          router.push('/network-connecting');
-        }
+        await registerDeviceAndRedirect();
       }
     };
 
-    sessionCheckRef.current = handleRedirectWithSession;
-
-    if (!isCaptivePendingRef.current) {
-      const timer = setTimeout(handleRedirectWithSession, 100);
-      return () => clearTimeout(timer);
-    }
+    const timer = setTimeout(handleRedirectWithSession, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const getLoginErrorMessage = (apiError: unknown): string => {
@@ -360,16 +340,18 @@ export default function Login() {
   const getGuestIdentifier = () =>
     guestAuthMethod === 'email' ? guestForm.email.trim() : guestForm.phone.trim();
 
-  // Cấp quyền thiết bị là tác vụ nền; hàm gọi sẽ quyết định trang đích.
-  const authorizeDeviceInBackground = async (): Promise<void> => {
+  // Gọi API register-device + điều hướng đến /network-connecting nếu thành công.
+  // Nếu lỗi → set deviceAuthError để hiển thị nút "Thử lại", KHÔNG xoá captive context.
+  const registerDeviceAndRedirect = async (): Promise<void> => {
     try {
-      const captiveContext = getCaptivePortalContext('');
+      const captiveContext = getCaptivePortalContext(window.location.search);
 
       console.log('🔐 Authorizing device...');
       console.log('🔐 Captive context:', captiveContext);
 
       if (!captiveContext) {
-        console.warn('⚠️ No captive context found, skipping device authorization');
+        console.log('⚠️ No captive context — redirecting to /session');
+        window.location.href = '/session';
         return;
       }
 
@@ -378,10 +360,25 @@ export default function Login() {
 
       console.log('✅ Device authorized successfully');
 
-      localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+      // Handoff entryMode + URL đích sang /network-connecting trước khi xoá context.
+      persistNetworkConnectingHandoff(captiveContext);
+      clearCaptivePortalContext();
+
+      window.location.href = '/network-connecting';
     } catch (error) {
-      console.error('❌ Failed to authorize device (non-blocking):', error);
+      console.error('❌ Failed to authorize device:', error);
+      setDeviceAuthError(
+        'Không thể xác thực thiết bị. Vui lòng thử lại hoặc liên hệ quản trị viên.'
+      );
+      setIsLoading(false);
+      setIsRetryingDeviceAuth(false);
     }
+  };
+
+  const handleRetryDeviceAuth = async () => {
+    setDeviceAuthError('');
+    setIsRetryingDeviceAuth(true);
+    await registerDeviceAndRedirect();
   };
 
   const persistSession = async (identifier: string, fallbackRole?: string) => {
@@ -448,15 +445,6 @@ export default function Login() {
     return true;
   };
 
-  const redirectAfterDeviceAuthorization = async (): Promise<void> => {
-    const hasCaptiveContext = Boolean(getCaptivePortalContext(''));
-    await authorizeDeviceInBackground();
-
-    window.location.href = hasCaptiveContext
-      ? '/network-connecting'
-      : '/session';
-  };
-
   const handleSSOLogin = async (provider: string) => {
     if (!agreeTerms) {
       setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
@@ -495,8 +483,7 @@ export default function Login() {
         linkedAccounts: [linkedAccount]
       }));
 
-      await redirectAfterDeviceAuthorization();
-      setIsLoading(false);
+      await registerDeviceAndRedirect();
     }, 1200);
   };
 
@@ -638,7 +625,7 @@ export default function Login() {
       if (!sessionReady) return;
 
       resetGuestForm();
-      await redirectAfterDeviceAuthorization();
+      await registerDeviceAndRedirect();
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
       setIsLoading(false);
@@ -673,7 +660,7 @@ export default function Login() {
       );
       if (!sessionReady) return;
 
-      await redirectAfterDeviceAuthorization();
+      await registerDeviceAndRedirect();
     } catch (apiError) {
       setError(getLoginErrorMessage(apiError));
       setIsLoading(false);
@@ -792,34 +779,23 @@ export default function Login() {
     resetForgotForm();
   };
 
-  const handleDismissCaptiveInfo = () => {
-    if (captiveInfo) {
-      saveCaptivePortalContext(captiveInfo);
-      console.log('✅ Captive context saved to localStorage');
-    }
-    isCaptivePendingRef.current = false;
-    setCaptiveInfo(null);
-
-    // Re-trigger session check after dismissing popup
-    setTimeout(() => {
-      sessionCheckRef.current?.();
-    }, 100);
-  };
-
   return (
     <>
-      {captiveInfo && (
-        <CaptiveInfoPopup
-          id={captiveInfo.id}
-          ap={captiveInfo.ap}
-          ssid={captiveInfo.ssid}
-          url={captiveInfo.url}
-          t={captiveInfo.t}
-          onClose={handleDismissCaptiveInfo}
-        />
-      )}
-
       <AuthPageLayout>
+        {deviceAuthError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800 mb-3">{deviceAuthError}</p>
+            <button
+              type="button"
+              onClick={handleRetryDeviceAuth}
+              disabled={isRetryingDeviceAuth}
+              className="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isRetryingDeviceAuth ? 'Đang thử lại...' : 'Thử lại xác thực thiết bị'}
+            </button>
+          </div>
+        )}
+
         <AuthLoginCard
           activeTab={activeTab}
           agreeTerms={agreeTerms}

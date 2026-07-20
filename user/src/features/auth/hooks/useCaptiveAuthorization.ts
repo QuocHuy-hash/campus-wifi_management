@@ -1,15 +1,25 @@
 "use client";
 
 import { useCallback, useState } from 'react';
-import { getCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
+import {
+  getCaptivePortalContext,
+  buildAuthorizeDevicePayload,
+  saveCaptivePortalContext,
+  persistNetworkConnectingHandoff,
+  clearCaptivePortalContext,
+} from '@/lib/captivePortal';
 import { authorizeDevice } from '@/features/auth/api/authApi';
-import { STORAGE_KEYS } from '@/constants/appKeys';
+
+interface AuthorizeResult {
+  ok: boolean;
+  hadCaptiveContext: boolean;
+}
 
 interface UseCaptiveAuthorizationResult {
   isAuthorizing: boolean;
   authorized: boolean;
   error: string | null;
-  authorize: () => Promise<boolean>;
+  authorize: () => Promise<AuthorizeResult>;
 }
 
 export function useCaptiveAuthorization(): UseCaptiveAuthorizationResult {
@@ -17,11 +27,24 @@ export function useCaptiveAuthorization(): UseCaptiveAuthorizationResult {
   const [authorized, setAuthorized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const authorize = useCallback(async (): Promise<boolean> => {
-    const captiveContext = getCaptivePortalContext('');
+  const authorize = useCallback(async (): Promise<AuthorizeResult> => {
+    // Đọc context từ cả URL (xử lý ca middleware redirect /login?params → /session?params)
+    // lẫn localStorage (context đã lưu từ lần trước).
+    const captiveContext = getCaptivePortalContext(
+      typeof window !== 'undefined' ? window.location.search : ''
+    );
+
     if (!captiveContext) {
       setAuthorized(true);
-      return true;
+      return { ok: true, hadCaptiveContext: false };
+    }
+
+    // Context đến từ URL → lưu ngay trước khi gọi API (phòng trường hợp API lỗi).
+    if (typeof window !== 'undefined' && window.location.search) {
+      const fromUrl = getCaptivePortalContext(window.location.search);
+      if (fromUrl) {
+        saveCaptivePortalContext(fromUrl);
+      }
     }
 
     setIsAuthorizing(true);
@@ -29,13 +52,18 @@ export function useCaptiveAuthorization(): UseCaptiveAuthorizationResult {
     try {
       const payload = buildAuthorizeDevicePayload(captiveContext);
       await authorizeDevice(payload);
-      localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+
+      // Handoff entryMode + URL đích sang /network-connecting trước khi xoá context.
+      persistNetworkConnectingHandoff(captiveContext);
+      clearCaptivePortalContext();
+
       setAuthorized(true);
-      return true;
+      return { ok: true, hadCaptiveContext: true };
     } catch (err) {
       const message = 'Xác thực thiết bị thất bại';
       setError(message);
-      return false;
+      // Giữ context trong localStorage để caller có thể retry.
+      return { ok: false, hadCaptiveContext: true };
     } finally {
       setIsAuthorizing(false);
     }

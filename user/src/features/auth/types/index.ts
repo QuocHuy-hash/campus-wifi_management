@@ -51,12 +51,15 @@ export interface LoginResult {
   roles: string[];
 }
 
+export type CaptiveEntryMode = 'cna' | 'browser';
+
 export interface CaptivePortalContext {
   id: string;
   ap: string;
   ssid: string;
   url: string;
   t?: string; // Optional timestamp parameter from controller
+  entryMode: CaptiveEntryMode; // CNA (mini-browser của OS) hay browser thật — suy ra từ url
 }
 
 export interface AuthorizeDevicePayload {

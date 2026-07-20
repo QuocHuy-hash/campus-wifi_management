@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import type { CaptiveEntryMode } from '@/features/auth/types';
 
 interface NetworkConnectingScreenProps {
+  mode: CaptiveEntryMode;
   onComplete: () => void;
 }
 
@@ -21,14 +23,14 @@ const checkActualInternet = (): Promise<boolean> => {
   });
 };
 
-export default function NetworkConnectingScreen({ onComplete }: NetworkConnectingScreenProps) {
+export default function NetworkConnectingScreen({ mode, onComplete }: NetworkConnectingScreenProps) {
   const [isConnecting, setIsConnecting] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
 
   useEffect(() => {
     // Để lưu trữ các ID của interval/timeout phục vụ cho việc cleanup
     let pollingInterval: ReturnType<typeof setInterval>;
-    let completeTimeout: ReturnType<typeof setInterval>;
+    let completeTimeout: ReturnType<typeof setTimeout>;
 
     // Bộ đếm thời gian đã trôi qua (cập nhật UI mỗi giây)
     const timeInterval = setInterval(() => {
@@ -44,19 +46,25 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
 
         if (hasInternet) {
           logger.debug('Đã có Internet thực sự!');
-          
+
           // 1. Dừng ping và đếm thời gian
           clearInterval(pollingInterval);
           clearInterval(timeInterval);
-          
+
           // 2. Chuyển UI sang trạng thái Success
           setIsConnecting(false);
 
-          // 3. Chờ đúng 1 giây để iOS/Android kịp cập nhật nút "X" thành "Xong"
-          completeTimeout = setTimeout(() => {
-            logger.debug('Chuyển sang màn hình Session');
-            onComplete();
-          }, 1000);
+          // 3. Hành động phụ thuộc vào mode:
+          // - browser: sau ~1s tự động gọi onComplete() để redirect đến URL đích
+          // - cna: đứng lại hiển thị hướng dẫn, KHÔNG gọi onComplete (user tự bấm Done thoát CNA)
+          if (mode === 'browser') {
+            completeTimeout = setTimeout(() => {
+              logger.debug('Browser mode — auto-redirecting to destination');
+              onComplete();
+            }, 1000);
+          } else {
+            logger.debug('CNA mode — waiting for user to tap Done button');
+          }
         }
       }, 2000);
     };
@@ -68,9 +76,9 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
     return () => {
       clearInterval(pollingInterval);
       clearInterval(timeInterval);
-      clearTimeout(completeTimeout);
+      if (completeTimeout) clearTimeout(completeTimeout);
     };
-  }, [onComplete]);
+  }, [mode, onComplete]);
 
   return (
     <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
@@ -94,7 +102,9 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
           <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed px-4">
             {isConnecting
               ? 'Đang thiết lập đường truyền thực tế, vui lòng giữ nguyên màn hình trong giây lát...'
-              : 'Bạn có thể sử dụng internet bình thường. Vui lòng bấm "Xong" ở góc màn hình.'
+              : mode === 'cna'
+              ? 'Bạn có thể sử dụng internet bình thường. Vui lòng bấm "Xong" ở góc màn hình để hoàn tất.'
+              : 'Đang chuyển hướng đến trang của bạn...'
             }
           </p>
         </div>
