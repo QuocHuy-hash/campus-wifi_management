@@ -22,7 +22,7 @@ import AuthTermsDialog from '@/features/auth/components/dialogs/AuthTermsDialog'
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
 import { STORAGE_KEYS, AUTH_COOKIE_KEY } from '@/constants/appKeys';
-import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
+import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload, clearRedirectUrl } from '@/lib/captivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
 import { validatePassword } from '@/lib/passwordValidation';
 
@@ -283,9 +283,9 @@ export default function Login() {
           router.push('/network-connecting');
         } catch (error) {
           console.error('❌ Failed to authorize device via redirect:', error);
-          // Controller vẫn có thể hoàn tất cấp quyền nên không chặn màn hình kết nối.
+          clearRedirectUrl();
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-          router.push('/network-connecting');
+          setError('Xác thực thiết bị thất bại. Vui lòng thử lại.');
         }
       }
     };
@@ -341,8 +341,8 @@ export default function Login() {
   const getGuestIdentifier = () =>
     guestAuthMethod === 'email' ? guestForm.email.trim() : guestForm.phone.trim();
 
-  // Cấp quyền thiết bị là tác vụ nền; hàm gọi sẽ quyết định trang đích.
-  const authorizeDeviceInBackground = async (): Promise<void> => {
+  // Cấp quyền thiết bị; trả về true nếu thành công, false nếu thất bại.
+  const authorizeDeviceInBackground = async (): Promise<boolean> => {
     try {
       const captiveContext = getCaptivePortalContext('');
 
@@ -351,7 +351,7 @@ export default function Login() {
 
       if (!captiveContext) {
         console.warn('⚠️ No captive context found, skipping device authorization');
-        return;
+        return true;
       }
 
       const payload = buildAuthorizeDevicePayload(captiveContext);
@@ -360,8 +360,11 @@ export default function Login() {
       console.log('✅ Device authorized successfully');
 
       localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+      return true;
     } catch (error) {
-      console.error('❌ Failed to authorize device (non-blocking):', error);
+      console.error('❌ Failed to authorize device:', error);
+      clearRedirectUrl();
+      return false;
     }
   };
 
@@ -432,7 +435,17 @@ export default function Login() {
   const redirectAfterDeviceAuthorization = async (): Promise<void> => {
     // Captive context phải được đọc trước vì quá trình cấp quyền sẽ xóa dữ liệu này.
     const hasCaptiveContext = Boolean(getCaptivePortalContext(''));
-    await authorizeDeviceInBackground();
+
+    if (hasCaptiveContext) {
+      const authorized = await authorizeDeviceInBackground();
+      if (!authorized) {
+        setError('Xác thực thiết bị thất bại. Vui lòng thử lại.');
+        setIsLoading(false);
+        return;
+      }
+    } else {
+      await authorizeDeviceInBackground();
+    }
 
     // Tải lại toàn trang để cookie phiên được gửi ngay ở request kế tiếp.
     window.location.href = hasCaptiveContext

@@ -8,11 +8,13 @@ import { ThemeProvider } from "next-themes";
 import { initializeAxios, setAxiosAuthToken } from "@/config/axios";
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { AUTH_COOKIE_KEY, STORAGE_KEYS } from "@/constants/appKeys";
 import {
   buildAuthorizeDevicePayload,
   extractCaptivePortalContext,
   saveCaptivePortalContext,
+  clearRedirectUrl,
 } from "@/lib/captivePortal";
 import { authorizeDevice } from "@/features/auth/api/authApi";
 import { logger } from "@/lib/logger";
@@ -57,12 +59,17 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
       try {
         await authorizeDevice(buildAuthorizeDevicePayload(captiveContext));
-      } catch (error) {
-        logger.error("Failed to authorize device from captive redirect:", error);
-      } finally {
         localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
         if (!cancelled) {
           router.replace("/network-connecting");
+        }
+      } catch (error) {
+        logger.error("Failed to authorize device from captive redirect:", error);
+        clearRedirectUrl();
+        if (!cancelled) {
+          toast.error("Xác thực thiết bị thất bại", {
+            description: "Vui lòng thử lại bằng cách truy cập lại trang WiFi.",
+          });
         }
       }
     };

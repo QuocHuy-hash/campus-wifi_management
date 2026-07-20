@@ -52,7 +52,7 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
           // 2. Chuyển UI sang trạng thái Success
           setIsConnecting(false);
 
-          // 3. Chờ đúng 1 giây để iOS/Android kịp cập nhật nút "X" thành "Xong"
+          // 3. Chờ 1 giây để người dùng kịp nhìn thấy trạng thái thành công
           completeTimeout = setTimeout(() => {
             logger.debug('Chuyển sang màn hình Session');
             onComplete();
@@ -94,7 +94,7 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
           <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed px-4">
             {isConnecting
               ? 'Đang thiết lập đường truyền thực tế, vui lòng giữ nguyên màn hình trong giây lát...'
-              : 'Bạn có thể sử dụng internet bình thường. Vui lòng bấm "Xong" ở góc màn hình.'
+              : 'Bạn có thể sử dụng internet bình thường. Tự động chuyển hướng sau 1 giây...'
             }
           </p>
         </div>

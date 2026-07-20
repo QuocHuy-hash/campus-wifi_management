@@ -6,6 +6,7 @@ import { authorizeDevice, getMeProfile } from "@/features/auth/api/authApi";
 import { STORAGE_KEYS } from "@/constants/appKeys";
 import { getCaptivePortalContext, buildAuthorizeDevicePayload } from "@/lib/captivePortal";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
+import { getRedirectUrl, clearRedirectUrl } from "@/lib/captivePortal";
 
 export default function OAuthSuccess() {
   const router = useRouter();
@@ -93,7 +94,11 @@ export default function OAuthSuccess() {
   return (
     <>
       {showNetworkConnecting ? (
-        <NetworkConnectingScreen onComplete={() => window.location.assign("/session")} />
+        <NetworkConnectingScreen onComplete={() => {
+          const redirectUrl = getRedirectUrl();
+          clearRedirectUrl();
+          window.location.assign(redirectUrl || "/session");
+        }} />
       ) : (
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">

@@ -1,9 +1,14 @@
 "use client";
 
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
-import { useRouter } from "next/navigation";
+import { getRedirectUrl, clearRedirectUrl } from "@/lib/captivePortal";
 
 export default function NetworkConnectingPage() {
-  const router = useRouter();
-  return <NetworkConnectingScreen onComplete={() => router.replace("/session")} />;
+  const handleComplete = () => {
+    const redirectUrl = getRedirectUrl();
+    clearRedirectUrl();
+    window.location.replace(redirectUrl || "/session");
+  };
+
+  return <NetworkConnectingScreen onComplete={handleComplete} />;
 }

@@ -24,6 +24,15 @@ export function extractCaptivePortalContext(search: string): CaptivePortalContex
 
 export function saveCaptivePortalContext(context: CaptivePortalContext): void {
   localStorage.setItem(STORAGE_KEYS.portalCaptiveContext, JSON.stringify(context));
+  sessionStorage.setItem(STORAGE_KEYS.portalRedirectUrl, context.url);
+}
+
+export function getRedirectUrl(): string | null {
+  return sessionStorage.getItem(STORAGE_KEYS.portalRedirectUrl);
+}
+
+export function clearRedirectUrl(): void {
+  sessionStorage.removeItem(STORAGE_KEYS.portalRedirectUrl);
 }
 
 export function getStoredCaptivePortalContext(): CaptivePortalContext | null {
