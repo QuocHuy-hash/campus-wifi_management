@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Loader2, ArrowRight } from 'lucide-react';
 import { logger } from '@/lib/logger';
 
 interface NetworkConnectingScreenProps {
@@ -103,13 +103,22 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
         {isConnecting && (
           <div className="w-64 mx-auto mt-6">
             <div className="h-1 w-full bg-blue-100 rounded-full overflow-hidden">
-              {/* Hiệu ứng thanh chạy ngang liên tục */}
               <div className="h-full bg-blue-500 rounded-full w-1/2 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
             </div>
             <p className="text-sm text-gray-400 mt-3 font-medium">
               Đã chờ {elapsedTime}s...
             </p>
           </div>
+        )}
+
+        {!isConnecting && (
+          <button
+            onClick={onComplete}
+            className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            Hoàn tất
+            <ArrowRight size={16} />
+          </button>
         )}
       </div>
     </div>

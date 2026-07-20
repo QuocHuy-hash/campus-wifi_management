@@ -36,12 +36,50 @@ export function saveCaptivePortalContext(context: CaptivePortalContext): void {
   sessionStorage.setItem(STORAGE_KEYS.portalRedirectUrl, context.url);
 }
 
+const PROBE_HOSTS = [
+  "connectivitycheck.gstatic.com",
+  "captive.apple.com",
+  "www.msftconnecttest.com",
+  "www.msftncsi.com",
+  "clients3.google.com",
+  "www.gstatic.com",
+  "connectivitycheck.android.com",
+  "nmcheck.gnome.org",
+  "detectportal.firefox.com",
+];
+
+export function isProbeUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return PROBE_HOSTS.some((probe) => host === probe || host.endsWith("." + probe));
+  } catch {
+    return false;
+  }
+}
+
 export function getRedirectUrl(): string | null {
   return sessionStorage.getItem(STORAGE_KEYS.portalRedirectUrl);
 }
 
 export function clearRedirectUrl(): void {
   sessionStorage.removeItem(STORAGE_KEYS.portalRedirectUrl);
+}
+
+const FALLBACK_DELAY_MS = 3000;
+
+export function navigateOrFallback(url: string | null, fallbackUrl = "/session"): void {
+  const target = url || fallbackUrl;
+
+  if (!url || target === fallbackUrl) {
+    window.location.href = fallbackUrl;
+    return;
+  }
+
+  const navTimeout = setTimeout(() => {
+    window.location.href = fallbackUrl;
+  }, FALLBACK_DELAY_MS);
+
+  window.location.href = target;
 }
 
 export function getStoredCaptivePortalContext(): CaptivePortalContext | null {
