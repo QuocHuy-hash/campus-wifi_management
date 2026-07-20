@@ -17,6 +17,7 @@ import LogoutConfirmDialog from './components/LogoutConfirmDialog';
 import ComingSoonDialog from '@/components/ComingSoonDialog';
 import type { UserSession, UserDailyUsage } from '@/features/auth/types';
 import { logger } from '@/lib/logger';
+import { logRedirect } from '@/lib/redirectLog';
 
 export default function Session() {
   const router = useRouter();
@@ -64,6 +65,7 @@ export default function Session() {
 
         // Có captive context + đăng ký thành công → chuyển sang /network-connecting
         if (result.ok && result.hadCaptiveContext) {
+          logRedirect('/network-connecting', 'session: register-device OK (còn session + captive context)');
           router.replace('/network-connecting');
           return;
         }
@@ -126,6 +128,7 @@ export default function Session() {
     try {
       const result = await authorize();
       if (result.ok && result.hadCaptiveContext) {
+        logRedirect('/network-connecting', 'session: retry register-device OK');
         router.replace('/network-connecting');
         return;
       }
