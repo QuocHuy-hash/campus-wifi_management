@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import type { CaptiveEntryMode } from '@/features/auth/types';
@@ -26,6 +26,15 @@ const checkActualInternet = (): Promise<boolean> => {
 export default function NetworkConnectingScreen({ mode, onComplete }: NetworkConnectingScreenProps) {
   const [isConnecting, setIsConnecting] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
+  // Chống gọi onComplete/redirect nhiều lần (nút bấm tay + auto-redirect)
+  const completedRef = useRef(false);
+
+  const finish = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    logger.debug('NetworkConnecting — finishing, redirecting to probe/destination url');
+    onComplete();
+  }, [onComplete]);
 
   useEffect(() => {
     // Để lưu trữ các ID của interval/timeout phục vụ cho việc cleanup
@@ -54,17 +63,13 @@ export default function NetworkConnectingScreen({ mode, onComplete }: NetworkCon
           // 2. Chuyển UI sang trạng thái Success
           setIsConnecting(false);
 
-          // 3. Hành động phụ thuộc vào mode:
-          // - browser: sau ~1s tự động gọi onComplete() để redirect đến URL đích
-          // - cna: đứng lại hiển thị hướng dẫn, KHÔNG gọi onComplete (user tự bấm Done thoát CNA)
-          if (mode === 'browser') {
-            completeTimeout = setTimeout(() => {
-              logger.debug('Browser mode — auto-redirecting to destination');
-              onComplete();
-            }, 1000);
-          } else {
-            logger.debug('CNA mode — waiting for user to tap Done button');
-          }
+          // 3. Cả CNA lẫn browser đều redirect tới context.url (probe endpoint).
+          //    - CNA: hit lại probe → OS nhận "đã online" → tự đổi X thành Done / tự đóng.
+          //    - browser: rời khỏi portal, quay về luồng duyệt web bình thường.
+          //    Nút "Hoàn tất" bên dưới là fallback nếu auto-redirect không kích hoạt.
+          completeTimeout = setTimeout(() => {
+            finish();
+          }, 1000);
         }
       }, 2000);
     };
@@ -78,7 +83,7 @@ export default function NetworkConnectingScreen({ mode, onComplete }: NetworkCon
       clearInterval(timeInterval);
       if (completeTimeout) clearTimeout(completeTimeout);
     };
-  }, [mode, onComplete]);
+  }, [finish]);
 
   return (
     <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
@@ -103,11 +108,22 @@ export default function NetworkConnectingScreen({ mode, onComplete }: NetworkCon
             {isConnecting
               ? 'Đang thiết lập đường truyền thực tế, vui lòng giữ nguyên màn hình trong giây lát...'
               : mode === 'cna'
-              ? 'Bạn có thể sử dụng internet bình thường. Vui lòng bấm "Xong" ở góc màn hình để hoàn tất.'
-              : 'Đang chuyển hướng đến trang của bạn...'
+              ? 'Bạn đã có thể sử dụng internet. Đang hoàn tất, nếu màn hình không tự đóng vui lòng bấm "Hoàn tất".'
+              : 'Đang chuyển hướng, vui lòng chờ trong giây lát...'
             }
           </p>
         </div>
+
+        {/* Nút fallback: hiện sau khi kết nối OK, phòng khi auto-redirect không kích hoạt */}
+        {!isConnecting && (
+          <button
+            type="button"
+            onClick={finish}
+            className="mt-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-full transition-colors"
+          >
+            Hoàn tất
+          </button>
+        )}
 
         {/* Trạng thái Loading vô định hình thay vì đếm lùi */}
         {isConnecting && (

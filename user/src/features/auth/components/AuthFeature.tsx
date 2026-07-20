@@ -32,6 +32,7 @@ import {
 } from '@/lib/captivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
 import { validatePassword } from '@/lib/passwordValidation';
+import { logRedirect } from '@/lib/redirectLog';
 
 async function setSessionCookie(accessToken: string): Promise<boolean> {
   try {
@@ -273,6 +274,7 @@ export default function Login() {
       // Không còn captive context thì middleware tiếp quản việc điều hướng phiên.
       if (hasToken && hasAuthCookie && !captiveContext) {
         console.log('🚀 User has valid session - letting middleware handle redirect...');
+        logRedirect('/session', 'login: còn session, không có captive context');
         router.push('/session');
         return;
       }
@@ -351,6 +353,7 @@ export default function Login() {
 
       if (!captiveContext) {
         console.log('⚠️ No captive context — redirecting to /session');
+        logRedirect('/session', 'register-device: không có captive context');
         window.location.href = '/session';
         return;
       }
@@ -364,6 +367,10 @@ export default function Login() {
       persistNetworkConnectingHandoff(captiveContext);
       clearCaptivePortalContext();
 
+      logRedirect(
+        '/network-connecting',
+        `register-device OK (entryMode=${captiveContext.entryMode}, url=${captiveContext.url})`
+      );
       window.location.href = '/network-connecting';
     } catch (error) {
       console.error('❌ Failed to authorize device:', error);
@@ -460,6 +467,7 @@ export default function Login() {
 
       sessionStorage.setItem(STORAGE_KEYS.oauthProvider, provider);
       sessionStorage.setItem('oauth2_redirect_back', '/session');
+      logRedirect(`(OAuth2 ${provider})`, 'bắt đầu đăng nhập OAuth2');
       startOAuth2Login(provider);
       return;
     }

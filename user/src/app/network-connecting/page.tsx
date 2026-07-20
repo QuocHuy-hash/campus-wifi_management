@@ -5,6 +5,7 @@ import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
 import { useRouter } from "next/navigation";
 import { STORAGE_KEYS } from "@/constants/appKeys";
 import type { CaptiveEntryMode } from "@/features/auth/types";
+import { logRedirect } from "@/lib/redirectLog";
 
 export default function NetworkConnectingPage() {
   const router = useRouter();
@@ -33,11 +34,19 @@ export default function NetworkConnectingPage() {
     }
 
     if (destinationUrl) {
+      logRedirect(
+        destinationUrl,
+        `network-connecting: probe OK → về URL đích (entryMode=${entryMode})`
+      );
       window.location.href = destinationUrl;
     } else {
+      logRedirect(
+        '/session',
+        `network-connecting: không có destinationUrl trong handoff (entryMode=${entryMode})`
+      );
       router.replace("/session");
     }
-  }, [router]);
+  }, [router, entryMode]);
 
   return <NetworkConnectingScreen mode={entryMode} onComplete={onComplete} />;
 }

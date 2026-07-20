@@ -10,6 +10,7 @@ import {
   persistNetworkConnectingHandoff,
   clearCaptivePortalContext,
 } from "@/lib/captivePortal";
+import { logRedirect } from "@/lib/redirectLog";
 
 export default function OAuthSuccess() {
   const router = useRouter();
@@ -55,6 +56,7 @@ export default function OAuthSuccess() {
       if (!hasAuthenticatedSession) {
         setIsProcessing(false);
         setError("Không thể xác nhận phiên đăng nhập từ backend.");
+        logRedirect('/login', 'oauth-success: không xác nhận được phiên từ backend');
         window.location.href = "/login";
         return;
       }
@@ -74,6 +76,10 @@ export default function OAuthSuccess() {
         sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
 
         // Redirect sang /network-connecting — tập trung logic điều hướng ở một chỗ
+        logRedirect(
+          '/network-connecting',
+          `oauth-success: register-device OK (entryMode=${captiveContext.entryMode}, url=${captiveContext.url})`
+        );
         window.location.assign("/network-connecting");
         return;
       } catch {
@@ -86,6 +92,7 @@ export default function OAuthSuccess() {
     const redirectPath = sessionStorage.getItem("oauth2_redirect_back") || "/session";
     sessionStorage.removeItem("oauth2_redirect_back");
     sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
+    logRedirect(redirectPath, 'oauth-success: không có captive context');
     window.location.href = redirectPath;
   }, [router, searchParams]);
 
