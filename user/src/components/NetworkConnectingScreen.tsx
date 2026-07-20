@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, Loader2, ArrowRight } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
 import { logger } from '@/lib/logger';
 
 interface NetworkConnectingScreenProps {
@@ -111,15 +111,6 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
           </div>
         )}
 
-        {!isConnecting && (
-          <button
-            onClick={onComplete}
-            className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            Hoàn tất
-            <ArrowRight size={16} />
-          </button>
-        )}
       </div>
     </div>
   );
