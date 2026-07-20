@@ -1,143 +1,105 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { CheckCircle, Loader2 } from 'lucide-react';
-import { logger } from '@/lib/logger';
-import type { CaptiveEntryMode } from '@/features/auth/types';
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { CheckCircle, Loader2 } from 'lucide-react'
+import { checkInternet } from '@/lib/checkInternet'
+import type { CaptiveEntryMode } from '@/lib/detectEntryMode'
 
 interface NetworkConnectingScreenProps {
-  mode: CaptiveEntryMode;
-  onComplete: () => void;
+  mode: CaptiveEntryMode
+  onComplete: () => void
 }
 
-// 1. Hàm kiểm tra mạng thực tế (Ping ẩn)
-const checkActualInternet = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    // Gắn thêm số ngẫu nhiên để tránh bị trình duyệt cache file ảnh
-    img.src = `https://www.google.com/favicon.ico?rand=${Math.random()}`;
-    
-    // Nếu mạng thông, Google trả về ảnh -> Thành công
-    img.onload = () => resolve(true);
-    
-    // Nếu UniFi chưa mở mạng, request sẽ bị chặn -> Thất bại
-    img.onerror = () => resolve(false);
-  });
-};
+const POLL_INTERVAL = 2000
+const FALLBACK_TIMEOUT_SEC = 18
+const DELAY_BEFORE_REDIRECT = 1000
 
 export default function NetworkConnectingScreen({ mode, onComplete }: NetworkConnectingScreenProps) {
-  const [isConnecting, setIsConnecting] = useState(true);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  // Chống gọi onComplete/redirect nhiều lần (nút bấm tay + auto-redirect)
-  const completedRef = useRef(false);
+  const [phase, setPhase] = useState<'connecting' | 'success'>('connecting')
+  const [elapsedTime, setElapsedTime] = useState(0)
+  const completedRef = useRef(false)
 
-  const finish = useCallback(() => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    logger.debug('NetworkConnecting — finishing, redirecting to probe/destination url');
-    onComplete();
-  }, [onComplete]);
+  const finish = useCallback((force = false) => {
+    if (completedRef.current && !force) return
+    completedRef.current = true
+    onComplete()
+  }, [onComplete])
 
   useEffect(() => {
-    // Để lưu trữ các ID của interval/timeout phục vụ cho việc cleanup
-    let pollingInterval: ReturnType<typeof setInterval>;
-    let completeTimeout: ReturnType<typeof setTimeout>;
+    let pollingId: ReturnType<typeof setInterval>
+    let redirectId: ReturnType<typeof setTimeout>
+    let timerId: ReturnType<typeof setInterval>
 
-    // Bộ đếm thời gian đã trôi qua (cập nhật UI mỗi giây)
-    const timeInterval = setInterval(() => {
-      setElapsedTime((prev) => prev + 1);
-    }, 1000);
+    timerId = setInterval(() => setElapsedTime((prev) => prev + 1), 1000)
 
-    // Bắt đầu tiến trình Ping kiểm tra mạng
-    const startPolling = () => {
-      // Cứ mỗi 2 giây gửi 1 request ping kiểm tra
-      pollingInterval = setInterval(async () => {
-        logger.debug('Đang ping kiểm tra kết nối internet...');
-        const hasInternet = await checkActualInternet();
+    pollingId = setInterval(async () => {
+      const online = await checkInternet()
+      if (!online) return
 
-        if (hasInternet) {
-          logger.debug('Đã có Internet thực sự!');
+      clearInterval(pollingId)
+      clearInterval(timerId)
+      setPhase('success')
 
-          // 1. Dừng ping và đếm thời gian
-          clearInterval(pollingInterval);
-          clearInterval(timeInterval);
+      redirectId = setTimeout(() => finish(), DELAY_BEFORE_REDIRECT)
+    }, POLL_INTERVAL)
 
-          // 2. Chuyển UI sang trạng thái Success
-          setIsConnecting(false);
-
-          // 3. Cả CNA lẫn browser đều redirect tới context.url (probe endpoint).
-          //    - CNA: hit lại probe → OS nhận "đã online" → tự đổi X thành Done / tự đóng.
-          //    - browser: rời khỏi portal, quay về luồng duyệt web bình thường.
-          //    Nút "Hoàn tất" bên dưới là fallback nếu auto-redirect không kích hoạt.
-          completeTimeout = setTimeout(() => {
-            finish();
-          }, 1000);
-        }
-      }, 2000);
-    };
-
-    // Khởi chạy ping
-    startPolling();
-
-    // Cleanup function: Chống memory leak khi component bị huỷ (unmount)
     return () => {
-      clearInterval(pollingInterval);
-      clearInterval(timeInterval);
-      if (completeTimeout) clearTimeout(completeTimeout);
-    };
-  }, [finish]);
+      clearInterval(pollingId)
+      clearInterval(timerId)
+      if (redirectId) clearTimeout(redirectId)
+    }
+  }, [finish])
+
+  useEffect(() => {
+    if (elapsedTime < FALLBACK_TIMEOUT_SEC) return
+    setPhase('success')
+    finish(true)
+  }, [elapsedTime, finish])
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
       <div className="text-center space-y-6">
-        {/* Icon */}
         <div className="flex justify-center transition-all duration-500">
-          {isConnecting ? (
-            <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+          {phase === 'connecting' ? (
+            <Loader2 className="h-16 w-16 animate-spin text-blue-500" />
           ) : (
-            <CheckCircle className="w-16 h-16 text-green-500 animate-[pulse_1s_ease-in-out]" />
+            <CheckCircle className="h-16 w-16 animate-pulse text-green-500" />
           )}
         </div>
 
-        {/* Main Text */}
         <div className="space-y-2">
-          <h1 className={`text-2xl font-bold transition-colors duration-500 ${isConnecting ? 'text-blue-600' : 'text-green-600'}`}>
-            {isConnecting ? 'Xác thực thành công!' : 'Kết nối mạng thành công!'}
+          <h1 className={`text-2xl font-bold transition-colors duration-500 ${phase === 'connecting' ? 'text-blue-600' : 'text-green-600'}`}>
+            {phase === 'connecting' ? 'Xác thực thành công!' : 'Kết nối mạng thành công!'}
           </h1>
 
-          {/* Sub Text */}
-          <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed px-4">
-            {isConnecting
+          <p className="mx-auto max-w-md px-4 text-sm leading-relaxed text-gray-500">
+            {phase === 'connecting'
               ? 'Đang thiết lập đường truyền thực tế, vui lòng giữ nguyên màn hình trong giây lát...'
               : mode === 'cna'
-              ? 'Bạn đã có thể sử dụng internet. Đang hoàn tất, nếu màn hình không tự đóng vui lòng bấm "Hoàn tất".'
-              : 'Đang chuyển hướng, vui lòng chờ trong giây lát...'
-            }
+              ? 'Bạn đã có thể sử dụng internet. Nếu màn hình không tự đóng vui lòng bấm "Hoàn tất".'
+              : 'Đang chuyển hướng, vui lòng chờ trong giây lát...'}
           </p>
         </div>
 
-        {/* Nút fallback: hiện sau khi kết nối OK, phòng khi auto-redirect không kích hoạt */}
-        {!isConnecting && (
+        {phase === 'success' && (
           <button
             type="button"
-            onClick={finish}
-            className="mt-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-full transition-colors"
+            onClick={() => finish(true)}
+            className="mt-2 rounded-full bg-green-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700"
           >
             Hoàn tất
           </button>
         )}
 
-        {/* Trạng thái Loading vô định hình thay vì đếm lùi */}
-        {isConnecting && (
-          <div className="w-64 mx-auto mt-6">
-            <div className="h-1 w-full bg-blue-100 rounded-full overflow-hidden">
-              {/* Hiệu ứng thanh chạy ngang liên tục */}
-              <div className="h-full bg-blue-500 rounded-full w-1/2 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+        {phase === 'connecting' && (
+          <div className="mx-auto mt-6 w-64">
+            <div className="h-1 w-full overflow-hidden rounded-full bg-blue-100">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-blue-500" />
             </div>
-            <p className="text-sm text-gray-400 mt-3 font-medium">
+            <p className="mt-3 text-sm font-medium text-gray-400">
               Đã chờ {elapsedTime}s...
             </p>
           </div>
         )}
       </div>
     </div>
-  );
+  )
 }

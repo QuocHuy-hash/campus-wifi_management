@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { currentUser } from '@/data/mockData';
-import { authorizeDevice, getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
+import { authorizeDevice, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
 import {
   clearForgotToken,
   getActiveProviders,
@@ -21,35 +21,23 @@ import AuthPageLayout from '@/features/auth/components/AuthPageLayout';
 import AuthTermsDialog from '@/features/auth/components/dialogs/AuthTermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
-import { STORAGE_KEYS, AUTH_COOKIE_KEY } from '@/constants/appKeys';
+import { STORAGE_KEYS } from '@/constants/appKeys';
 import {
   extractCaptivePortalContext,
   getCaptivePortalContext,
   saveCaptivePortalContext,
   buildAuthorizeDevicePayload,
-  persistNetworkConnectingHandoff,
-  clearCaptivePortalContext,
 } from '@/lib/captivePortal';
+import {
+  setSessionCookie,
+  hasServerSession,
+  persistSession,
+  clearStaleSession,
+} from '@/hooks/useAuthorizeDevice';
+import { clearContext, persistHandoff } from '@/hooks/useCaptivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
 import { validatePassword } from '@/lib/passwordValidation';
 import { logRedirect } from '@/lib/redirectLog';
-
-async function setSessionCookie(accessToken: string): Promise<boolean> {
-  try {
-    const res = await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken }),
-    });
-    // Cookie phía client là phương án dự phòng để middleware vẫn nhận diện phiên.
-    document.cookie = `${AUTH_COOKIE_KEY}=${accessToken};path=/;max-age=3600;SameSite=Lax`;
-    return res.ok;
-  } catch {
-    // API lỗi vẫn không được làm gián đoạn luồng chuyển hướng sau đăng nhập.
-    document.cookie = `${AUTH_COOKIE_KEY}=${accessToken};path=/;max-age=3600;SameSite=Lax`;
-    return true;
-  }
-}
 
 const LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY = 'savedGuestLoginCredentials';
 
@@ -229,10 +217,7 @@ export default function Login() {
       if (typeof window === 'undefined') return;
 
       // Chỉ tin token localStorage khi cookie phiên vẫn tồn tại để tránh vòng lặp redirect.
-      const hasAuthCookie = document.cookie.split(';').some(cookie => {
-        const [name] = cookie.trim().split('=');
-        return name === AUTH_COOKIE_KEY;
-      });
+      const hasAuthCookie = await hasServerSession();
 
       const isLoggedIn = localStorage.getItem(STORAGE_KEYS.portalLoggedIn) === 'true';
       const hasToken = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || !!localStorage.getItem(STORAGE_KEYS.accessToken);
@@ -363,9 +348,8 @@ export default function Login() {
 
       console.log('✅ Device authorized successfully');
 
-      // Handoff entryMode + URL đích sang /network-connecting trước khi xoá context.
-      persistNetworkConnectingHandoff(captiveContext);
-      clearCaptivePortalContext();
+      persistHandoff(captiveContext);
+      clearContext();
 
       logRedirect(
         '/network-connecting',
@@ -386,46 +370,6 @@ export default function Login() {
     setDeviceAuthError('');
     setIsRetryingDeviceAuth(true);
     await registerDeviceAndRedirect();
-  };
-
-  const persistSession = async (identifier: string, fallbackRole?: string) => {
-    try {
-      console.log('🔍 Calling getMeProfile...');
-      const profile = await getMeProfile();
-      console.log('✅ getMeProfile success:', profile);
-
-      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
-      localStorage.setItem(
-        STORAGE_KEYS.portalUser,
-        JSON.stringify({
-          id: profile.id,
-          username: profile.username || identifier,
-          fullname: profile.fullName || identifier,
-          email: profile.email || identifier,
-          role: fallbackRole || 'CLIENT',
-          status: profile.status,
-          avatarUrl: profile.avatarUrl,
-          loginTime: profile.lastLoginAt || new Date().toISOString(),
-        }),
-      );
-    } catch (error) {
-      console.error('❌ getMeProfile failed:', error);
-      // Vẫn lưu phiên tối thiểu để giao diện hoạt động khi API hồ sơ tạm lỗi.
-      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
-      localStorage.setItem(
-        STORAGE_KEYS.portalUser,
-        JSON.stringify({
-          id: 'unknown',
-          username: identifier,
-          fullname: identifier,
-          email: identifier,
-          role: fallbackRole || 'CLIENT',
-          status: 'ACTIVE',
-          avatarUrl: null,
-          loginTime: new Date().toISOString(),
-        }),
-      );
-    }
   };
 
   const establishPasswordSession = async (

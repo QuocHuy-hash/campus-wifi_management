@@ -2,51 +2,53 @@
 
 import { useCallback } from "react";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
-import { useRouter } from "next/navigation";
 import { STORAGE_KEYS } from "@/constants/appKeys";
-import type { CaptiveEntryMode } from "@/features/auth/types";
+import type { CaptiveEntryMode } from "@/lib/detectEntryMode";
 import { logRedirect } from "@/lib/redirectLog";
+import { readHandoff } from "@/hooks/useCaptivePortal";
 
 export default function NetworkConnectingPage() {
-  const router = useRouter();
-
-  // Đọc handoff từ sessionStorage — entryMode + URL đích đã được persist
-  // bởi registerDeviceAndRedirect TRƯỚC KHI xoá captive context.
-  const entryMode: CaptiveEntryMode =
-    (typeof sessionStorage !== 'undefined' &&
-      (sessionStorage.getItem(STORAGE_KEYS.captiveEntryMode) as CaptiveEntryMode)) ||
-    'browser';
+  const entryMode = readHandoff<CaptiveEntryMode>(
+    STORAGE_KEYS.captiveEntryMode,
+    "browser"
+  );
 
   const onComplete = useCallback(() => {
-    let destinationUrl: string | null = null;
-    try {
-      destinationUrl = sessionStorage.getItem(STORAGE_KEYS.captiveOriginalUrl);
-    } catch {
-      // sessionStorage unavailable — proceed to fallback
-    }
+    const destinationUrl = readHandoff<string | null>(
+      STORAGE_KEYS.captiveOriginalUrl,
+      null
+    );
 
-    // Cleanup handoff keys
     try {
       sessionStorage.removeItem(STORAGE_KEYS.captiveEntryMode);
       sessionStorage.removeItem(STORAGE_KEYS.captiveOriginalUrl);
-    } catch {
-      // best-effort cleanup
-    }
+    } catch {}
 
-    if (destinationUrl) {
+    const isNoContentProbe =
+      !!destinationUrl && /generate_204|gen_204|generate204/i.test(destinationUrl);
+
+    if (destinationUrl && !isNoContentProbe) {
       logRedirect(
         destinationUrl,
-        `network-connecting: probe OK → về URL đích (entryMode=${entryMode})`
+        `network-connecting: probe OK → URL đích (entryMode=${entryMode})`
+      );
+      window.location.href = destinationUrl;
+    } else if (entryMode === "cna" && destinationUrl) {
+      logRedirect(
+        destinationUrl,
+        `network-connecting: CNA probe 204 — redirect vẫn để OS reprobe`
       );
       window.location.href = destinationUrl;
     } else {
       logRedirect(
-        '/session',
-        `network-connecting: không có destinationUrl trong handoff (entryMode=${entryMode})`
+        "/session",
+        isNoContentProbe
+          ? `network-connecting: URL đích là probe 204 (${destinationUrl}) — về /session`
+          : `network-connecting: không có destinationUrl (entryMode=${entryMode}) — về /session`
       );
-      router.replace("/session");
+      window.location.href = "/session";
     }
-  }, [router, entryMode]);
+  }, [entryMode]);
 
   return <NetworkConnectingScreen mode={entryMode} onComplete={onComplete} />;
 }

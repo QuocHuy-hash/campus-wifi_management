@@ -1,33 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { authorizeDevice, getMeProfile } from "@/features/auth/api/authApi";
+import { getMeProfile } from "@/features/auth/api/authApi";
 import { STORAGE_KEYS } from "@/constants/appKeys";
-import {
-  getCaptivePortalContext,
-  buildAuthorizeDevicePayload,
-  persistNetworkConnectingHandoff,
-  clearCaptivePortalContext,
-} from "@/lib/captivePortal";
 import { logRedirect } from "@/lib/redirectLog";
+import { useAuthorizeDevice } from "@/hooks/useAuthorizeDevice";
+import { useCaptivePortal } from "@/hooks/useCaptivePortal";
 
 export default function OAuthSuccess() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [isProcessing, setIsProcessing] = useState(true);
+  const { isReady: isContextReady, context: captiveContext } = useCaptivePortal();
+  const { execute: doAuthorize, isLoading: isAuthorizing } = useAuthorizeDevice();
 
   const completeOAuthFlow = useCallback(async () => {
     setIsProcessing(true);
     setError("");
 
+    const searchParams =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : null;
     const accessToken = searchParams?.get("access_token");
-    let hasAuthenticatedSession = Boolean(accessToken || localStorage.getItem(STORAGE_KEYS.accessToken));
+    let hasAuthenticatedSession = Boolean(
+      accessToken || localStorage.getItem(STORAGE_KEYS.accessToken)
+    );
 
     if (accessToken) {
       localStorage.setItem(STORAGE_KEYS.accessToken, accessToken);
-      // Set httpOnly cookie via API route
       await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,51 +50,50 @@ export default function OAuthSuccess() {
           status: profile.status,
           avatarUrl: profile.avatarUrl,
           loginTime: profile.lastLoginAt || new Date().toISOString(),
-        }),
+        })
       );
     } catch {
       if (!hasAuthenticatedSession) {
         setIsProcessing(false);
         setError("Không thể xác nhận phiên đăng nhập từ backend.");
-        logRedirect('/login', 'oauth-success: không xác nhận được phiên từ backend');
+        logRedirect("/login", "oauth-success: không xác nhận được phiên từ backend");
         window.location.href = "/login";
         return;
       }
       localStorage.setItem(STORAGE_KEYS.portalLoggedIn, "true");
     }
 
-    const captiveContext = getCaptivePortalContext(window.location.search);
+    const ctx =
+      captiveContext ||
+      (() => {
+        const raw = localStorage.getItem(STORAGE_KEYS.portalCaptiveContext);
+        if (!raw) return null;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      })();
 
-    if (captiveContext) {
-      try {
-        const payload = buildAuthorizeDevicePayload(captiveContext);
-        await authorizeDevice(payload);
-
-        // Handoff entryMode + URL đích trước khi xoá context
-        persistNetworkConnectingHandoff(captiveContext);
-        clearCaptivePortalContext();
-        sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
-
-        // Redirect sang /network-connecting — tập trung logic điều hướng ở một chỗ
-        logRedirect(
-          '/network-connecting',
-          `oauth-success: register-device OK (entryMode=${captiveContext.entryMode}, url=${captiveContext.url})`
-        );
-        window.location.assign("/network-connecting");
-        return;
-      } catch {
-        setError("Xác thực thiết bị thất bại. Vui lòng thử lại.");
-        setIsProcessing(false);
-        return;
-      }
+    if (ctx) {
+      const authorized = await doAuthorize(ctx);
+      if (authorized) return;
+      setError("Xác thực thiết bị thất bại. Vui lòng thử lại.");
+      setIsProcessing(false);
+      return;
     }
 
-    const redirectPath = sessionStorage.getItem("oauth2_redirect_back") || "/session";
-    sessionStorage.removeItem("oauth2_redirect_back");
-    sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
-    logRedirect(redirectPath, 'oauth-success: không có captive context');
+    const redirectPath =
+      (typeof sessionStorage !== "undefined"
+        ? sessionStorage.getItem("oauth2_redirect_back")
+        : null) || "/session";
+    try {
+      sessionStorage.removeItem("oauth2_redirect_back");
+      sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
+    } catch {}
+    logRedirect(redirectPath, "oauth-success: không có captive context");
     window.location.href = redirectPath;
-  }, [router, searchParams]);
+  }, [captiveContext, doAuthorize]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -106,8 +105,10 @@ export default function OAuthSuccess() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">
-        {isProcessing ? <p>Đang hoàn tất đăng nhập...</p> : null}
-        {!isProcessing && error ? (
+        {isProcessing || isAuthorizing ? (
+          <p>Đang hoàn tất đăng nhập...</p>
+        ) : null}
+        {!isProcessing && !isAuthorizing && error ? (
           <>
             <p className="text-red-600">{error}</p>
             <button
