@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/card';
@@ -18,6 +19,7 @@ import type { UserSession, UserDailyUsage } from '@/features/auth/types';
 import { logger } from '@/lib/logger';
 
 export default function Session() {
+  const router = useRouter();
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [dailyUsage, setDailyUsage] = useState<UserDailyUsage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +40,9 @@ export default function Session() {
 
   const { authorize } = useCaptiveAuthorization();
 
+  const [authorizationError, setAuthorizationError] = useState<string | null>(null);
+  const [isRetryingAuth, setIsRetryingAuth] = useState(false);
+
   useEffect(() => {
     const ctx = getStoredCaptivePortalContext();
     if (ctx?.id) {
@@ -53,7 +58,24 @@ export default function Session() {
     const load = async () => {
       try {
         setLoading(true);
-        await authorize();
+        setAuthorizationError(null);
+
+        const result = await authorize();
+
+        // Có captive context + đăng ký thành công → chuyển sang /network-connecting
+        if (result.ok && result.hadCaptiveContext) {
+          router.replace('/network-connecting');
+          return;
+        }
+
+        // Có context nhưng lỗi → hiển thị lỗi + nút retry, KHÔNG load sessions
+        if (!result.ok && result.hadCaptiveContext) {
+          setAuthorizationError('Không thể xác thực thiết bị. Vui lòng thử lại.');
+          setLoading(false);
+          return;
+        }
+
+        // Không có context (truy cập trực tiếp) → load sessions bình thường
         const [s, u] = await Promise.all([
           fetchActiveSessions(),
           fetchUserDailyUsage(),
@@ -69,7 +91,7 @@ export default function Session() {
       }
     };
     load();
-  }, [authorize]);
+  }, [authorize, router]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 60000);
@@ -97,6 +119,26 @@ export default function Session() {
       logger.error("Failed to logout all sessions:", error);
     }
   }, []);
+
+  const handleRetryAuthorization = useCallback(async () => {
+    setIsRetryingAuth(true);
+    setAuthorizationError(null);
+    try {
+      const result = await authorize();
+      if (result.ok && result.hadCaptiveContext) {
+        router.replace('/network-connecting');
+        return;
+      }
+      if (!result.ok) {
+        setAuthorizationError('Không thể xác thực thiết bị. Vui lòng thử lại.');
+      }
+    } catch (error) {
+      logger.error("Failed to retry authorization:", error);
+      setAuthorizationError('Không thể xác thực thiết bị. Vui lòng thử lại.');
+    } finally {
+      setIsRetryingAuth(false);
+    }
+  }, [authorize, router]);
 
   const isCurrentDevice = (session: UserSession) => {
     if (!currentDeviceMac || !session.deviceUserInfo.macAddress) {
@@ -141,6 +183,19 @@ export default function Session() {
           <Card className="p-8 text-center border-border">
             <Loader2 size={32} className="mx-auto text-muted-foreground mb-4 animate-spin" />
             <p className="text-sm text-muted-foreground">Đang tải...</p>
+          </Card>
+        ) : authorizationError ? (
+          <Card className="p-8 text-center border-border">
+            <div className="mb-4">
+              <p className="text-sm text-red-600 mb-4">{authorizationError}</p>
+              <Button
+                onClick={handleRetryAuthorization}
+                disabled={isRetryingAuth}
+                className="w-full"
+              >
+                {isRetryingAuth ? 'Đang thử lại...' : 'Thử lại xác thực thiết bị'}
+              </Button>
+            </div>
           </Card>
         ) : sessionCount === 0 ? (
           <Card className="p-8 text-center border-border">

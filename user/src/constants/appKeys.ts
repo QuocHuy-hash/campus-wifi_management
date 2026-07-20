@@ -9,6 +9,9 @@ export const STORAGE_KEYS = {
   refreshToken: "refreshToken",
   currentDeviceMac: "currentDeviceMac",
   savedGuestLoginUsername: "savedGuestLoginUsername",
+  // sessionStorage: bàn giao thông tin điều hướng sang /network-connecting sau khi register-device thành công
+  captiveEntryMode: "captiveEntryMode",
+  captiveOriginalUrl: "captiveOriginalUrl",
 } as const;
 
 export const AUTH_COOKIE_KEY = "access_token";
