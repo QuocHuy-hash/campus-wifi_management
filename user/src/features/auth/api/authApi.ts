@@ -66,7 +66,21 @@ export async function loginWithPassword(payload: LoginPayload): Promise<LoginRes
     },
   );
 
-  return response.data.data;
+
+  const data = response.data.data as unknown as {
+    token?: string;
+    accessToken?: string;
+    access_token?: string;
+    "access-token"?: string;
+    roles?: string[];
+  };
+
+  return {
+    accessToken:
+      data.accessToken ?? data.access_token ?? data["access-token"] ?? data.token ?? "",
+    refreshToken: null,
+    roles: Array.isArray(data.roles) ? data.roles : [],
+  };
 }
 
 export async function getMeProfile(): Promise<MeResponse> {

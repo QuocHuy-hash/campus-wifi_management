@@ -47,6 +47,36 @@
     --input: oklch(0.32 0.006 285.823);
     --ring: oklch(0.488 0.243 264.376);
   }
+
+  /*
+   * AuthPageLayout luôn dùng giao diện sáng. Dialog được render qua portal
+   * bên dưới body nên cần bộ token light riêng để không nhận nhầm dark theme
+   * từ html.
+   */
+  .auth-light-dialog {
+    color-scheme: light;
+    --primary: #2563eb;
+    --primary-foreground: #ffffff;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.235 0.015 65);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.235 0.015 65);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.235 0.015 65);
+    --secondary: oklch(0.98 0.001 286.375);
+    --secondary-foreground: oklch(0.4 0.015 65);
+    --muted: oklch(0.967 0.001 286.375);
+    --muted-foreground: oklch(0.552 0.016 285.938);
+    --accent: oklch(0.967 0.001 286.375);
+    --accent-foreground: oklch(0.141 0.005 285.823);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.985 0 0);
+    --border: oklch(0.92 0.004 286.32);
+    --input: oklch(0.92 0.004 286.32);
+    --ring: oklch(0.623 0.214 259.815);
+    color: var(--foreground);
+    background-color: var(--background);
+  }
 }
 
 @layer base {

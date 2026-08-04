@@ -5,7 +5,7 @@ set -e
 
 echo "🔧 Building Docker image with environment variables..."
 echo ""
-echo "NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-https://dev.wifi.adstechnology.vn/api/v1}"
+echo "NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-https://dev.wifi.adstechnology.vn/api/user/api/v1}"
 echo ""
 
 # Load .env.production if exists

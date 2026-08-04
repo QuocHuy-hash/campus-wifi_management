@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { currentUser } from '@/data/mockData';
-import { authorizeDevice, getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
+import { authorizeDevice, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
 import {
   clearForgotToken,
   getActiveProviders,
@@ -368,44 +368,24 @@ export default function Login() {
     }
   };
 
-  const persistSession = async (identifier: string, fallbackRole?: string) => {
-    try {
-      console.log('🔍 Calling getMeProfile...');
-      const profile = await getMeProfile();
-      console.log('✅ getMeProfile success:', profile);
-
-      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
-      localStorage.setItem(
-        STORAGE_KEYS.portalUser,
-        JSON.stringify({
-          id: profile.id,
-          username: profile.username || identifier,
-          fullname: profile.fullName || identifier,
-          email: profile.email || identifier,
-          role: fallbackRole || 'CLIENT',
-          status: profile.status,
-          avatarUrl: profile.avatarUrl,
-          loginTime: profile.lastLoginAt || new Date().toISOString(),
-        }),
-      );
-    } catch (error) {
-      console.error('❌ getMeProfile failed:', error);
-      // Vẫn lưu phiên tối thiểu để giao diện hoạt động khi API hồ sơ tạm lỗi.
-      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
-      localStorage.setItem(
-        STORAGE_KEYS.portalUser,
-        JSON.stringify({
-          id: 'unknown',
-          username: identifier,
-          fullname: identifier,
-          email: identifier,
-          role: fallbackRole || 'CLIENT',
-          status: 'ACTIVE',
-          avatarUrl: null,
-          loginTime: new Date().toISOString(),
-        }),
-      );
-    }
+  // Lưu phiên tối thiểu sau khi login thành công.
+  // Hồ sơ thật (fullName, avatar, roles...) sẽ được /session (và /account) tự fetch /auth/me khi mount,
+  // tránh gọi API xác thực ngay trên trang login gây lỗi 401 -> interceptor xóa cookie -> bị đá về login.
+  const persistSession = (identifier: string, fallbackRole?: string) => {
+    localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
+    localStorage.setItem(
+      STORAGE_KEYS.portalUser,
+      JSON.stringify({
+        id: 'unknown',
+        username: identifier,
+        fullname: identifier,
+        email: identifier,
+        role: fallbackRole || 'CLIENT',
+        status: 'ACTIVE',
+        avatarUrl: null,
+        loginTime: new Date().toISOString(),
+      }),
+    );
   };
 
   const establishPasswordSession = async (
@@ -413,21 +393,17 @@ export default function Login() {
     identifier: string,
   ): Promise<boolean> => {
     localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
-    if (result.refreshToken) {
-      localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
-    }
 
     setAxiosAuthToken(result.accessToken);
     const cookieOk = await setSessionCookie(result.accessToken);
     if (!cookieOk) {
       localStorage.removeItem(STORAGE_KEYS.accessToken);
-      localStorage.removeItem(STORAGE_KEYS.refreshToken);
       setError('Không thể thiết lập phiên đăng nhập. Vui lòng thử lại.');
       setIsLoading(false);
       return false;
     }
 
-    await persistSession(identifier, result.roles?.[0]);
+    persistSession(identifier, result.roles?.[0]);
     saveGuestLoginUsername(identifier);
     return true;
   };
@@ -662,7 +638,7 @@ export default function Login() {
         identifier: loginUsername,
         password: loginPassword,
       });
-
+console.log("result::::", result);
       const sessionReady = await establishPasswordSession(
         result,
         loginUsername,

@@ -94,7 +94,7 @@ export default function GuestRegistrationDialog({
 }: GuestRegistrationDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="auth-light-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {(guestStep === 'otp' || guestStep === 'newpass') && (
