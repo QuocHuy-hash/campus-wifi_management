@@ -40,9 +40,23 @@ export interface VerifyOtpResult {
   message: string;
 }
 
-export interface LoginPayload {
+export interface LoginCredentials {
   identifier: string;
   password: string;
+}
+
+export interface InitSessionPayload {
+  deviceId: string;
+}
+
+export interface InitSessionResult {
+  login_token: string;
+  expires_in: number;
+}
+
+export interface LoginPayload extends LoginCredentials {
+  deviceId: string;
+  device_id?: string;
 }
 
 export interface LoginResult {
@@ -56,7 +70,7 @@ export interface CaptivePortalContext {
   ap: string;
   ssid: string;
   url: string;
-  t?: string; // Optional timestamp parameter from controller
+  t?: string; // Tham số thời gian tùy chọn từ controller
 }
 
 export interface AuthorizeDevicePayload {
@@ -178,7 +192,7 @@ export interface ApiErrorBody {
   path?: string;
 }
 
-// Session types - Response from GET /api/v1/user-sessions/me
+// Kiểu dữ liệu phiên — response từ GET /api/v1/user-sessions/me
 export interface DeviceUserInfo {
   deviceId: number;        // ID trong user_devices
   macAddress: string;      // MAC thiết bị
@@ -187,13 +201,13 @@ export interface DeviceUserInfo {
   userId: number;          // ID người dùng
   userName: string;        // Tên người dùng
   userGroup: string | null; // VD: Cán bộ cấp cao
-  trafficIn: string | null; // Đã format (VD: 3.18 MB) — realtime từ UniFi
-  trafficOut: string | null; // Đã format — realtime từ UniFi
-  downloadBytes: string | null; // Lưu lượng download (đã format) — realtime từ UniFi
-  uploadBytes: string | null;   // Lưu lượng upload (đã format) — realtime từ UniFi
+  trafficIn: string | null; // Đã định dạng (VD: 3.18 MB) — dữ liệu thời gian thực từ UniFi
+  trafficOut: string | null; // Đã định dạng — dữ liệu thời gian thực từ UniFi
+  downloadBytes: string | null; // Lưu lượng tải xuống đã định dạng — dữ liệu thời gian thực từ UniFi
+  uploadBytes: string | null;   // Lưu lượng tải lên đã định dạng — dữ liệu thời gian thực từ UniFi
   isOnline: boolean;       // Có online trên UniFi không?
-  ssid: string;            // SSID realtime từ UniFi
-  apMac: string;           // AP MAC realtime từ UniFi
+  ssid: string;            // SSID theo thời gian thực từ UniFi
+  apMac: string;           // Địa chỉ MAC của AP theo thời gian thực từ UniFi
 }
 
 export interface UserSession {
@@ -218,7 +232,7 @@ export interface UserSessionPageResponse {
   total: number;           // Tổng số bản ghi
   pages: number;           // Tổng số trang
   records: UserSession[];  // Danh sách phiên
-  orders: string[];        // Sorting (nếu có)
+  orders: string[];        // Tiêu chí sắp xếp (nếu có)
 }
 
 export interface UserSessionQueryParams {
@@ -226,11 +240,11 @@ export interface UserSessionQueryParams {
   ssid?: string;           // Lọc theo SSID
   startDate?: string;      // Lọc từ ngày (yyyy-MM-dd)
   endDate?: string;        // Lọc đến ngày (yyyy-MM-dd)
-  page?: number;           // Số trang (default: 1)
-  size?: number;           // Số bản ghi/trang (default: 10)
+  page?: number;           // Số trang (mặc định: 1)
+  size?: number;           // Số bản ghi/trang (mặc định: 10)
 }
 
-// Usage types - Response from GET /api/v1/user-sessions/me/usage
+// Kiểu dữ liệu lưu lượng — response từ GET /api/v1/user-sessions/me/usage
 export interface UserDailyUsage {
   date: string;                 // Ngày (yyyy-MM-dd)
   totalDownloadBytes: number;   // Tổng download (bytes)
@@ -242,7 +256,7 @@ export interface UserDailyUsageQueryParams {
   date?: string; // Ngày cần lấy (yyyy-MM-dd), mặc định hôm nay
 }
 
-// Device types - Response from GET /api/v1/users/devices
+// Kiểu dữ liệu thiết bị — response từ GET /api/v1/users/devices
 export interface UserDevice {
   id: number;
   deviceMacAddress: string;

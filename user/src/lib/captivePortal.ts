@@ -33,6 +33,7 @@ export function extractCaptivePortalContext(search: string): CaptivePortalContex
 
 export function saveCaptivePortalContext(context: CaptivePortalContext): void {
   localStorage.setItem(STORAGE_KEYS.portalCaptiveContext, JSON.stringify(context));
+  localStorage.setItem(STORAGE_KEYS.currentDeviceMac, context.id);
   sessionStorage.setItem(STORAGE_KEYS.portalRedirectUrl, context.url);
 }
 

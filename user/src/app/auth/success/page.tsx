@@ -7,6 +7,7 @@ import { STORAGE_KEYS } from "@/constants/appKeys";
 import { getCaptivePortalContext, buildAuthorizeDevicePayload } from "@/lib/captivePortal";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
 import { getRedirectUrl, clearRedirectUrl, navigateOrFallback } from "@/lib/captivePortal";
+import { clearStoredAuthSession, establishSessionCookie } from "@/lib/session";
 
 export default function OAuthSuccess() {
   const router = useRouter();
@@ -24,12 +25,14 @@ export default function OAuthSuccess() {
 
     if (accessToken) {
       localStorage.setItem(STORAGE_KEYS.accessToken, accessToken);
-      // Set httpOnly cookie via API route
-      await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken }),
-      });
+      try {
+        await establishSessionCookie(accessToken);
+      } catch {
+        clearStoredAuthSession();
+        setIsProcessing(false);
+        setError("Không thể thiết lập phiên đăng nhập.");
+        return;
+      }
     }
 
     try {

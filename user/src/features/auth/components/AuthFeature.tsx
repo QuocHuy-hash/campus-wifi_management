@@ -21,27 +21,11 @@ import AuthPageLayout from '@/features/auth/components/AuthPageLayout';
 import AuthTermsDialog from '@/features/auth/components/dialogs/AuthTermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
-import { STORAGE_KEYS, AUTH_COOKIE_KEY } from '@/constants/appKeys';
+import { STORAGE_KEYS } from '@/constants/appKeys';
 import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload, clearRedirectUrl } from '@/lib/captivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
 import { validatePassword } from '@/lib/passwordValidation';
-
-async function setSessionCookie(accessToken: string): Promise<boolean> {
-  try {
-    const res = await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken }),
-    });
-    // Cookie phía client là phương án dự phòng để middleware vẫn nhận diện phiên.
-    document.cookie = `${AUTH_COOKIE_KEY}=${accessToken};path=/;max-age=3600;SameSite=Lax`;
-    return res.ok;
-  } catch {
-    // API lỗi vẫn không được làm gián đoạn luồng chuyển hướng sau đăng nhập.
-    document.cookie = `${AUTH_COOKIE_KEY}=${accessToken};path=/;max-age=3600;SameSite=Lax`;
-    return true;
-  }
-}
+import { clearStoredAuthSession, establishSessionCookie } from '@/lib/session';
 
 const LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY = 'savedGuestLoginCredentials';
 
@@ -156,7 +140,7 @@ export default function Login() {
     dispatch(getActiveProviders());
   }, [dispatch]);
 
-  // Khởi tạo interceptor một lần trước khi thực hiện các request xác thực.
+  // Khởi tạo interceptor một lần trước khi thực hiện các yêu cầu xác thực.
   useEffect(() => {
     initializeAxios();
   }, []);
@@ -215,64 +199,40 @@ export default function Login() {
     const handleRedirectWithSession = async () => {
       if (typeof window === 'undefined') return;
 
-      // Chỉ tin token localStorage khi cookie phiên vẫn tồn tại để tránh vòng lặp redirect.
-      const hasAuthCookie = document.cookie.split(';').some(cookie => {
-        const [name] = cookie.trim().split('=');
-        return name === AUTH_COOKIE_KEY;
-      });
-
-      const isLoggedIn = localStorage.getItem(STORAGE_KEYS.portalLoggedIn) === 'true';
-      const hasToken = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || !!localStorage.getItem(STORAGE_KEYS.accessToken);
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       const captiveContext = getCaptivePortalContext('');
 
       console.log('🔄 Checking redirect with session...');
-      console.log('🔄 Has auth cookie:', hasAuthCookie);
-      console.log('🔄 Is logged in:', isLoggedIn);
-      console.log('🔄 Has token:', hasToken);
+      console.log('🔄 Has token:', Boolean(token));
       console.log('🔄 Captive context:', captiveContext);
 
-      // Token không còn cookie đi kèm được xem là phiên cũ và phải dọn sạch.
-      if (hasToken && !hasAuthCookie) {
-        console.warn('⚠️ Token exists in localStorage but no cookie found - clearing stale session');
-        localStorage.removeItem(STORAGE_KEYS.accessToken);
-        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-        localStorage.removeItem(STORAGE_KEYS.refreshToken);
-        localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-        localStorage.removeItem(STORAGE_KEYS.portalLoggedIn);
-        localStorage.removeItem(STORAGE_KEYS.portalUser);
+      if (!token) {
         return;
       }
 
-      // Đồng bộ lại cookie qua API trước khi chuyển sang trang được bảo vệ.
-      if (hasToken && hasAuthCookie) {
-        const token = localStorage.getItem(STORAGE_KEYS.accessToken) || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-        if (token) {
-          const cookieOk = await setSessionCookie(token);
-          if (!cookieOk) {
-            console.warn('⚠️ Failed to set session cookie, clearing stale token');
-            localStorage.removeItem(STORAGE_KEYS.accessToken);
-            localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-            localStorage.removeItem(STORAGE_KEYS.portalLoggedIn);
-            return;
-          }
-        }
+      // Cookie phiên là HttpOnly nên client không thể kiểm tra bằng document.cookie.
+      // Đồng bộ qua API route và tin vào kết quả HTTP của route đó.
+      try {
+        await establishSessionCookie(token);
+      } catch {
+        console.warn('⚠️ Failed to restore session cookie, clearing stale token');
+        clearStoredAuthSession();
+        setAxiosAuthToken(null);
+        return;
       }
 
       // Không còn captive context thì middleware tiếp quản việc điều hướng phiên.
-      if (hasToken && hasAuthCookie && !captiveContext) {
+      if (!captiveContext) {
         console.log('🚀 User has valid session - letting middleware handle redirect...');
         router.push('/session');
         return;
       }
 
       // Phiên cũ quay lại từ captive portal cần được cấp quyền thiết bị tự động.
-      if (isLoggedIn && hasToken && hasAuthCookie && captiveContext) {
+      if (captiveContext) {
         console.log('🚀 User already logged in with captive context - auto authorizing device...');
-        
-        const token = localStorage.getItem(STORAGE_KEYS.accessToken) || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-        if (token) {
-          setAxiosAuthToken(token);
-        }
+
+        setAxiosAuthToken(token);
 
         try {
           const payload = buildAuthorizeDevicePayload(captiveContext);
@@ -369,7 +329,7 @@ export default function Login() {
   };
 
   // Lưu phiên tối thiểu sau khi login thành công.
-  // Hồ sơ thật (fullName, avatar, roles...) sẽ được /session (và /account) tự fetch /auth/me khi mount,
+  // Trang /session và /account sẽ tự gọi /auth/me để lấy hồ sơ thật (fullName, avatar, roles...) khi khởi tạo,
   // tránh gọi API xác thực ngay trên trang login gây lỗi 401 -> interceptor xóa cookie -> bị đá về login.
   const persistSession = (identifier: string, fallbackRole?: string) => {
     localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
@@ -395,9 +355,11 @@ export default function Login() {
     localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
 
     setAxiosAuthToken(result.accessToken);
-    const cookieOk = await setSessionCookie(result.accessToken);
-    if (!cookieOk) {
-      localStorage.removeItem(STORAGE_KEYS.accessToken);
+    try {
+      await establishSessionCookie(result.accessToken);
+    } catch {
+      clearStoredAuthSession();
+      setAxiosAuthToken(null);
       setError('Không thể thiết lập phiên đăng nhập. Vui lòng thử lại.');
       setIsLoading(false);
       return false;
@@ -423,7 +385,7 @@ export default function Login() {
       await authorizeDeviceInBackground();
     }
 
-    // Tải lại toàn trang để cookie phiên được gửi ngay ở request kế tiếp.
+    // Tải lại toàn trang để cookie phiên được gửi ngay ở yêu cầu kế tiếp.
     window.location.href = hasCaptiveContext
       ? '/network-connecting'
       : '/session';
@@ -570,7 +532,7 @@ export default function Login() {
 
     try {
       await dispatch(resendEmailOtp({ identifier: getGuestIdentifier() })).unwrap();
-      setGuestResendCooldown(60); // Reset đếm ngược sau khi gửi lại thành công
+      setGuestResendCooldown(60); // Đặt lại thời gian đếm ngược sau khi gửi lại thành công
     } catch (apiError) {
       setOtpError(String(apiError));
     }
@@ -582,7 +544,7 @@ export default function Login() {
     setGuestStep('form');
     setOtpCode(['', '', '', '', '', '']);
     setOtpError('');
-    setGuestResendCooldown(0); // Reset đếm ngược khi đóng dialog
+    setGuestResendCooldown(0); // Đặt lại thời gian đếm ngược khi đóng hộp thoại
   };
 
   const handleUseGuestCredentials = async () => {
@@ -709,7 +671,7 @@ console.log("result::::", result);
     setIsSendingForgotOtp(true);
     try {
       await dispatch(sendForgotOtp({ identifier: forgotContact })).unwrap();
-      setForgotResendCooldown(120); // Reset đếm ngược sau khi gửi lại thành công
+      setForgotResendCooldown(120); // Đặt lại thời gian đếm ngược sau khi gửi lại thành công
     } catch (apiError) {
       setForgotOtpError(String(apiError));
     } finally {
@@ -745,7 +707,7 @@ console.log("result::::", result);
     }
   };
 
-  // Reset toàn bộ form quên mật khẩu về trạng thái ban đầu
+  // Đặt lại toàn bộ biểu mẫu quên mật khẩu về trạng thái ban đầu
   const resetForgotForm = () => {
     setForgotContact('');
     setForgotMethod('email');

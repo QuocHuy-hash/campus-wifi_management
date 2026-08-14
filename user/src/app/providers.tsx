@@ -9,7 +9,7 @@ import { initializeAxios, setAxiosAuthToken } from "@/config/axios";
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { AUTH_COOKIE_KEY, STORAGE_KEYS } from "@/constants/appKeys";
+import { STORAGE_KEYS } from "@/constants/appKeys";
 import {
   buildAuthorizeDevicePayload,
   extractCaptivePortalContext,
@@ -71,20 +71,16 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
     const captiveContext = extractCaptivePortalContext(search);
 
-    // Only authorize requests that actually carry all required captive params.
+    // Chỉ cấp quyền khi yêu cầu có đầy đủ tham số captive portal bắt buộc.
     if (!captiveContext) return;
 
     saveCaptivePortalContext(captiveContext);
 
-    const hasAuthCookie = document.cookie.split(";").some((cookie) => {
-      const [name] = cookie.trim().split("=");
-      return name === AUTH_COOKIE_KEY;
-    });
-    const token =
-      localStorage.getItem(STORAGE_KEYS.accessToken) ||
-      localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 
-    if (!hasAuthCookie || !token) return;
+    // Cookie access_token là HttpOnly nên phía client dùng token trong localStorage
+    // làm tín hiệu; middleware sẽ kiểm tra cookie độc lập khi chuyển trang.
+    if (!token) return;
 
     const redirectKey = JSON.stringify(captiveContext);
     if (processedCaptiveRedirectRef.current === redirectKey) return;

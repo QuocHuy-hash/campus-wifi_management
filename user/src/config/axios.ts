@@ -5,11 +5,15 @@ import axios, {
 import { API_BASE_URL } from "@/config/api";
 import {
   API_HEADERS,
-  AUTH_COOKIE_KEY,
   HTTP_CONFIG,
   STORAGE_KEYS,
 } from "@/constants/appKeys";
 import { logger } from "@/lib/logger";
+import {
+  clearSessionCookie,
+  clearStoredAuthSession,
+  establishSessionCookie,
+} from "@/lib/session";
 
 const REFRESH_TOKEN_ENDPOINT = "/auth/refresh-token";
 const LOGIN_PATH = "/login";
@@ -19,6 +23,7 @@ let refreshTokenPromise: Promise<string> | null = null;
 let isHandlingRefreshFailure = false;
 
 const PUBLIC_ENDPOINTS = [
+  "/auth/init-session",
   "/auth/login",
   "/auth/register",
   "/auth/verify-otp",
@@ -76,24 +81,20 @@ const persistRefreshedSession = async (accessToken: string): Promise<void> => {
     `Bearer ${accessToken}`;
 
   // Middleware bảo vệ route bằng cookie access_token, nên cần cập nhật cookie
-  // cùng lúc với localStorage sau khi backend cấp access token mới.
-  const sessionResponse = await fetch("/api/auth/session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ accessToken }),
-  });
-
-  if (!sessionResponse.ok) {
-    throw new Error("Không thể đồng bộ cookie phiên sau khi refresh token");
-  }
+  // cùng lúc với localStorage sau khi backend cấp dynamic token mới.
+  await establishSessionCookie(accessToken);
 };
 
 const requestNewAccessToken = async (): Promise<string> => {
   const token = getStoredAuthToken();
 
+  if (!token) {
+    throw new Error("Không tìm thấy dynamic token để làm mới phiên");
+  }
+
   const response = await refreshClient.post<RefreshTokenResponse>(
     REFRESH_TOKEN_ENDPOINT,
-    { "refresh-token": token },
+    { refresh_token: token },
   );
   const refreshData = response.data.data ?? response.data;
   const accessToken =
@@ -127,20 +128,13 @@ const clearAuthStateAndRedirect = async (): Promise<void> => {
 
   isHandlingRefreshFailure = true;
 
-  localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.portalLoggedIn);
-  localStorage.removeItem(STORAGE_KEYS.portalUser);
+  clearStoredAuthSession();
   delete axios.defaults.headers.common[API_HEADERS.AUTHORIZATION];
 
   try {
-    const logoutResponse = await fetch("/api/auth/logout", { method: "POST" });
-    if (!logoutResponse.ok) {
-      throw new Error("Logout API không thể xóa cookie phiên");
-    }
+    await clearSessionCookie();
   } catch (error) {
     logger.error("Không thể xóa cookie phiên qua logout API:", error);
-    document.cookie = `${AUTH_COOKIE_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
   }
 
   const currentPath = window.location.pathname;

@@ -9,6 +9,7 @@ export const STORAGE_KEYS = {
   accessToken: "accessToken",
   refreshToken: "refreshToken",
   currentDeviceMac: "currentDeviceMac",
+  authDeviceId: "authDeviceId",
   savedGuestLoginUsername: "savedGuestLoginUsername",
 } as const;
 
