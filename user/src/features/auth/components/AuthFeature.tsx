@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { currentUser } from '@/data/mockData';
 import { authorizeDevice, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
 import {
@@ -69,6 +70,7 @@ function saveGuestLoginUsername(username: string): void {
 export default function Login() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<AuthTab>('guest');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -245,7 +247,7 @@ export default function Login() {
           console.error('❌ Failed to authorize device via redirect:', error);
           clearRedirectUrl();
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-          setError('Xác thực thiết bị thất bại. Vui lòng thử lại.');
+          setError(t('common.deviceAuthFailedRetry'));
         }
       }
     };
@@ -265,19 +267,19 @@ export default function Login() {
       const status = maybeAxios.response?.status;
 
       if (status === 401) {
-        return 'Tài khoản hoặc mật khẩu không đúng';
+        return t('common.invalidCredentials');
       }
 
       if (status === 404) {
-        return 'Không tìm thấy servidor. Vui lòng thử lại sau.';
+        return t('common.serverNotFound');
       }
 
       if (status === 500) {
-        return 'Lỗi servidor nội bộ. Vui lòng thử lại sau.';
+        return t('common.serverInternalError');
       }
 
       if (status === 502 || status === 503) {
-        return 'Servidor đang bảo trì. Vui lòng thử lại sau.';
+        return t('common.serverMaintenance');
       }
 
       if (maybeAxios.response?.data?.message) {
@@ -286,16 +288,16 @@ export default function Login() {
 
       if (maybeAxios.message) {
         if (maybeAxios.message.includes('Network Error') || maybeAxios.message.includes('ECONNREFUSED')) {
-          return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.';
+          return t('common.networkUnreachable');
         }
         if (maybeAxios.message.includes('timeout')) {
-          return 'Hết thời gian kết nối. Vui lòng thử lại.';
+          return t('common.connectionTimeout');
         }
-        return 'Đăng nhập thất bại. Vui lòng thử lại.';
+        return t('common.loginFailed');
       }
     }
 
-    return 'Đăng nhập thất bại. Vui lòng thử lại.';
+    return t('common.loginFailed');
   };
 
   const getGuestIdentifier = () =>
@@ -360,7 +362,7 @@ export default function Login() {
     } catch {
       clearStoredAuthSession();
       setAxiosAuthToken(null);
-      setError('Không thể thiết lập phiên đăng nhập. Vui lòng thử lại.');
+      setError(t('common.sessionSetupFailed'));
       setIsLoading(false);
       return false;
     }
@@ -377,7 +379,7 @@ export default function Login() {
     if (hasCaptiveContext) {
       const authorized = await authorizeDeviceInBackground();
       if (!authorized) {
-        setError('Xác thực thiết bị thất bại. Vui lòng thử lại.');
+        setError(t('common.deviceAuthFailedRetry'));
         setIsLoading(false);
         return;
       }
@@ -393,14 +395,14 @@ export default function Login() {
 
   const handleSSOLogin = async (provider: string) => {
     if (!agreeTerms) {
-      setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
+      setError(t('common.agreeTermsRequired'));
       return;
     }
     setError('');
 
     if (provider === 'google' || provider === 'azure') {
       if (activeProviderCodes.length > 0 && !activeProviderCodes.includes(provider)) {
-        setError('Provider này hiện chưa được kích hoạt trên hệ thống');
+        setError(t('common.providerNotActive', { provider }));
         return;
       }
 
@@ -424,7 +426,7 @@ export default function Login() {
         ...currentUser,
         id: Date.now(),
         username: linkedAccount.email,
-        fullname: `Người dùng ${provider}`,
+        fullname: t('common.renamedUser', { provider }),
         loginTime: new Date().toISOString(),
         linkedAccounts: [linkedAccount]
       }));
@@ -444,7 +446,7 @@ export default function Login() {
       return;
     }
     if (guestForm.password !== guestForm.confirmPassword) {
-      setOtpError('Xác nhận mật khẩu không khớp');
+      setOtpError(t('common.confirmPasswordNotMatch'));
       return;
     }
 
@@ -487,7 +489,7 @@ export default function Login() {
   const handleVerifyOtp = async () => {
     const otp = otpCode.join('');
     if (otp.length !== 6) {
-      setOtpError('Vui lòng nhập đủ 6 số');
+      setOtpError(t('common.enterFullOtp'));
       return;
     }
 
@@ -513,7 +515,7 @@ export default function Login() {
       return;
     }
     if (guestNewPassword !== guestConfirmPassword) {
-      setOtpError('Xác nhận mật khẩu không khớp');
+      setOtpError(t('common.confirmPasswordNotMatch'));
       return;
     }
 
@@ -549,7 +551,7 @@ export default function Login() {
 
   const handleUseGuestCredentials = async () => {
     if (!agreeTerms) {
-      setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
+      setError(t('common.agreeTermsRequired'));
       setIsLoading(false);
       return;
     }
@@ -581,7 +583,7 @@ export default function Login() {
 
   const handleStandardLogin = async () => {
     if (!agreeTerms) {
-      setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
+      setError(t('common.agreeTermsRequired'));
       setIsLoading(false);
       return;
     }
@@ -591,7 +593,7 @@ export default function Login() {
 
     if (!loginUsername || !loginPassword) {
       setIsLoading(false);
-      setError('Vui lòng nhập tài khoản và mật khẩu');
+      setError(t('common.enterCredentials'));
       return;
     }
 
@@ -649,7 +651,7 @@ console.log("result::::", result);
   const handleVerifyForgotOtp = async () => {
     const otp = forgotOtp.join('');
     if (otp.length !== 6) {
-      setForgotOtpError('Vui lòng nhập đủ 6 số');
+      setForgotOtpError(t('common.enterFullOtp'));
       return;
     }
     setIsVerifyingForgotOtp(true);
@@ -686,11 +688,11 @@ console.log("result::::", result);
       return;
     }
     if (newPassword !== confirmNewPassword) {
-      setForgotOtpError('Xác nhận mật khẩu không khớp');
+      setForgotOtpError(t('common.confirmPasswordNotMatch'));
       return;
     }
     if (!forgotToken) {
-      setForgotOtpError('Phiên đặt lại mật khẩu đã hết hạn. Vui lòng thử lại.');
+      setForgotOtpError(t('common.forgotSessionExpired'));
       return;
     }
     setIsResettingPassword(true);

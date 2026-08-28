@@ -16,8 +16,10 @@ import LogoutConfirmDialog from './components/LogoutConfirmDialog';
 import ComingSoonDialog from '@/components/ComingSoonDialog';
 import type { UserSession, UserDailyUsage } from '@/features/auth/types';
 import { logger } from '@/lib/logger';
+import { useTranslation } from 'react-i18next';
 
 export default function Session() {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [dailyUsage, setDailyUsage] = useState<UserDailyUsage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -132,7 +134,7 @@ export default function Session() {
               className="text-muted-foreground"
             >
               <LogOut size={16} className="mr-1.5" />
-              <span className="hidden sm:inline">Đăng xuất</span>
+              <span className="hidden sm:inline">{t('common.logout')}</span>
             </Button>
           </div>
         }
@@ -140,26 +142,26 @@ export default function Session() {
         {loading ? (
           <Card className="p-8 text-center border-border">
             <Loader2 size={32} className="mx-auto text-muted-foreground mb-4 animate-spin" />
-            <p className="text-sm text-muted-foreground">Đang tải...</p>
+            <p className="text-sm text-muted-foreground">{t('session.loading')}</p>
           </Card>
         ) : sessionCount === 0 ? (
           <Card className="p-8 text-center border-border">
             <Wifi size={40} className="mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-lg font-semibold text-card-foreground mb-2">Chưa có phiên nào</h2>
-            <p className="text-sm text-muted-foreground mb-4">Hiện tại bạn chưa kết nối WiFi.</p>
+            <h2 className="text-lg font-semibold text-card-foreground mb-2">{t('session.noSessions')}</h2>
+            <p className="text-sm text-muted-foreground mb-4">{t('session.noSessionsDesc')}</p>
             <Link href="/history">
               <Button variant="outline">
                 <History size={16} className="mr-2" />
-                Xem lịch sử
+                {t('session.viewHistory')}
               </Button>
             </Link>
           </Card>
         ) : (
           <>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-medium text-muted-foreground">Phiên đang hoạt động</h2>
+              <h2 className="text-sm font-medium text-muted-foreground">{t('session.activeSessions')}</h2>
               <span className="text-xs text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-full">
-                {sessionCount} thiết bị
+                {t('session.deviceCount', { count: sessionCount })}
               </span>
             </div>
 
@@ -181,7 +183,7 @@ export default function Session() {
               onClick={() => setLogoutAllDialogOpen(true)}
               className="mt-4 w-full text-sm text-muted-foreground bg-card border border-border px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-muted transition-colors"
             >
-              <LogOut size={15} /> Đăng xuất tất cả thiết bị
+              <LogOut size={15} /> {t('session.logoutAllDevices')}
             </button>
           </>
         )}
@@ -191,9 +193,9 @@ export default function Session() {
         open={logoutAllDialogOpen}
         onOpenChange={setLogoutAllDialogOpen}
         onConfirm={handleLogoutAll}
-        title="Đăng xuất tất cả?"
-        description="Tất cả thiết bị sẽ ngắt kết nối WiFi."
-        confirmText="Đăng xuất tất cả"
+        title={t('session.logoutAllTitle')}
+        description={t('session.logoutAllDesc')}
+        confirmText={t('session.logoutAllConfirm')}
       />
 
       <ComingSoonDialog open={comingSoonOpen} onOpenChange={setComingSoonOpen} />

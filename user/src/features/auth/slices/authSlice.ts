@@ -8,6 +8,7 @@ import {
   verifyResetOtp,
   verifyUserEmail,
 } from "@/features/auth/api/authApi";
+import i18n from "@/i18n";
 import type {
   ForgotPasswordPayload,
   ProviderConfig,
@@ -49,19 +50,19 @@ const initialState: AuthState = {
  */
 function translateErrorMessage(message: string): string {
   if (message.includes("OTP_RESEND_RATE_LIMITED")) {
-    return "Bạn đã gửi OTP quá nhiều lần. Vui lòng thử lại sau 60 giây.";
+    return i18n.t("errors.otpRateLimited");
   }
   if (message.includes("OTP_INVALID_OR_EXPIRED") || message.includes("OTP is invalid or expired")) {
-    return "Mã OTP không đúng hoặc đã hết hạn. Vui lòng thử lại.";
+    return i18n.t("errors.otpInvalid");
   }
   if (message.includes("TOKEN_INVALID") || message.includes("token is invalid")) {
-    return "Phiên đặt lại mật khẩu đã hết hạn. Vui lòng thực hiện lại từ đầu.";
+    return i18n.t("errors.resetTokenInvalid");
   }
   if (message.includes("USER_NOT_FOUND") || message.includes("not found")) {
-    return "Tài khoản không tồn tại trong hệ thống.";
+    return i18n.t("errors.accountNotFound");
   }
   if (message.includes("rate limit") || message.includes("too many")) {
-    return "Bạn đã thực hiện thao tác quá nhiều lần. Vui lòng thử lại sau.";
+    return i18n.t("errors.tooManyRequests");
   }
   return message;
 }
@@ -86,24 +87,24 @@ export function extractErrorMessage(error: unknown): string {
 
     // Xử lý lỗi HTTP
     if (status === 404) {
-      return "Không tìm thấy máy chủ. Vui lòng thử lại sau.";
+      return i18n.t("errors.serverNotFound");
     }
     if (status === 429) {
       return translateErrorMessage(rawMessage || "");
     }
     if (status === 500) {
-      return "Lỗi máy chủ nội bộ. Vui lòng thử lại sau.";
+      return i18n.t("errors.serverInternal");
     }
     if (status === 502 || status === 503) {
-      return "Máy chủ đang bảo trì. Vui lòng thử lại sau.";
+      return i18n.t("errors.serverMaintenance");
     }
 
     // Xử lý lỗi theo business code
     if (data?.code === 6009) {
-      return "Mã OTP không đúng hoặc đã hết hạn. Vui lòng thử lại.";
+      return i18n.t("errors.otpInvalid");
     }
     if (data?.code === 6004) {
-      return "Mật khẩu hiện tại không đúng. Vui lòng thử lại.";
+      return i18n.t("errors.currentPasswordWrong");
     }
 
     // Dịch message từ API nếu có
@@ -111,10 +112,10 @@ export function extractErrorMessage(error: unknown): string {
       return translateErrorMessage(rawMessage);
     }
 
-    return "Đã xảy ra lỗi hệ thống. Vui lòng thử lại.";
+    return i18n.t("errors.system");
   }
 
-  return "Đã xảy ra lỗi hệ thống. Vui lòng thử lại.";
+  return i18n.t("errors.system");
 }
 
 export const getActiveProviders = createAsyncThunk(
@@ -222,7 +223,7 @@ const authSlice = createSlice({
       })
       .addCase(getActiveProviders.rejected, (state, action) => {
         state.providersLoading = false;
-        state.error = String(action.payload || "Không thể tải danh sách provider");
+        state.error = String(action.payload || i18n.t("errors.providerLoadFailed"));
       })
       .addCase(registerWithOtp.pending, (state) => {
         state.registerLoading = true;
@@ -234,7 +235,7 @@ const authSlice = createSlice({
       })
       .addCase(registerWithOtp.rejected, (state, action) => {
         state.registerLoading = false;
-        state.error = String(action.payload || "Đăng ký thất bại");
+        state.error = String(action.payload || i18n.t("errors.registerFailed"));
       })
       .addCase(verifyEmailOtp.pending, (state) => {
         state.verifyLoading = true;
@@ -245,7 +246,7 @@ const authSlice = createSlice({
       })
       .addCase(verifyEmailOtp.rejected, (state, action) => {
         state.verifyLoading = false;
-        state.error = String(action.payload || "Xác thực OTP thất bại");
+        state.error = String(action.payload || i18n.t("errors.verifyOtpFailed"));
       })
       .addCase(resendEmailOtp.pending, (state) => {
         state.resendLoading = true;
@@ -255,7 +256,7 @@ const authSlice = createSlice({
       })
       .addCase(resendEmailOtp.rejected, (state, action) => {
         state.resendLoading = false;
-        state.error = String(action.payload || "Gửi lại OTP thất bại");
+        state.error = String(action.payload || i18n.t("errors.resendOtpFailed"));
       })
       .addCase(sendForgotOtp.pending, (state) => {
         state.forgotLoading = true;
@@ -266,7 +267,7 @@ const authSlice = createSlice({
       })
       .addCase(sendForgotOtp.rejected, (state, action) => {
         state.forgotLoading = false;
-        state.error = String(action.payload || "Gửi OTP thất bại");
+        state.error = String(action.payload || i18n.t("errors.sendOtpFailed"));
       })
       .addCase(verifyForgotOtp.pending, (state) => {
         state.forgotLoading = true;
@@ -278,7 +279,7 @@ const authSlice = createSlice({
       })
       .addCase(verifyForgotOtp.rejected, (state, action) => {
         state.forgotLoading = false;
-        state.error = String(action.payload || "Xác thực OTP thất bại");
+        state.error = String(action.payload || i18n.t("errors.verifyOtpFailed"));
       })
       .addCase(submitResetPassword.pending, (state) => {
         state.forgotLoading = true;
@@ -290,7 +291,7 @@ const authSlice = createSlice({
       })
       .addCase(submitResetPassword.rejected, (state, action) => {
         state.forgotLoading = false;
-        state.error = String(action.payload || "Đặt lại mật khẩu thất bại");
+        state.error = String(action.payload || i18n.t("errors.resetPasswordFailed"));
       });
   },
 });

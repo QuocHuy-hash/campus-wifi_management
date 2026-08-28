@@ -1,4 +1,8 @@
+"use client";
+
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const HCMUS_LOGO = '/logo_hcmus.png';
 
@@ -7,9 +11,14 @@ interface AuthPageLayoutProps {
 }
 
 export default function AuthPageLayout({ children }: AuthPageLayoutProps) {
+  const { t } = useTranslation();
+
   return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="relative w-full max-w-md">
+        <div className="flex justify-end mb-2">
+          <LanguageSwitcher />
+        </div>
         <header className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-3">
             <img
@@ -18,7 +27,7 @@ export default function AuthPageLayout({ children }: AuthPageLayoutProps) {
               className="w-14 h-14 object-contain"
             />
             <p className="text-gray-600 font-sans">
-              Trường Đại học KHTN - ĐHQG HCM
+              {t('auth.university')}
             </p>
           </div>
         </header>
@@ -26,7 +35,7 @@ export default function AuthPageLayout({ children }: AuthPageLayoutProps) {
         {children}
 
         <footer className="text-center text-gray-400 text-xs mt-6">
-          © 2026 HCMUS - Trường Đại học Khoa học Tự nhiên
+          {t('auth.footer')}
         </footer>
       </div>
     </main>

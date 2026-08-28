@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { Download, Upload, Activity, LogOut } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { formatBytes, formatDurationShort } from '@/data/mockData';
 import { getDeviceIcon, getDeviceIconStyle, getActiveDuration } from '../utils';
 import type { UserSession } from '@/features/auth/types';
@@ -14,6 +15,7 @@ interface SessionCardProps {
 }
 
 export default function SessionCard({ session, isCurrentDevice, now, onLogout }: SessionCardProps) {
+  const { t } = useTranslation();
   const Icon = getDeviceIcon(session.deviceUserInfo.deviceType);
   const iconStyle = getDeviceIconStyle(session.deviceUserInfo.deviceType);
   const duration = getActiveDuration(session, now);
@@ -32,7 +34,7 @@ export default function SessionCard({ session, isCurrentDevice, now, onLogout }:
               </span>
               {isCurrentDevice && (
                 <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-normal whitespace-nowrap">
-                  Thiết bị này
+                  {t('session.thisDevice')}
                 </span>
               )}
             </div>
@@ -74,7 +76,7 @@ export default function SessionCard({ session, isCurrentDevice, now, onLogout }:
           </div>
           <div className="text-center">
             <p className="text-[10.5px] text-muted-foreground flex items-center justify-center gap-1 mb-0.5">
-              <Activity size={12} className="text-indigo-500" /> Tổng
+              <Activity size={12} className="text-indigo-500" /> {t('common.total')}
             </p>
             <p className="text-sm font-medium text-card-foreground">
               {formatBytes(session.downloadBytes + session.uploadBytes)}
@@ -88,7 +90,7 @@ export default function SessionCard({ session, isCurrentDevice, now, onLogout }:
               onClick={() => onLogout(session.sessionId)}
               className="text-xs text-muted-foreground flex items-center gap-1.5 border border-border px-2.5 py-1.5 rounded-lg hover:bg-muted transition-colors"
             >
-              <LogOut size={13} /> Đăng xuất
+              <LogOut size={13} /> {t('common.logout')}
             </button>
           </div>
         )}

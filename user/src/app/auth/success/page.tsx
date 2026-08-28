@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { authorizeDevice, getMeProfile } from "@/features/auth/api/authApi";
 import { STORAGE_KEYS } from "@/constants/appKeys";
 import { getCaptivePortalContext, buildAuthorizeDevicePayload } from "@/lib/captivePortal";
@@ -12,6 +13,7 @@ import { clearStoredAuthSession, establishSessionCookie } from "@/lib/session";
 export default function OAuthSuccess() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
   const [error, setError] = useState("");
   const [isProcessing, setIsProcessing] = useState(true);
   const [showNetworkConnecting, setShowNetworkConnecting] = useState(false);
@@ -30,7 +32,7 @@ export default function OAuthSuccess() {
       } catch {
         clearStoredAuthSession();
         setIsProcessing(false);
-        setError("Không thể thiết lập phiên đăng nhập.");
+        setError(t("common.sessionSetupFailed"));
         return;
       }
     }
@@ -55,7 +57,7 @@ export default function OAuthSuccess() {
     } catch {
       if (!hasAuthenticatedSession) {
         setIsProcessing(false);
-        setError("Không thể xác nhận phiên đăng nhập từ backend.");
+        setError(t("common.sessionConfirmFailed"));
         window.location.href = "/login";
         return;
       }
@@ -75,7 +77,7 @@ export default function OAuthSuccess() {
         setShowNetworkConnecting(true);
         return;
       } catch {
-        setError("Xác thực thiết bị thất bại. Vui lòng thử lại.");
+        setError(t("common.deviceAuthFailedRetry"));
         setIsProcessing(false);
         return;
       }
@@ -85,7 +87,7 @@ export default function OAuthSuccess() {
     sessionStorage.removeItem("oauth2_redirect_back");
     sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
     window.location.href = redirectPath;
-  }, [router, searchParams]);
+  }, [router, searchParams, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -105,7 +107,7 @@ export default function OAuthSuccess() {
       ) : (
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">
-            {isProcessing ? <p>Đang hoàn tất đăng nhập...</p> : null}
+            {isProcessing ? <p>{t("redirect.completingLogin")}</p> : null}
             {!isProcessing && error ? (
               <>
                 <p className="text-red-600">{error}</p>
@@ -114,7 +116,7 @@ export default function OAuthSuccess() {
                   className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
                   onClick={() => void completeOAuthFlow()}
                 >
-                  Thử lại xác thực thiết bị
+                  {t("common.retry")}
                 </button>
               </>
             ) : null}

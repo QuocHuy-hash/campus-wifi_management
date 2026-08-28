@@ -4,6 +4,7 @@ import SocialAuthButton from './SocialAuthButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { User, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface GuestLoginTabProps {
   isLoading: boolean;
@@ -34,6 +35,7 @@ export default function GuestLoginTab({
   onOpenForgotModal,
   loginError,
 }: GuestLoginTabProps) {
+  const { t } = useTranslation();
   const [helpModalOpen, setHelpModalOpen] = useState(false);
 
   return (
@@ -56,14 +58,14 @@ export default function GuestLoginTab({
       {/* Standard Login Form */}
       <form onSubmit={(e) => { e.preventDefault(); onLogin(); }} className="space-y-4 mt-2">
         <div className="space-y-1.5">
-          <Label htmlFor="guest-login-username">Tài khoản (Email / Zalo)</Label>
+          <Label htmlFor="guest-login-username">{t('guestLogin.usernameLabel')}</Label>
           <div className="relative">
             <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <Input 
               id="guest-login-username"
               type="text" 
               autoComplete="username"
-              placeholder="Nhập email hoặc số ĐT Zalo"
+              placeholder={t('guestLogin.usernamePlaceholder')}
               value={username}
               onChange={(e) => onUsernameChange(e.target.value)}
               className="pl-10 h-11 rounded-xl"
@@ -73,7 +75,7 @@ export default function GuestLoginTab({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="guest-login-password">Mật khẩu</Label>
+          <Label htmlFor="guest-login-password">{t('guestLogin.passwordLabel')}</Label>
           <div className="relative">
             <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <Input 
@@ -100,7 +102,7 @@ export default function GuestLoginTab({
               onClick={onOpenForgotModal}
               className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
             >
-              Quên mật khẩu?
+              {t('guestLogin.forgotPassword')}
             </button>
           </div>
           {loginError && (
@@ -120,20 +122,20 @@ export default function GuestLoginTab({
             <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             <>
-              Đăng nhập <ArrowRight size={18} />
+              {t('common.login')} <ArrowRight size={18} />
             </>
           )}
         </button>
 
         <div className="text-center pt-1">
           <p className="text-sm text-gray-600">
-            Chưa có tài khoản?{' '}
+            {t('guestLogin.noAccount')}{' '}
             <button
               type="button"
               onClick={onOpenGuestModal}
               className="font-semibold text-blue-600 hover:text-blue-700 hover:underline"
             >
-              Đăng ký
+              {t('guestLogin.register')}
             </button>
           </p>
         </div>
@@ -144,7 +146,7 @@ export default function GuestLoginTab({
           <div className="w-full border-t border-gray-200" />
         </div>
         <div className="relative flex justify-center">
-          <span className="px-3 bg-white text-gray-400 text-sm">hoặc đăng nhập bằng</span>
+          <span className="px-3 bg-white text-gray-400 text-sm">{t('guestLogin.orLoginWith')}</span>
         </div>
       </div>
 
@@ -183,13 +185,13 @@ export default function GuestLoginTab({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
-              Hướng dẫn đăng nhập khách
+              {t('guestLogin.helpTitle')}
             </DialogTitle>
           </DialogHeader>
           
           <div className="py-2 text-gray-700 leading-relaxed text-[15px] space-y-2">
-            <p><strong>1. Đăng nhập nhanh:</strong> Sử dụng tài khoản Google, Microsoft, hoặc Facebook cá nhân của bạn để truy cập ngay.</p>
-            <p><strong>2. Tạo tài khoản mới:</strong> Nếu bạn không muốn sử dụng mạng xã hội, có thể nhanh chóng đăng ký tài khoản tạm thời bằng Email hoặc Zalo. Hệ thống sẽ gửi một mã OTP để xác nhận và cấp quyền truy cập.</p>
+            <p><strong>{t('guestLogin.helpQuick')}</strong></p>
+            <p>{t('guestLogin.helpCreate')}</p>
           </div>
         </DialogContent>
       </Dialog>

@@ -35,10 +35,11 @@ import {
   User,
   Loader2,
 } from "lucide-react";
-import { formatBytes, formatDuration, formatDurationShort, formatDateTime, formatDateTimeShort } from "@/data/mockData";
+import { formatBytes, formatDuration, formatDurationShort, formatDateTime, formatDateTimeShort, getTerminateCauseLabel } from "@/data/mockData";
 import { fetchUserSessions } from "@/features/session/api/sessionApi";
 import { useCaptiveAuthorization } from "@/features/auth/hooks/useCaptiveAuthorization";
 import type { UserSession, UserSessionQueryParams } from "@/features/auth/types";
+import { useTranslation } from "react-i18next";
 
 // Icon thiết bị dựa trên deviceType
 function getDeviceIcon(deviceType: string | null, size: number = 14) {
@@ -63,60 +64,44 @@ function getTrafficTotal(session: UserSession): string {
 }
 
 // Badge trạng thái phiên
-function getStatusBadge(session: UserSession, compact = false) {
+function getStatusBadge(session: UserSession, compact = false, t?: (key: string) => string) {
   const baseClass = compact
     ? "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium"
     : "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium";
+
+  const translate = t ?? ((key: string) => key);
 
   switch (session.status) {
     case "ACTIVE":
       return (
         <span className={`${baseClass} bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400`}>
-          <Activity size={10} className="animate-pulse" /> Online
+          <Activity size={10} className="animate-pulse" /> {translate("history.online")}
         </span>
       );
     case "ENDED":
       return (
         <span className={`${baseClass} bg-muted text-muted-foreground`}>
-          <CheckCircle size={10} /> Kết thúc
+          <CheckCircle size={10} /> {translate("history.ended")}
         </span>
       );
     case "EXPIRED":
       return (
         <span className={`${baseClass} bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400`}>
-          <Clock size={10} /> Hết hạn
+          <Clock size={10} /> {translate("history.expired")}
         </span>
       );
     case "FAILED":
       return (
         <span className={`${baseClass} bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400`}>
-          <XCircle size={10} /> Thất bại
+          <XCircle size={10} /> {translate("history.failed")}
         </span>
       );
     default:
       return (
         <span className={`${baseClass} bg-muted text-muted-foreground`}>
-          <CheckCircle size={10} /> Kết thúc
+          <CheckCircle size={10} /> {translate("history.ended")}
         </span>
       );
-  }
-}
-
-// Map lý do kết thúc từ API
-function getTerminateCauseLabel(cause: string | null): string {
-  switch (cause) {
-    case "User-Request":
-      return "Người dùng đăng xuất";
-    case "Session-Timeout":
-      return "Hết thời gian phiên";
-    case "Idle-Timeout":
-      return "Không hoạt động";
-    case "Admin-Reset":
-      return "Admin ngắt kết nối";
-    case "Lost-Carrier":
-      return "Mất kết nối";
-    default:
-      return cause || "--";
   }
 }
 
@@ -128,6 +113,7 @@ function toDateString(date: Date): string {
 export default function HistoryPage() {
   // Authorize thiết bị nếu còn captive context
   const { authorize: authorizeDeviceIfNeeded } = useCaptiveAuthorization();
+  const { t } = useTranslation();
 
   const [showFilters, setShowFilters] = useState(false);
   const [selectedSession, setSelectedSession] = useState<UserSession | null>(null);
@@ -246,9 +232,9 @@ export default function HistoryPage() {
               <div>
                 <h1 className="text-sm font-semibold text-card-foreground flex items-center gap-1.5">
                   <History size={14} />
-                  Lịch sử đăng nhập
+                  {t("history.title")}
                 </h1>
-                <p className="text-[10px] text-muted-foreground">{pageData.total} phiên</p>
+                <p className="text-[10px] text-muted-foreground">{t("history.sessionCount", { count: pageData.total })}</p>
               </div>
               <div className="flex gap-1.5">
                 <Button
@@ -258,11 +244,11 @@ export default function HistoryPage() {
                   onClick={() => setShowFilters(!showFilters)}
                 >
                   <Filter size={12} className="mr-1" />
-                  Lọc
+                  {t("history.filter")}
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-[10px] px-2">
                   <FileSpreadsheet size={12} className="mr-1" />
-                  Excel
+                  {t("history.excel")}
                 </Button>
               </div>
             </div>
@@ -272,7 +258,7 @@ export default function HistoryPage() {
               <div className="pt-2 border-t border-border">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">Từ ngày</Label>
+                    <Label className="text-[10px] text-muted-foreground">{t("history.fromDate")}</Label>
                     <Input
                       type="date"
                       value={dateFrom}
@@ -284,7 +270,7 @@ export default function HistoryPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">Đến ngày</Label>
+                    <Label className="text-[10px] text-muted-foreground">{t("history.toDate")}</Label>
                     <Input
                       type="date"
                       value={dateTo}
@@ -296,7 +282,7 @@ export default function HistoryPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">Trạng thái</Label>
+                    <Label className="text-[10px] text-muted-foreground">{t("history.status")}</Label>
                     <Select
                       value={statusFilter}
                       onValueChange={(v) => {
@@ -308,11 +294,11 @@ export default function HistoryPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tất cả</SelectItem>
-                        <SelectItem value="ACTIVE">Online</SelectItem>
-                        <SelectItem value="ENDED">Kết thúc</SelectItem>
-                        <SelectItem value="EXPIRED">Hết hạn</SelectItem>
-                        <SelectItem value="FAILED">Thất bại</SelectItem>
+                        <SelectItem value="all">{t("common.all")}</SelectItem>
+                        <SelectItem value="ACTIVE">{t("common.online")}</SelectItem>
+                        <SelectItem value="ENDED">{t("common.ended")}</SelectItem>
+                        <SelectItem value="EXPIRED">{t("common.expired")}</SelectItem>
+                        <SelectItem value="FAILED">{t("common.failed")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -336,7 +322,7 @@ export default function HistoryPage() {
                   className="mt-2 h-6 text-[10px]"
                   onClick={resetFilters}
                 >
-                  Xóa lọc
+                  {t("history.clearFilters")}
                 </Button>
               </div>
             )}
@@ -346,7 +332,7 @@ export default function HistoryPage() {
           {loading && (
             <div className="p-8 text-center">
               <Loader2 size={24} className="mx-auto mb-2 text-muted-foreground animate-spin" />
-              <p className="text-xs text-muted-foreground">Đang tải...</p>
+              <p className="text-xs text-muted-foreground">{t("history.loading")}</p>
             </div>
           )}
 
@@ -356,12 +342,12 @@ export default function HistoryPage() {
               <table className="w-full text-xs">
                 <thead className="bg-muted/50">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Thời gian</th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Thiết bị</th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Mạng</th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Thời lượng</th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Lưu lượng</th>
-                    <th className="px-3 py-2 text-center font-medium text-muted-foreground">Trạng thái</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("history.time")}</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("history.device")}</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("history.network")}</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("history.duration")}</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("history.traffic")}</th>
+                    <th className="px-3 py-2 text-center font-medium text-muted-foreground">{t("history.status")}</th>
                     <th className="px-3 py-2 w-8"></th>
                   </tr>
                 </thead>
@@ -428,7 +414,7 @@ export default function HistoryPage() {
                           ↑{getTraffic(session, 'upload')}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-center">{getStatusBadge(session, true)}</td>
+                      <td className="px-3 py-2 text-center">{getStatusBadge(session, true, t)}</td>
                       <td className="px-3 py-2">
                         <ChevronRight size={14} className="text-muted-foreground" />
                       </td>
@@ -460,7 +446,7 @@ export default function HistoryPage() {
                         <div className="text-[10px] text-muted-foreground">{session.ssid}</div>
                       </div>
                     </div>
-                    {getStatusBadge(session, true)}
+                    {getStatusBadge(session, true, t)}
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     <span>{formatDateTimeShort(session.startTime)}</span>
@@ -494,14 +480,14 @@ export default function HistoryPage() {
           {!loading && pageData.records.length === 0 && (
             <div className="p-8 text-center">
               <History size={32} className="mx-auto mb-2 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Không tìm thấy phiên nào</p>
+              <p className="text-xs text-muted-foreground">{t("history.noSessions")}</p>
               <Button
                 variant="ghost"
                 size="sm"
                 className="mt-2 text-[10px]"
                 onClick={resetFilters}
               >
-                Xóa lọc
+                {t("history.clearFilters")}
               </Button>
             </div>
           )}
@@ -548,7 +534,7 @@ export default function HistoryPage() {
           <DialogHeader>
             <DialogTitle className="text-base flex items-center gap-2">
               {selectedSession && getDeviceIcon(selectedSession.deviceUserInfo.deviceType, 18)}
-              Chi tiết phiên đăng nhập
+              {t("history.detailTitle")}
             </DialogTitle>
           </DialogHeader>
 
@@ -556,18 +542,18 @@ export default function HistoryPage() {
             <div className="space-y-2 py-1">
               {/* Trạng thái */}
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Trạng thái</span>
-                {getStatusBadge(selectedSession)}
+                <span className="text-xs text-muted-foreground">{t("history.status")}</span>
+                {getStatusBadge(selectedSession, false, t)}
               </div>
 
               {/* Thông tin người dùng */}
               <div className="bg-muted/50 rounded-lg p-2">
                 <p className="text-xs font-semibold text-card-foreground mb-3 flex items-center gap-1.5">
-                  <User size={14} /> Người dùng
+                  <User size={14} /> {t("history.user")}
                 </p>
                 <div className="grid grid-cols-2 gap-6 text-sm">
                   <div className="mb-2">
-                    <p className="text-muted-foreground text-xs mb-0.5">Username</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">{t("common.username")}</p>
                     <p className="font-mono text-card-foreground">{selectedSession.deviceUserInfo.userName}</p>
                   </div>       
                 </div> 
@@ -580,25 +566,25 @@ export default function HistoryPage() {
               {/* Thời gian */}
               <div className="bg-muted/50 rounded-lg p-2">
                 <p className="text-xs font-semibold text-card-foreground mb-3 flex items-center gap-1.5">
-                  <Clock size={14} /> Thời gian
+                  <Clock size={14} /> {t("history.time")}
                 </p>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-muted-foreground text-xs mb-0.5">Bắt đầu</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">{t("history.startTime")}</p>
                     <p className="text-card-foreground">{formatDateTime(selectedSession.startTime)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs mb-0.5">Kết thúc</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">{t("history.endTime")}</p>
                     <p className="text-card-foreground">
                       {selectedSession.endTime ? (
                         formatDateTime(selectedSession.endTime)
                       ) : (
-                        <span className="text-green-600 font-medium">Đang online</span>
+                        <span className="text-green-600 font-medium">{t("history.online")}</span>
                       )}
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs mb-0.5">Thời lượng</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">{t("history.duration")}</p>
                     <p className="text-card-foreground">
                       {selectedSession.status === "ACTIVE"
                         ? formatDuration(
@@ -616,7 +602,7 @@ export default function HistoryPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs mb-0.5">Lý do kết thúc</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">{t("history.terminateReason")}</p>
                     <p className="text-card-foreground">{getTerminateCauseLabel(selectedSession.terminateCause)}</p>
                   </div>
                 </div>
@@ -625,15 +611,15 @@ export default function HistoryPage() {
               {/* Thiết bị */}
               <div className="bg-muted/50 rounded-lg p-4">
                 <p className="text-xs font-semibold text-card-foreground mb-3 flex items-center gap-1.5">
-                  <Laptop size={14} /> Thiết bị
+                  <Laptop size={14} /> {t("history.deviceDetail")}
                 </p>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-muted-foreground text-xs mb-0.5">Tên</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">{t("history.name")}</p>
                     <p className="text-card-foreground">{selectedSession.deviceUserInfo.deviceName}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs mb-0.5">Loại</p>
+                    <p className="text-muted-foreground text-xs mb-0.5">{t("history.type")}</p>
                     <p className="text-card-foreground">{selectedSession.deviceUserInfo.deviceType || "--"}</p>
                   </div>
                   <div>
@@ -646,7 +632,7 @@ export default function HistoryPage() {
               {/* Mạng */}
               <div className="bg-muted/50 rounded-lg p-4">
                 <p className="text-xs font-semibold text-card-foreground mb-3 flex items-center gap-1.5">
-                  <Network size={14} /> Mạng
+                  <Network size={14} /> {t("history.networkDetail")}
                 </p>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
@@ -663,26 +649,26 @@ export default function HistoryPage() {
               {/* Lưu lượng */}
               <div className="bg-muted/50 rounded-lg p-4">
                 <p className="text-xs font-semibold text-card-foreground mb-3 flex items-center gap-1.5">
-                  <Activity size={14} /> Lưu lượng
+                  <Activity size={14} /> {t("history.traffic")}
                 </p>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="text-center p-1 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900">
                     <Download size={16} className="mx-auto text-blue-500 mb-1" />
-                    <p className="text-xs text-muted-foreground">Download</p>
+                    <p className="text-xs text-muted-foreground">{t("common.download")}</p>
                     <p className="text-sm text-blue-600 dark:text-blue-400">
                       {getTraffic(selectedSession, 'download')}
                     </p>
                   </div>
                   <div className="text-center p-1 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-100 dark:border-green-900">
                     <Upload size={16} className="mx-auto text-green-500 mb-1" />
-                    <p className="text-xs text-muted-foreground">Upload</p>
+                    <p className="text-xs text-muted-foreground">{t("common.upload")}</p>
                     <p className="text-sm text-green-600 dark:text-green-400">
                       {getTraffic(selectedSession, 'upload')}
                     </p>
                   </div>
                   <div className="text-center p-1 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900">
                     <Activity size={16} className="mx-auto text-indigo-500 mb-1" />
-                    <p className="text-xs text-muted-foreground">Tổng</p>
+                    <p className="text-xs text-muted-foreground">{t("common.total")}</p>
                     <p className="text-sm text-indigo-600 dark:text-indigo-400">
                       {getTrafficTotal(selectedSession)}
                     </p>

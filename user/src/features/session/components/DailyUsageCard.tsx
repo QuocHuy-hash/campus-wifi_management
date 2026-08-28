@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { Download, Upload, Activity } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { formatBytes } from '@/data/mockData';
 import type { UserDailyUsage } from '@/features/auth/types';
 
@@ -11,11 +12,13 @@ interface DailyUsageCardProps {
 }
 
 export default function DailyUsageCard({ usage, deviceCount }: DailyUsageCardProps) {
+  const { t } = useTranslation();
+
   return (
     <Card className="mt-5 overflow-hidden border-border">
       <div className="p-4">
         <p className="text-xs font-semibold text-card-foreground mb-3">
-          Thống kê sử dụng trong ngày
+          {t('session.usageToday')}
         </p>
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-muted/50 rounded-lg p-2.5 text-center">
@@ -36,7 +39,7 @@ export default function DailyUsageCard({ usage, deviceCount }: DailyUsageCardPro
           </div>
           <div className="bg-muted/50 rounded-lg p-2.5 text-center">
             <p className="text-[10.5px] text-muted-foreground flex items-center justify-center gap-1 mb-1">
-              <Activity size={12} className="text-indigo-500" /> Tổng
+              <Activity size={12} className="text-indigo-500" /> {t('common.total')}
             </p>
             <p className="text-sm font-medium text-card-foreground">
               {formatBytes(usage.totalBytes)}

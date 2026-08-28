@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import SocialAuthButton from './SocialAuthButton';
+import { useTranslation } from 'react-i18next';
 
 interface InternalLoginTabProps {
   isLoading: boolean;
@@ -8,6 +9,7 @@ interface InternalLoginTabProps {
 }
 
 export default function InternalLoginTab({ isLoading, onSSOLogin }: InternalLoginTabProps) {
+  const { t } = useTranslation();
   const [helpModalOpen, setHelpModalOpen] = useState(false);
 
   return (
@@ -15,12 +17,12 @@ export default function InternalLoginTab({ isLoading, onSSOLogin }: InternalLogi
       <div className="text-center mb-4">
         <div className="relative inline-flex items-start">
           <p className="text-sm text-gray-500 mt-1 whitespace-nowrap">
-            Sử dụng tài khoản email trường để đăng nhập
+            {t('internalLogin.subtitle')}
           </p>
           <span 
             className="text-red-500 font-bold animate-pulse cursor-pointer hover:text-red-600 text-lg leading-none absolute -right-3 top-0 block"
             onClick={() => setHelpModalOpen(true)}
-            title="Hướng dẫn đăng nhập"
+            title={t('internalLogin.helpTitle')}
           >
             *
           </span>
@@ -56,14 +58,15 @@ export default function InternalLoginTab({ isLoading, onSSOLogin }: InternalLogi
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
-              Hướng dẫn đăng nhập
+              {t('internalLogin.helpTitle')}
             </DialogTitle>
           </DialogHeader>
           
           <div className="py-2 text-gray-700 leading-relaxed text-[15px]">
-            Quý Thầy Cô vui lòng đăng nhập với email chính thức của trường. 
-            Trong trường hợp quý Thầy Cô quên mật khẩu email, vui lòng liên hệ 
-            Ban quản lý Mạng (<a href="mailto:netadmin@hcmus.edu.vn" className="text-blue-600 hover:underline">netadmin@hcmus.edu.vn</a>).
+            {t('internalLogin.helpText')}
+            <a href="mailto:netadmin@hcmus.edu.vn" className="text-blue-600 hover:underline">
+              {t('internalLogin.helpNetadmin')}
+            </a>).
           </div>
         </DialogContent>
       </Dialog>

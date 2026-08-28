@@ -5,6 +5,7 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useTranslation } from 'react-i18next';
 
 interface LogoutConfirmDialogProps {
   open: boolean;
@@ -21,8 +22,10 @@ export default function LogoutConfirmDialog({
   onConfirm,
   title,
   description,
-  confirmText = 'Đăng xuất',
+  confirmText,
 }: LogoutConfirmDialogProps) {
+  const { t } = useTranslation();
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -31,12 +34,12 @@ export default function LogoutConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Hủy</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             className="bg-gray-900 hover:bg-gray-800 dark:bg-primary dark:hover:bg-primary/90"
           >
-            {confirmText}
+            {confirmText ?? t('common.logout')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

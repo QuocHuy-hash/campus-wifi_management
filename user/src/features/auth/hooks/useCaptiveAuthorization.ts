@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { getCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
 import { authorizeDevice } from '@/features/auth/api/authApi';
 import { STORAGE_KEYS } from '@/constants/appKeys';
+import i18n from '@/i18n';
 
 interface UseCaptiveAuthorizationResult {
   isAuthorizing: boolean;
@@ -33,7 +34,7 @@ export function useCaptiveAuthorization(): UseCaptiveAuthorizationResult {
       setAuthorized(true);
       return true;
     } catch (err) {
-      const message = 'Xác thực thiết bị thất bại';
+      const message = i18n.t('common.deviceAuthFailed');
       setError(message);
       return false;
     } finally {

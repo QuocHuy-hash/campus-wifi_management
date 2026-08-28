@@ -5,6 +5,7 @@ import { store } from "@/stores/store";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
+import LanguageProvider from "@/components/LanguageProvider";
 import { initializeAxios, setAxiosAuthToken } from "@/config/axios";
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -123,10 +124,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         enableSystem
         disableTransitionOnChange
       >
-        <TooltipProvider>
-          <Toaster />
-          {children}
-        </TooltipProvider>
+        <LanguageProvider>
+          <TooltipProvider>
+            <Toaster />
+            {children}
+          </TooltipProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </Provider>
   );
