@@ -53,6 +53,7 @@ interface GuestRegistrationDialogProps {
   onSendOtp: () => void;
   onOtpChange: (index: number, value: string) => void;
   onOtpKeyDown: (index: number, e: React.KeyboardEvent) => void;
+  onOtpPaste: (value: string) => void;
   onVerifyOtp: () => void;
   onResendOtp: () => void;
   onSetGuestNewPassword: (value: string) => void;
@@ -86,6 +87,7 @@ export default function GuestRegistrationDialog({
   onSendOtp,
   onOtpChange,
   onOtpKeyDown,
+  onOtpPaste,
   onVerifyOtp,
   onResendOtp,
   onSetGuestNewPassword,
@@ -288,6 +290,13 @@ export default function GuestRegistrationDialog({
               <p className="font-medium text-gray-900">
                 {guestAuthMethod === 'email' ? guestForm.email : guestForm.phone}
               </p>
+              <button
+                type="button"
+                onClick={onBackStep}
+                className="text-sm text-blue-600 hover:underline mt-1"
+              >
+                {t('common.changeAccount')}
+              </button>
             </div>
 
             <div className="flex justify-center gap-2 mb-4">
@@ -301,6 +310,10 @@ export default function GuestRegistrationDialog({
                   value={digit}
                   onChange={(e) => onOtpChange(index, e.target.value.replace(/\D/g, ''))}
                   onKeyDown={(e) => onOtpKeyDown(index, e)}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    onOtpPaste(e.clipboardData.getData('text'));
+                  }}
                   className="w-11 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                 />
               ))}

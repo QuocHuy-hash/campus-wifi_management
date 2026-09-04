@@ -19,17 +19,13 @@ import {
   EyeOff,
   Lock,
   Mail,
-  MessageCircle,
-  Phone,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-type ForgotMethod = 'email' | 'phone';
 type ForgotStep = 'form' | 'otp' | 'newpass' | 'success';
 
 interface ForgotPasswordDialogProps {
   open: boolean;
-  method: ForgotMethod;
   contact: string;
   step: ForgotStep;
   otp: string[];
@@ -43,11 +39,11 @@ interface ForgotPasswordDialogProps {
   resendCooldown: number;
   onOpenChange: (open: boolean) => void;
   onBackStep: () => void;
-  onSetMethod: (value: ForgotMethod) => void;
   onSetContact: (value: string) => void;
   onSendOtp: () => void;
   onOtpChange: (index: number, value: string) => void;
   onOtpKeyDown: (index: number, e: React.KeyboardEvent) => void;
+  onOtpPaste: (value: string) => void;
   onVerifyOtp: () => void;
   onResendOtp: () => void;
   onSetNewPassword: (value: string) => void;
@@ -59,7 +55,6 @@ interface ForgotPasswordDialogProps {
 
 export default function ForgotPasswordDialog({
   open,
-  method,
   contact,
   step,
   otp,
@@ -73,11 +68,11 @@ export default function ForgotPasswordDialog({
   resendCooldown,
   onOpenChange,
   onBackStep,
-  onSetMethod,
   onSetContact,
   onSendOtp,
   onOtpChange,
   onOtpKeyDown,
+  onOtpPaste,
   onVerifyOtp,
   onResendOtp,
   onSetNewPassword,
@@ -90,7 +85,7 @@ export default function ForgotPasswordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="auth-light-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {(step === 'otp' || step === 'newpass') && (
@@ -114,49 +109,16 @@ export default function ForgotPasswordDialog({
 
         {step === 'form' && (
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">{t('forgotPassword.method')}</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => onSetMethod('email')}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                    method === 'email'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                  }`}
-                >
-                  <Mail size={18} />
-                  <span className="font-medium text-sm">{t('forgotPassword.email')}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSetMethod('phone')}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                    method === 'phone'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                  }`}
-                >
-                  <MessageCircle size={18} />
-                  <span className="font-medium text-sm">{t('forgotPassword.zalo')}</span>
-                </button>
-              </div>
-            </div>
-
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium">
-                {method === 'email' ? t('forgotPassword.email') : t('forgotPassword.phone')} <span className="text-red-500">*</span>
+              <Label htmlFor="forgot-email" className="text-sm font-medium">
+                {t('forgotPassword.email')} <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
-                {method === 'email' ? (
-                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                ) : (
-                  <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                )}
+                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
-                  type={method === 'email' ? 'email' : 'tel'}
-                  placeholder={method === 'email' ? 'email@example.com' : '0901234567'}
+                  id="forgot-email"
+                  type="email"
+                  placeholder="email@example.com"
                   value={contact}
                   onChange={(e) => onSetContact(e.target.value)}
                   className="pl-10 h-11 rounded-xl"
@@ -193,14 +155,17 @@ export default function ForgotPasswordDialog({
           <div className="py-4">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                {method === 'email' ? (
-                  <Mail size={28} className="text-blue-600" />
-                ) : (
-                  <MessageCircle size={28} className="text-blue-600" />
-                )}
+                <Mail size={28} className="text-blue-600" />
               </div>
               <p className="text-sm text-gray-600">{t('forgotPassword.otpSentTo')}</p>
               <p className="font-medium text-gray-900">{contact}</p>
+              <button
+                type="button"
+                onClick={onBackStep}
+                className="text-sm text-blue-600 hover:underline mt-1"
+              >
+                {t('common.changeEmail')}
+              </button>
             </div>
 
             <div className="flex justify-center gap-2 mb-4">
@@ -214,6 +179,10 @@ export default function ForgotPasswordDialog({
                   value={digit}
                   onChange={(e) => onOtpChange(index, e.target.value.replace(/\D/g, ''))}
                   onKeyDown={(e) => onOtpKeyDown(index, e)}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    onOtpPaste(e.clipboardData.getData('text'));
+                  }}
                   className="w-11 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                 />
               ))}

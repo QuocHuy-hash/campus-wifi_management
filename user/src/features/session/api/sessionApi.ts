@@ -101,15 +101,24 @@ export async function logoutAllSessions(): Promise<void> {
 
 /**
  * Lấy tổng dung lượng sử dụng của user hiện tại trong ngày.
+ * Nếu backend chưa có endpoint này (404), trả về null thay vì throw để
+ * UI vẫn hiển thị được danh sách phiên đang hoạt động.
  */
 export async function fetchUserDailyUsage(
   params: UserDailyUsageQueryParams = {}
-): Promise<UserDailyUsage> {
+): Promise<UserDailyUsage | null> {
   initializeAxios();
 
-  const response = await apiClient.get<ApiEnvelope<UserDailyUsage>>(
-    `${SESSION_ENDPOINT}/me/usage`,
-    { params }
-  );
-  return response.data.data;
+  try {
+    const response = await apiClient.get<ApiEnvelope<UserDailyUsage>>(
+      `${SESSION_ENDPOINT}/me/usage`,
+      { params }
+    );
+    return response.data.data;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
 }

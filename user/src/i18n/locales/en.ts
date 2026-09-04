@@ -22,6 +22,8 @@ export default {
     resendOtp: "Resend OTP code",
     resending: "Resending...",
     resendIn: "Resend in {{seconds}}s",
+    changeEmail: "Change email",
+    changeAccount: "Change account",
     verifying: "Verifying...",
     all: "All",
     online: "Online",
@@ -238,7 +240,7 @@ export default {
     usageToday: "Today's usage statistics",
   },
   history: {
-    title: "Login History",
+    title: "Session History",
     sessionCount: "{{count}} sessions",
     filter: "Filter",
     excel: "Excel",

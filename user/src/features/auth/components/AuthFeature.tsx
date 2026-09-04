@@ -101,7 +101,6 @@ export default function Login() {
 
   // Trạng thái riêng cho luồng quên mật khẩu.
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
-  const [forgotMethod, setForgotMethod] = useState<'email' | 'phone'>('email');
   const [forgotContact, setForgotContact] = useState('');
   const [forgotStep, setForgotStep] = useState<'form' | 'otp' | 'newpass' | 'success'>('form');
   const [forgotOtp, setForgotOtp] = useState(['', '', '', '', '', '']);
@@ -486,6 +485,23 @@ export default function Login() {
     }
   };
 
+  const handleOtpPaste = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 6);
+    if (!digits) return;
+
+    const newOtp = [...otpCode];
+    for (let i = 0; i < 6; i++) {
+      newOtp[i] = digits[i] ?? '';
+    }
+    setOtpCode(newOtp);
+
+    // Focus ô tiếp theo sau chữ số cuối đã dán, hoặc ô cuối cùng nếu đã đủ 6 số.
+    const nextIndex = Math.min(digits.length, 5);
+    setTimeout(() => {
+      document.getElementById(`otp-${nextIndex}`)?.focus();
+    }, 0);
+  };
+
   const handleVerifyOtp = async () => {
     const otp = otpCode.join('');
     if (otp.length !== 6) {
@@ -648,6 +664,22 @@ console.log("result::::", result);
     }
   };
 
+  const handleForgotOtpPaste = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 6);
+    if (!digits) return;
+
+    const newOtp = [...forgotOtp];
+    for (let i = 0; i < 6; i++) {
+      newOtp[i] = digits[i] ?? '';
+    }
+    setForgotOtp(newOtp);
+
+    const nextIndex = Math.min(digits.length, 5);
+    setTimeout(() => {
+      document.getElementById(`forgot-otp-${nextIndex}`)?.focus();
+    }, 0);
+  };
+
   const handleVerifyForgotOtp = async () => {
     const otp = forgotOtp.join('');
     if (otp.length !== 6) {
@@ -712,7 +744,6 @@ console.log("result::::", result);
   // Đặt lại toàn bộ biểu mẫu quên mật khẩu về trạng thái ban đầu
   const resetForgotForm = () => {
     setForgotContact('');
-    setForgotMethod('email');
     setForgotStep('form');
     setForgotOtp(['', '', '', '', '', '']);
     setForgotOtpError('');
@@ -789,6 +820,7 @@ console.log("result::::", result);
         onSendOtp={handleSendOtp}
         onOtpChange={handleOtpChange}
         onOtpKeyDown={handleOtpKeyDown}
+        onOtpPaste={handleOtpPaste}
         onVerifyOtp={handleVerifyOtp}
         onResendOtp={handleResendOtp}
         onSetGuestNewPassword={setGuestNewPassword}
@@ -799,7 +831,6 @@ console.log("result::::", result);
 
       <ForgotPasswordDialog
         open={forgotModalOpen}
-        method={forgotMethod}
         contact={forgotContact}
         step={forgotStep}
         otp={forgotOtp}
@@ -816,11 +847,11 @@ console.log("result::::", result);
           if (!open) resetForgotForm();
         }}
         onBackStep={() => setForgotStep(forgotStep === 'newpass' ? 'otp' : 'form')}
-        onSetMethod={setForgotMethod}
         onSetContact={setForgotContact}
         onSendOtp={handleSendForgotOtp}
         onOtpChange={handleForgotOtpChange}
         onOtpKeyDown={handleForgotOtpKeyDown}
+        onOtpPaste={handleForgotOtpPaste}
         onVerifyOtp={handleVerifyForgotOtp}
         onResendOtp={handleResendForgotOtp}
         onSetNewPassword={setNewPassword}

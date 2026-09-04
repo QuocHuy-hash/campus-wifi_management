@@ -22,6 +22,8 @@ export default {
     resendOtp: "Gửi lại mã OTP",
     resending: "Đang gửi lại...",
     resendIn: "Gửi lại sau {{seconds}}s",
+    changeEmail: "Đổi email",
+    changeAccount: "Đổi tài khoản",
     verifying: "Đang xác thực...",
     all: "Tất cả",
     online: "Online",
