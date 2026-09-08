@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { getCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/captivePortal';
 import { authorizeDevice } from '@/features/auth/api/authApi';
 import { STORAGE_KEYS } from '@/constants/appKeys';
+import { initializeAxios } from '@/config/axios';
 import i18n from '@/i18n';
 
 interface UseCaptiveAuthorizationResult {
@@ -24,6 +25,9 @@ export function useCaptiveAuthorization(): UseCaptiveAuthorizationResult {
       setAuthorized(true);
       return true;
     }
+
+    // Đảm bảo axios đã được khởi tạo trước khi gọi API cấp quyền thiết bị.
+    initializeAxios();
 
     setIsAuthorizing(true);
     setError(null);

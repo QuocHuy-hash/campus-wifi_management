@@ -76,6 +76,11 @@ export default {
     title: "Page not found",
     backHome: "Back to home",
   },
+  oauthError: {
+    title: "Login failed",
+    unknown: "Unable to complete login. Please try again.",
+    backToLogin: "Back to login",
+  },
   auth: {
     university: "University of Science - VNU HCM",
     universityFull: "University of Science",

@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { authorizeDevice, getMeProfile } from "@/features/auth/api/authApi";
+import { authorizeDevice, exchangeOAuth2Code, getMeProfile } from "@/features/auth/api/authApi";
 import { STORAGE_KEYS } from "@/constants/appKeys";
 import { getCaptivePortalContext, buildAuthorizeDevicePayload } from "@/lib/captivePortal";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
-import { getRedirectUrl, clearRedirectUrl, navigateOrFallback } from "@/lib/captivePortal";
 import { clearStoredAuthSession, establishSessionCookie } from "@/lib/session";
+import { initializeAxios, setAxiosAuthToken } from "@/config/axios";
+import { logger } from "@/lib/logger";
 
 export default function OAuthSuccess() {
   const router = useRouter();
@@ -22,15 +23,33 @@ export default function OAuthSuccess() {
     setIsProcessing(true);
     setError("");
 
-    const accessToken = searchParams?.get("access_token");
+    // Khởi tạo axios trước khi gọi các API được bảo vệ.
+    // Điều này rất quan trọng vì trang này được load lại sau redirect từ OAuth2 provider.
+    initializeAxios();
+
+    // Sửa ngày 2026-09-08: callback mới nhận oauth_code một lần, không còn JWT trong URL.
+    const oauthCode = searchParams?.get("oauth_code");
+    const accessToken = searchParams?.get("access_token"); // Tương thích callback wifi-user cũ khi rollout.
+    const oauthError = searchParams?.get("oauth_error");
+    if (oauthError) {
+      setIsProcessing(false);
+      setError(t("common.sessionConfirmFailed"));
+      return;
+    }
     let hasAuthenticatedSession = Boolean(accessToken || localStorage.getItem(STORAGE_KEYS.accessToken));
 
-    if (accessToken) {
-      localStorage.setItem(STORAGE_KEYS.accessToken, accessToken);
+    if (oauthCode || accessToken) {
       try {
-        await establishSessionCookie(accessToken);
+        const loginResult = oauthCode
+          ? await exchangeOAuth2Code(oauthCode)
+          : { accessToken: accessToken as string };
+        localStorage.setItem(STORAGE_KEYS.accessToken, loginResult.accessToken);
+        setAxiosAuthToken(loginResult.accessToken);
+        hasAuthenticatedSession = true;
+        await establishSessionCookie(loginResult.accessToken);
       } catch {
         clearStoredAuthSession();
+        setAxiosAuthToken(null);
         setIsProcessing(false);
         setError(t("common.sessionSetupFailed"));
         return;
@@ -54,7 +73,8 @@ export default function OAuthSuccess() {
           loginTime: profile.lastLoginAt || new Date().toISOString(),
         }),
       );
-    } catch {
+    } catch (profileError) {
+      logger.error("Lấy thông tin user sau OAuth2 thất bại:", profileError);
       if (!hasAuthenticatedSession) {
         setIsProcessing(false);
         setError(t("common.sessionConfirmFailed"));
@@ -76,7 +96,8 @@ export default function OAuthSuccess() {
 
         setShowNetworkConnecting(true);
         return;
-      } catch {
+      } catch (authError) {
+        logger.error("Cấp quyền thiết bị sau OAuth2 thất bại:", authError);
         setError(t("common.deviceAuthFailedRetry"));
         setIsProcessing(false);
         return;
@@ -86,6 +107,7 @@ export default function OAuthSuccess() {
     const redirectPath = sessionStorage.getItem("oauth2_redirect_back") || "/session";
     sessionStorage.removeItem("oauth2_redirect_back");
     sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
+    // Huy- Cập nhật ngày 2026-09-08: OAuth không có Captive Portal vào Home như đăng nhập thông thường.
     window.location.href = redirectPath;
   }, [router, searchParams, t]);
 
@@ -99,11 +121,7 @@ export default function OAuthSuccess() {
   return (
     <>
       {showNetworkConnecting ? (
-        <NetworkConnectingScreen onComplete={() => {
-          const redirectUrl = getRedirectUrl();
-          clearRedirectUrl();
-          navigateOrFallback(redirectUrl);
-        }} />
+        <NetworkConnectingScreen onComplete={() => { window.location.href = "/network-success"; }} />
       ) : (
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">

@@ -534,21 +534,21 @@ export default function Account() {
             <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900">
               <Gauge size={18} className="mx-auto text-blue-500 mb-1" />
               <p className="text-[10px] text-muted-foreground">{t("account.bandwidth")}</p>
-              <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
                 {getPolicyBandwidthText(primaryPolicy)}
               </p>
             </div>
             <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900">
               <Clock size={18} className="mx-auto text-indigo-500 mb-1" />
               <p className="text-[10px] text-muted-foreground">{t("account.maxSession")}</p>
-              <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+              <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
                 {getPolicySessionHoursText(primaryPolicy)}
               </p>
             </div>
             <div className="text-center p-3 bg-teal-50 dark:bg-teal-950/30 rounded-lg border border-teal-100 dark:border-teal-900">
               <HardDrive size={18} className="mx-auto text-teal-500 mb-1" />
               <p className="text-[10px] text-muted-foreground">{t("account.sessionLimit")}</p>
-              <p className="text-sm font-semibold text-teal-600 dark:text-teal-400">
+              <p className="text-sm font-medium text-teal-600 dark:text-teal-400">
                 {getPolicyDeviceLimitText(primaryPolicy)}
               </p>
             </div>

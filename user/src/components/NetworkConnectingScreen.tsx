@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger';
 
 interface NetworkConnectingScreenProps {
   onComplete: () => void;
+  stayOnSuccess?: boolean;
 }
 
 // 1. Hàm kiểm tra mạng thực tế (Ping ẩn) / Function to check real internet connectivity (hidden ping)
@@ -25,7 +26,7 @@ const checkActualInternet = (): Promise<boolean> => {
   });
 };
 
-export default function NetworkConnectingScreen({ onComplete }: NetworkConnectingScreenProps) {
+export default function NetworkConnectingScreen({ onComplete, stayOnSuccess = false }: NetworkConnectingScreenProps) {
   const { t } = useTranslation();
   const [isConnecting, setIsConnecting] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -61,10 +62,13 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
           // 2. Chuyển UI sang trạng thái Success / Switch UI to Success state
           setIsConnecting(false);
 
+          // Huy- Cập nhật ngày 2026-09-08: Anonymous giữ nguyên trạng thái mạng thành công, không tự điều hướng.
+          if (stayOnSuccess) return;
+
           // 3. Chờ 1 giây để người dùng kịp nhìn thấy trạng thái thành công
           // Wait 1 second so the user sees the success state
           completeTimeout = setTimeout(() => {
-            logger.debug('Chuyển sang màn hình Session / Navigating to Session screen');
+            logger.debug('Chuyển sang màn hình kết nối thành công / Navigating to network success screen');
             onComplete();
           }, 1000);
         }
@@ -81,7 +85,7 @@ export default function NetworkConnectingScreen({ onComplete }: NetworkConnectin
       clearInterval(timeInterval);
       clearTimeout(completeTimeout);
     };
-  }, [onComplete]);
+  }, [onComplete, stayOnSuccess]);
 
   return (
     <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">

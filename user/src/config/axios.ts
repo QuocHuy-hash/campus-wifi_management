@@ -14,6 +14,7 @@ import {
   clearStoredAuthSession,
   establishSessionCookie,
 } from "@/lib/session";
+import { snakeToCamelCase } from "@/lib/caseConverter";
 
 const REFRESH_TOKEN_ENDPOINT = "/auth/refresh-token";
 const LOGIN_PATH = "/login";
@@ -42,8 +43,6 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
 
 interface RefreshTokenData {
   accessToken?: string;
-  access_token?: string;
-  "access-token"?: string;
   token?: string;
 }
 
@@ -56,6 +55,13 @@ const refreshClient = axios.create({
   withCredentials: true,
   timeout: HTTP_CONFIG.DEFAULT_TIMEOUT_MS,
   headers: HTTP_CONFIG.DEFAULT_HEADERS,
+});
+
+refreshClient.interceptors.response.use((response) => {
+  if (response.data && typeof response.data === "object") {
+    response.data = snakeToCamelCase(response.data);
+  }
+  return response;
 });
 
 const getStoredAuthToken = (): string | null => {
@@ -97,11 +103,7 @@ const requestNewAccessToken = async (): Promise<string> => {
     { refresh_token: token },
   );
   const refreshData = response.data.data ?? response.data;
-  const accessToken =
-    refreshData.accessToken ??
-    refreshData.access_token ??
-    refreshData["access-token"] ??
-    refreshData.token;
+  const accessToken = refreshData.accessToken ?? refreshData.token;
 
   if (!accessToken) {
     throw new Error("API refresh token không trả về access token");
@@ -181,7 +183,13 @@ export const initializeAxios = (): void => {
   });
 
   axios.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      // Backend dùng Jackson SNAKE_CASE; chuyển về camelCase để khớp TypeScript types.
+      if (response.data && typeof response.data === "object") {
+        response.data = snakeToCamelCase(response.data);
+      }
+      return response;
+    },
     async (error: AxiosError) => {
       const originalRequest = error.config as
         | RetryableRequestConfig
@@ -236,5 +244,10 @@ export const setAxiosAuthToken = (token: string | null): void => {
 
   removeAxiosHeader(API_HEADERS.AUTHORIZATION);
 };
+
+// Huy- Cập nhật ngày 2026-09-08: khởi tạo ngay khi apiClient được import.
+// Trước đây chỉ một số API gọi initializeAxios(), làm request đầu tiên như /auth/me
+// bị gửi nhầm đến localhost:3000/auth/me thay vì /api/v1/auth/me.
+initializeAxios();
 
 export default axios;

@@ -23,6 +23,7 @@ interface AuthLoginCardProps {
   onTogglePassword: () => void;
   onLogin: () => void;
   onOpenForgotModal: () => void;
+  onQuickAccess: () => void;
   onOpenTermsModal: () => void;
 }
 
@@ -43,6 +44,7 @@ export default function AuthLoginCard({
   onTogglePassword,
   onLogin,
   onOpenForgotModal,
+  onQuickAccess,
   onOpenTermsModal,
 }: AuthLoginCardProps) {
   const { t } = useTranslation();
@@ -80,6 +82,7 @@ export default function AuthLoginCard({
             onTogglePassword={onTogglePassword}
             onLogin={onLogin}
             onOpenForgotModal={onOpenForgotModal}
+            onQuickAccess={onQuickAccess}
             loginError={loginError}
           />
         )}

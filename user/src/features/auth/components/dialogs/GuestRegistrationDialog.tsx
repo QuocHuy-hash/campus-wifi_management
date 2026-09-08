@@ -24,9 +24,10 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 
 type GuestAuthMethod = 'email' | 'phone';
-type GuestStep = 'form' | 'otp' | 'newpass' | 'success';
+type GuestStep = 'form' | 'otp' | 'success';
 
 interface GuestRegistrationDialogProps {
   open: boolean;
@@ -35,12 +36,8 @@ interface GuestRegistrationDialogProps {
   guestForm: { email: string; phone: string; password: string; confirmPassword: string };
   otpCode: string[];
   otpError: string;
-  guestNewPassword: string;
-  guestConfirmPassword: string;
-  showGuestPassword: boolean;
   isSendingOtp: boolean;
   isVerifyingOtp: boolean;
-  isSettingGuestPassword: boolean;
   registerLoading: boolean;
   verifyLoading: boolean;
   resendLoading: boolean;
@@ -49,16 +46,12 @@ interface GuestRegistrationDialogProps {
   onBackStep: () => void;
   onSetGuestAuthMethod: (method: GuestAuthMethod) => void;
   onSetGuestForm: (updater: (prev: { email: string; phone: string; password: string; confirmPassword: string }) => { email: string; phone: string; password: string; confirmPassword: string }) => void;
-  onSetShowGuestPassword: (value: boolean) => void;
   onSendOtp: () => void;
   onOtpChange: (index: number, value: string) => void;
   onOtpKeyDown: (index: number, e: React.KeyboardEvent) => void;
   onOtpPaste: (value: string) => void;
   onVerifyOtp: () => void;
   onResendOtp: () => void;
-  onSetGuestNewPassword: (value: string) => void;
-  onSetGuestConfirmPassword: (value: string) => void;
-  onSetGuestPassword: () => void;
   onUseGuestCredentials: () => void;
 }
 
@@ -69,12 +62,8 @@ export default function GuestRegistrationDialog({
   guestForm,
   otpCode,
   otpError,
-  guestNewPassword,
-  guestConfirmPassword,
-  showGuestPassword,
   isSendingOtp,
   isVerifyingOtp,
-  isSettingGuestPassword,
   registerLoading,
   verifyLoading,
   resendLoading,
@@ -83,26 +72,23 @@ export default function GuestRegistrationDialog({
   onBackStep,
   onSetGuestAuthMethod,
   onSetGuestForm,
-  onSetShowGuestPassword,
   onSendOtp,
   onOtpChange,
   onOtpKeyDown,
   onOtpPaste,
   onVerifyOtp,
   onResendOtp,
-  onSetGuestNewPassword,
-  onSetGuestConfirmPassword,
-  onSetGuestPassword,
   onUseGuestCredentials,
 }: GuestRegistrationDialogProps) {
   const { t } = useTranslation();
+  const [showGuestPassword, setShowGuestPassword] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="auth-light-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {(guestStep === 'otp' || guestStep === 'newpass') && (
+            {guestStep === 'otp' && (
               <button type="button" onClick={onBackStep} className="p-1 hover:bg-gray-100 rounded-lg mr-1">
                 <ArrowLeft size={16} />
               </button>
@@ -110,7 +96,6 @@ export default function GuestRegistrationDialog({
             <UserPlus size={18} className="text-blue-600" />
             {guestStep === 'form' && t('register.title')}
             {guestStep === 'otp' && t('register.otpTitle')}
-            {guestStep === 'newpass' && t('register.newPassTitle')}
             {guestStep === 'success' && t('register.successTitle')}
           </DialogTitle>
           <DialogDescription>
@@ -119,7 +104,6 @@ export default function GuestRegistrationDialog({
               t('register.otpDescription', {
                 contact: guestAuthMethod === 'email' ? guestForm.email : guestForm.phone,
               })}
-            {guestStep === 'newpass' && t('register.newPassDescription')}
             {guestStep === 'success' && t('register.successDescription')}
           </DialogDescription>
         </DialogHeader>
@@ -209,7 +193,7 @@ export default function GuestRegistrationDialog({
                 />
                 <button
                   type="button"
-                  onClick={() => onSetShowGuestPassword(!showGuestPassword)}
+                  onClick={() => setShowGuestPassword(!showGuestPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showGuestPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -354,84 +338,6 @@ export default function GuestRegistrationDialog({
                     : t('common.resendOtp')}
               </button>
             </div>
-          </div>
-        )}
-
-        {guestStep === 'newpass' && (
-          <div className="space-y-4 py-2">
-            {otpError && (
-              <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
-                <AlertCircle size={16} />
-                <span className="text-sm">{otpError}</span>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">{t('register.passwordLabel')}</Label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <Input
-                  type={showGuestPassword ? 'text' : 'password'}
-                  placeholder={t('register.enterPasswordPlaceholder')}
-                  value={guestNewPassword}
-                  onChange={(e) => onSetGuestNewPassword(e.target.value)}
-                  className="pl-10 pr-10 h-11 rounded-xl"
-                />
-                <button
-                  type="button"
-                  onClick={() => onSetShowGuestPassword(!showGuestPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showGuestPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">{t('register.confirmPasswordLabel')}</Label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <Input
-                  type={showGuestPassword ? 'text' : 'password'}
-                  placeholder={t('register.confirmPasswordPlaceholder')}
-                  value={guestConfirmPassword}
-                  onChange={(e) => onSetGuestConfirmPassword(e.target.value)}
-                  className="pl-10 h-11 rounded-xl"
-                />
-              </div>
-              {guestConfirmPassword && guestNewPassword !== guestConfirmPassword && (
-                <p className="text-xs text-red-500 flex items-center gap-1">
-                  <AlertCircle size={12} /> {t('common.confirmPasswordNotMatch')}
-                </p>
-              )}
-            </div>
-            <PasswordStrengthChecklist password={guestNewPassword} />
-
-            <Button
-              onClick={onSetGuestPassword}
-              disabled={
-                !guestNewPassword ||
-                !guestConfirmPassword ||
-                guestNewPassword.length < 8 ||
-                !/[A-Z]/.test(guestNewPassword) ||
-                !/[a-z]/.test(guestNewPassword) ||
-                !/[0-9]/.test(guestNewPassword) ||
-                !/[!@#$%^&*(),.?":{}|<>]/.test(guestNewPassword) ||
-                guestNewPassword !== guestConfirmPassword ||
-                isSettingGuestPassword
-              }
-              className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl h-11"
-            >
-              {isSettingGuestPassword ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {t('common.processing')}
-                </div>
-              ) : (
-                t('register.finishRegistration')
-              )}
-            </Button>
           </div>
         )}
 

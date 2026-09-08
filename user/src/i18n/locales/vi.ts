@@ -76,6 +76,11 @@ export default {
     title: "Trang không tồn tại",
     backHome: "Quay về trang chủ",
   },
+  oauthError: {
+    title: "Đăng nhập thất bại",
+    unknown: "Không thể hoàn tất đăng nhập. Vui lòng thử lại.",
+    backToLogin: "Quay lại trang đăng nhập",
+  },
   auth: {
     university: "Trường Đại học KHTN - ĐHQG HCM",
     universityFull: "Trường Đại học Khoa học Tự nhiên",

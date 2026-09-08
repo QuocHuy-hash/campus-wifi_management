@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { currentUser } from '@/data/mockData';
-import { authorizeDevice, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
+import { authorizeDevice, loginWithPassword, quickAccess, startOAuth2Login } from '@/features/auth/api/authApi';
 import {
   clearForgotToken,
   getActiveProviders,
@@ -26,6 +26,7 @@ import { STORAGE_KEYS } from '@/constants/appKeys';
 import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload, clearRedirectUrl } from '@/lib/captivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
 import { validatePassword } from '@/lib/passwordValidation';
+import { logger } from '@/lib/logger';
 import { clearStoredAuthSession, establishSessionCookie } from '@/lib/session';
 
 const LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY = 'savedGuestLoginCredentials';
@@ -84,15 +85,11 @@ export default function Login() {
     confirmPassword: ''
   });
   const [guestAuthMethod, setGuestAuthMethod] = useState<'email' | 'phone'>('email');
-  const [guestStep, setGuestStep] = useState<'form' | 'otp' | 'newpass' | 'success'>('form');
+  const [guestStep, setGuestStep] = useState<'form' | 'otp' | 'success'>('form');
   const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
   const [otpError, setOtpError] = useState('');
   const [isSendingOtp] = useState(false);
   const [isVerifyingOtp] = useState(false);
-  const [guestNewPassword, setGuestNewPassword] = useState('');
-  const [guestConfirmPassword, setGuestConfirmPassword] = useState('');
-  const [showGuestPassword, setShowGuestPassword] = useState(false);
-  const [isSettingGuestPassword, setIsSettingGuestPassword] = useState(false);
 
   // Thông tin đăng nhập của khách đã từng tạo tài khoản.
   const [loginUsername, setLoginUsername] = useState('');
@@ -222,9 +219,9 @@ export default function Login() {
         return;
       }
 
-      // Không còn captive context thì middleware tiếp quản việc điều hướng phiên.
+      // Huy- Cập nhật ngày 2026-09-08: phiên thường không có Captive Portal vào Home như đăng nhập bình thường.
       if (!captiveContext) {
-        console.log('🚀 User has valid session - letting middleware handle redirect...');
+        console.log('🚀 User has valid session without captive context - going to Session...');
         router.push('/session');
         return;
       }
@@ -265,6 +262,10 @@ export default function Login() {
 
       const status = maybeAxios.response?.status;
 
+      if (maybeAxios.response?.data?.message) {
+        return maybeAxios.response.data.message;
+      }
+
       if (status === 401) {
         return t('common.invalidCredentials');
       }
@@ -279,10 +280,6 @@ export default function Login() {
 
       if (status === 502 || status === 503) {
         return t('common.serverMaintenance');
-      }
-
-      if (maybeAxios.response?.data?.message) {
-        return maybeAxios.response.data.message;
       }
 
       if (maybeAxios.message) {
@@ -352,6 +349,7 @@ export default function Login() {
   const establishPasswordSession = async (
     result: LoginResult,
     identifier: string,
+    rememberUsername = true,
   ): Promise<boolean> => {
     localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
 
@@ -367,29 +365,37 @@ export default function Login() {
     }
 
     persistSession(identifier, result.roles?.[0]);
-    saveGuestLoginUsername(identifier);
+    if (rememberUsername) {
+      saveGuestLoginUsername(identifier);
+    }
     return true;
   };
 
-  const redirectAfterDeviceAuthorization = async (): Promise<void> => {
-    // Captive context phải được đọc trước vì quá trình cấp quyền sẽ xóa dữ liệu này.
-    const hasCaptiveContext = Boolean(getCaptivePortalContext(''));
+  const redirectAfterDeviceAuthorization = async (isAnonymousLogin = false): Promise<void> => {
+    const captiveContext = getCaptivePortalContext('');
 
-    if (hasCaptiveContext) {
+    if (captiveContext) {
       const authorized = await authorizeDeviceInBackground();
       if (!authorized) {
         setError(t('common.deviceAuthFailedRetry'));
         setIsLoading(false);
         return;
       }
-    } else {
-      await authorizeDeviceInBackground();
     }
 
-    // Tải lại toàn trang để cookie phiên được gửi ngay ở yêu cầu kế tiếp.
-    window.location.href = hasCaptiveContext
-      ? '/network-connecting'
-      : '/session';
+    // Huy- Cập nhật ngày 2026-09-08: Anonymous chỉ hợp lệ trong Captive Portal và dừng tại màn hình kiểm tra mạng.
+    if (isAnonymousLogin) {
+      if (!captiveContext) {
+        setError('Không có quyền truy cập nhanh. Vui lòng kết nối vào WiFi có Captive Portal UniFi.');
+        setIsLoading(false);
+        return;
+      }
+      window.location.href = '/network-connecting?flow=anonymous';
+      return;
+    }
+
+    // Huy- Cập nhật ngày 2026-09-08: login thường chỉ kiểm tra mạng khi đã authorize từ Captive Portal thành công.
+    window.location.href = captiveContext ? '/network-connecting' : '/session';
   };
 
   const handleSSOLogin = async (provider: string) => {
@@ -407,7 +413,15 @@ export default function Login() {
 
       sessionStorage.setItem(STORAGE_KEYS.oauthProvider, provider);
       sessionStorage.setItem('oauth2_redirect_back', '/session');
-      startOAuth2Login(provider);
+
+      setIsLoading(true);
+      try {
+        await startOAuth2Login(provider);
+      } catch (oauthError) {
+        logger.error('Khởi tạo OAuth2 thất bại:', oauthError);
+        setError(t('common.loginFailed'));
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -433,6 +447,31 @@ export default function Login() {
       await redirectAfterDeviceAuthorization();
       setIsLoading(false);
     }, 1200);
+  };
+
+  /** Huy- Cập nhật ngày 2026-09-08: user ANONYMOUS dùng token thật rồi authorize UniFi như user thường. */
+  const handleQuickAccess = async () => {
+    // Huy- Cập nhật ngày 2026-09-08: không tạo user ANONYMOUS ngoài Captive Portal UniFi.
+    if (!getCaptivePortalContext('')) {
+      setError('Không có quyền truy cập nhanh. Vui lòng kết nối vào WiFi có Captive Portal UniFi.');
+      return;
+    }
+
+    if (!agreeTerms) {
+      setError(t('common.agreeTermsRequired'));
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    try {
+      const result = await quickAccess();
+      const sessionReady = await establishPasswordSession(result, 'Khách truy cập nhanh', false);
+      if (!sessionReady) return;
+      await redirectAfterDeviceAuthorization(true);
+    } catch (apiError) {
+      setError(getLoginErrorMessage(apiError));
+      setIsLoading(false);
+    }
   };
 
   const handleSendOtp = async () => {
@@ -522,26 +561,6 @@ export default function Login() {
     } catch (apiError) {
       setOtpError(String(apiError));
     }
-  };
-
-  const handleSetGuestPassword = () => {
-    const error = validatePassword(guestNewPassword);
-    if (error) {
-      setOtpError(error);
-      return;
-    }
-    if (guestNewPassword !== guestConfirmPassword) {
-      setOtpError(t('common.confirmPasswordNotMatch'));
-      return;
-    }
-
-    setIsSettingGuestPassword(true);
-    setOtpError('');
-    
-    setTimeout(() => {
-      setIsSettingGuestPassword(false);
-      setGuestStep('success');
-    }, 1500);
   };
 
   const handleResendOtp = async () => {
@@ -779,6 +798,7 @@ console.log("result::::", result);
           onTogglePassword={() => setShowLoginPassword((visible) => !visible)}
           onLogin={handleStandardLogin}
           onOpenForgotModal={() => setForgotModalOpen(true)}
+          onQuickAccess={handleQuickAccess}
           onOpenTermsModal={() => setTermsModalOpen(true)}
         />
       </AuthPageLayout>
@@ -799,12 +819,8 @@ console.log("result::::", result);
         guestForm={guestForm}
         otpCode={otpCode}
         otpError={otpError}
-        guestNewPassword={guestNewPassword}
-        guestConfirmPassword={guestConfirmPassword}
-        showGuestPassword={showGuestPassword}
         isSendingOtp={isSendingOtp}
         isVerifyingOtp={isVerifyingOtp}
-        isSettingGuestPassword={isSettingGuestPassword}
         registerLoading={registerLoading}
         verifyLoading={verifyLoading}
         resendLoading={resendLoading}
@@ -813,19 +829,15 @@ console.log("result::::", result);
           setGuestModalOpen(open);
           if (!open) resetGuestForm();
         }}
-        onBackStep={() => setGuestStep(guestStep === 'newpass' ? 'otp' : 'form')}
+        onBackStep={() => setGuestStep('form')}
         onSetGuestAuthMethod={setGuestAuthMethod}
         onSetGuestForm={setGuestForm}
-        onSetShowGuestPassword={setShowGuestPassword}
         onSendOtp={handleSendOtp}
         onOtpChange={handleOtpChange}
         onOtpKeyDown={handleOtpKeyDown}
         onOtpPaste={handleOtpPaste}
         onVerifyOtp={handleVerifyOtp}
         onResendOtp={handleResendOtp}
-        onSetGuestNewPassword={setGuestNewPassword}
-        onSetGuestConfirmPassword={setGuestConfirmPassword}
-        onSetGuestPassword={handleSetGuestPassword}
         onUseGuestCredentials={handleUseGuestCredentials}
       />
 

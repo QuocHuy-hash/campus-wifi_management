@@ -76,15 +76,31 @@ export interface CaptivePortalContext {
 export interface AuthorizeDevicePayload {
   deviceMac: string;
   apMac: string;
+  deviceClientId?: string; // ID client ổn định cho thiết bị (UUID)
   ssid: string;
   deviceType: string;     // LAPTOP | DESKTOP | MOBILE | TABLET | IOT | OTHER
   deviceName: string;     // Tên thiết bị
-  userIpAddress: string;
   userAgent: string;
-  duration: number;
   manufacturer: string;   // Hãng sản xuất (VD: Dell, Apple, Samsung)
   operatingSystem: string; // Hệ điều hành (VD: Windows 11, macOS 14, Android 14)
 }
+
+/**
+ * DTO thực tế gửi lên backend cho PUT /users/authorize-device.
+ * Backend dùng @SnakeCaseModel nên các trường phải là snake_case.
+ */
+export interface AuthorizeDeviceApiPayload {
+  device_mac: string;
+  ap_mac: string;
+  device_client_id?: string;
+  ssid: string;
+  device_type: string;
+  device_name: string;
+  operating_system: string;
+  manufacturer: string;
+  user_agent: string;
+}
+
 
 export interface ResendOtpPayload {
   identifier: string;
@@ -145,6 +161,9 @@ export interface PolicySecurity {
 export interface PolicyAuthorization {
   authType: string | null;
   allowedMethods: string[] | null;
+  identityProvider?: string | null;
+  assignedSsid?: string | null;
+  vlanId?: number | null;
 }
 
 export interface PolicyAudit {
@@ -156,6 +175,7 @@ export interface PolicyAudit {
 
 export interface UserPolicy {
   id: number;
+  policyCode?: string;
   name: string;
   type: string;
   isActive: boolean;
@@ -164,6 +184,16 @@ export interface UserPolicy {
   security: PolicySecurity | null;
   authorization: PolicyAuthorization | null;
   audit: PolicyAudit | null;
+  detail?: {
+    downloadLimit?: number | null;
+    uploadLimit?: number | null;
+    maxSessionDuration?: number | null;
+    maxConcurrentSessions?: number | null;
+    dataLimitMB?: number | null;
+    authType?: string | null;
+    assignedSsid?: string | null;
+    vlanId?: number | null;
+  };
 }
 
 export interface MeResponse {
@@ -184,6 +214,18 @@ export interface MeResponse {
   linkedProviders: LinkedProvider[];
 }
 
+/**
+ * Sửa ngày 2026-09-08: OAuth init dùng cùng định danh thiết bị như login mật khẩu.
+ */
+export interface OAuth2InitializePayload {
+  device_id: string;
+}
+
+export interface OAuth2InitializeResponse {
+  provider: string;
+  authorizeUrl: string;
+}
+
 export interface ApiErrorBody {
   timestamp?: number;
   code?: number;
@@ -194,20 +236,13 @@ export interface ApiErrorBody {
 
 // Kiểu dữ liệu phiên — response từ GET /api/v1/user-sessions/me
 export interface DeviceUserInfo {
-  deviceId: number;        // ID trong user_devices
-  macAddress: string;      // MAC thiết bị
+  deviceId: number | null; // ID trong user_devices
+  macAddress: string | null; // MAC thiết bị
   deviceType: string | null; // VD: Laptop, Smartphone
-  deviceName: string;      // VD: MacBook Pro
-  userId: number;          // ID người dùng
-  userName: string;        // Tên người dùng
+  deviceName: string | null; // VD: MacBook Pro
+  userId: number | null;   // ID người dùng
+  userName: string | null; // Tên người dùng
   userGroup: string | null; // VD: Cán bộ cấp cao
-  trafficIn: string | null; // Đã định dạng (VD: 3.18 MB) — dữ liệu thời gian thực từ UniFi
-  trafficOut: string | null; // Đã định dạng — dữ liệu thời gian thực từ UniFi
-  downloadBytes: string | null; // Lưu lượng tải xuống đã định dạng — dữ liệu thời gian thực từ UniFi
-  uploadBytes: string | null;   // Lưu lượng tải lên đã định dạng — dữ liệu thời gian thực từ UniFi
-  isOnline: boolean;       // Có online trên UniFi không?
-  ssid: string;            // SSID theo thời gian thực từ UniFi
-  apMac: string;           // Địa chỉ MAC của AP theo thời gian thực từ UniFi
 }
 
 export interface UserSession {
@@ -217,9 +252,9 @@ export interface UserSession {
   endTime: string | null;  // null nếu ACTIVE
   status: 'ACTIVE' | 'ENDED' | 'EXPIRED' | 'FAILED'; // Trạng thái phiên
   createdAt: string;       // Thời gian tạo
-  ssid: string;            // Tên SSID
-  vlan: string;            // Tên VLAN
-  apMac: string;           // MAC access point
+  ssid: string | null;     // Tên SSID
+  vlan: string | null;     // Tên VLAN
+  apMac: string | null;    // MAC access point
   downloadBytes: number;   // Lưu lượng download (từ DB, sync 5p/lần)
   uploadBytes: number;     // Lưu lượng upload (từ DB, sync 5p/lần)
   terminateCause: string | null; // null nếu ACTIVE

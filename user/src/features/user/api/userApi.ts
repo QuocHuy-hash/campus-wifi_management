@@ -24,7 +24,10 @@ export async function updateUserProfile(
 ): Promise<UserProfileData> {
   const response = await apiClient.put<ApiEnvelope<UserProfileData>>(
     `${AUTH_ENDPOINT}/me`,
-    payload
+    {
+      full_name: payload.fullName,
+      phone: payload.phone,
+    }
   );
   return response.data.data;
 }
@@ -35,5 +38,9 @@ export function clearUserProfile(): void {
 }
 
 export async function changeUserPassword(payload: ChangePasswordPayload): Promise<void> {
-  await apiClient.post(`${AUTH_ENDPOINT}/change-password`, payload);
+  await apiClient.post(`${AUTH_ENDPOINT}/change-password`, {
+    current_password: payload.currentPassword,
+    new_password: payload.newPassword,
+    confirm_password: payload.confirmPassword,
+  });
 }

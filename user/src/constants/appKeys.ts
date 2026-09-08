@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   currentDeviceMac: "currentDeviceMac",
   authDeviceId: "authDeviceId",
   savedGuestLoginUsername: "savedGuestLoginUsername",
+  deviceClientId: "deviceClientId",
 } as const;
 
 export const AUTH_COOKIE_KEY = "access_token";
