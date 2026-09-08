@@ -23,9 +23,11 @@ import {
   Phone,
   UserPlus,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 
 type GuestAuthMethod = 'email' | 'phone';
-type GuestStep = 'form' | 'otp' | 'newpass' | 'success';
+type GuestStep = 'form' | 'otp' | 'success';
 
 interface GuestRegistrationDialogProps {
   open: boolean;
@@ -34,12 +36,8 @@ interface GuestRegistrationDialogProps {
   guestForm: { email: string; phone: string; password: string; confirmPassword: string };
   otpCode: string[];
   otpError: string;
-  guestNewPassword: string;
-  guestConfirmPassword: string;
-  showGuestPassword: boolean;
   isSendingOtp: boolean;
   isVerifyingOtp: boolean;
-  isSettingGuestPassword: boolean;
   registerLoading: boolean;
   verifyLoading: boolean;
   resendLoading: boolean;
@@ -48,15 +46,12 @@ interface GuestRegistrationDialogProps {
   onBackStep: () => void;
   onSetGuestAuthMethod: (method: GuestAuthMethod) => void;
   onSetGuestForm: (updater: (prev: { email: string; phone: string; password: string; confirmPassword: string }) => { email: string; phone: string; password: string; confirmPassword: string }) => void;
-  onSetShowGuestPassword: (value: boolean) => void;
   onSendOtp: () => void;
   onOtpChange: (index: number, value: string) => void;
   onOtpKeyDown: (index: number, e: React.KeyboardEvent) => void;
+  onOtpPaste: (value: string) => void;
   onVerifyOtp: () => void;
   onResendOtp: () => void;
-  onSetGuestNewPassword: (value: string) => void;
-  onSetGuestConfirmPassword: (value: string) => void;
-  onSetGuestPassword: () => void;
   onUseGuestCredentials: () => void;
 }
 
@@ -67,12 +62,8 @@ export default function GuestRegistrationDialog({
   guestForm,
   otpCode,
   otpError,
-  guestNewPassword,
-  guestConfirmPassword,
-  showGuestPassword,
   isSendingOtp,
   isVerifyingOtp,
-  isSettingGuestPassword,
   registerLoading,
   verifyLoading,
   resendLoading,
@@ -81,46 +72,46 @@ export default function GuestRegistrationDialog({
   onBackStep,
   onSetGuestAuthMethod,
   onSetGuestForm,
-  onSetShowGuestPassword,
   onSendOtp,
   onOtpChange,
   onOtpKeyDown,
+  onOtpPaste,
   onVerifyOtp,
   onResendOtp,
-  onSetGuestNewPassword,
-  onSetGuestConfirmPassword,
-  onSetGuestPassword,
   onUseGuestCredentials,
 }: GuestRegistrationDialogProps) {
+  const { t } = useTranslation();
+  const [showGuestPassword, setShowGuestPassword] = useState(false);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="auth-light-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {(guestStep === 'otp' || guestStep === 'newpass') && (
+            {guestStep === 'otp' && (
               <button type="button" onClick={onBackStep} className="p-1 hover:bg-gray-100 rounded-lg mr-1">
                 <ArrowLeft size={16} />
               </button>
             )}
             <UserPlus size={18} className="text-blue-600" />
-            {guestStep === 'form' && 'Đăng ký tài khoản'}
-            {guestStep === 'otp' && 'Xác thực OTP'}
-            {guestStep === 'newpass' && 'Tạo mật khẩu'}
-            {guestStep === 'success' && 'Đăng ký thành công'}
+            {guestStep === 'form' && t('register.title')}
+            {guestStep === 'otp' && t('register.otpTitle')}
+            {guestStep === 'success' && t('register.successTitle')}
           </DialogTitle>
           <DialogDescription>
-            {guestStep === 'form' && 'Tạo tài khoản WiFi bằng Email hoặc Zalo'}
+            {guestStep === 'form' && t('register.description')}
             {guestStep === 'otp' &&
-              `Nhập mã OTP đã gửi đến ${guestAuthMethod === 'email' ? guestForm.email : guestForm.phone}`}
-            {guestStep === 'newpass' && 'Tạo mật khẩu cho tài khoản của bạn'}
-            {guestStep === 'success' && 'Tài khoản WiFi tạm thời đã sẵn sàng'}
+              t('register.otpDescription', {
+                contact: guestAuthMethod === 'email' ? guestForm.email : guestForm.phone,
+              })}
+            {guestStep === 'success' && t('register.successDescription')}
           </DialogDescription>
         </DialogHeader>
 
         {guestStep === 'form' && (
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Phương thức xác thực</Label>
+            {/* <div className="space-y-2">
+              <Label className="text-sm font-medium">{t('register.method')}</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -132,7 +123,7 @@ export default function GuestRegistrationDialog({
                   }`}
                 >
                   <img src="/mail.png" alt="Email" className="w-5 h-5 object-contain" />
-                  <span className="font-medium text-sm">Email</span>
+                  <span className="font-medium text-sm">{t('register.email')}</span>
                 </button>
                 <button
                   type="button"
@@ -144,15 +135,15 @@ export default function GuestRegistrationDialog({
                   }`}
                 >
                   <img src="/zalo.png" alt="Zalo" className="w-5 h-5 object-contain" />
-                  <span className="font-medium text-sm">Zalo</span>
+                  <span className="font-medium text-sm">{t('register.zalo')}</span>
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {guestAuthMethod === 'email' ? (
               <div className="space-y-1.5">
                 <Label htmlFor="guest-email" className="text-sm font-medium">
-                  Email <span className="text-red-500">*</span>
+                  {t('register.email')} <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
                   <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -169,7 +160,7 @@ export default function GuestRegistrationDialog({
             ) : (
               <div className="space-y-1.5">
                 <Label htmlFor="guest-phone" className="text-sm font-medium">
-                  Số điện thoại (Zalo) <span className="text-red-500">*</span>
+                  {t('register.phoneZalo')} <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
                   <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -182,27 +173,27 @@ export default function GuestRegistrationDialog({
                     className="pl-10 h-11 rounded-xl"
                   />
                 </div>
-                <p className="text-xs text-gray-500">Mã OTP sẽ được gửi qua Zalo</p>
+                <p className="text-xs text-gray-500">{t('register.otpSentViaZalo')}</p>
               </div>
             )}
 
             <div className="space-y-1.5">
               <Label htmlFor="guest-password" className="text-sm font-medium">
-                Mật khẩu <span className="text-red-500">*</span>
+                {t('register.passwordLabel')} <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
                   id="guest-password"
                   type={showGuestPassword ? 'text' : 'password'}
-                  placeholder="Tối thiểu 8 ký tự"
+                  placeholder={t('register.passwordPlaceholder')}
                   value={guestForm.password}
                   onChange={(e) => onSetGuestForm((prev) => ({ ...prev, password: e.target.value }))}
                   className="pl-10 pr-10 h-11 rounded-xl"
                 />
                 <button
                   type="button"
-                  onClick={() => onSetShowGuestPassword(!showGuestPassword)}
+                  onClick={() => setShowGuestPassword(!showGuestPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showGuestPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -212,14 +203,14 @@ export default function GuestRegistrationDialog({
 
             <div className="space-y-1.5">
               <Label htmlFor="guest-confirm-password" className="text-sm font-medium">
-                Xác nhận mật khẩu <span className="text-red-500">*</span>
+                {t('register.confirmPasswordLabel')} <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
                   id="guest-confirm-password"
                   type={showGuestPassword ? 'text' : 'password'}
-                  placeholder="Nhập lại mật khẩu"
+                  placeholder={t('register.confirmPasswordPlaceholder')}
                   value={guestForm.confirmPassword}
                   onChange={(e) =>
                     onSetGuestForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
@@ -240,7 +231,7 @@ export default function GuestRegistrationDialog({
 
             <DialogFooter className="pt-2 gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">
-                Hủy
+                {t('common.cancel')}
               </Button>
               <Button
                 onClick={onSendOtp}
@@ -256,11 +247,11 @@ export default function GuestRegistrationDialog({
                 {isSendingOtp || registerLoading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Đang gửi OTP...
+                    {t('common.sendingOtp')}
                   </div>
                 ) : (
                   <>
-                    Gửi mã OTP
+                    {t('common.sendOtp')}
                     <ChevronRight size={16} className="ml-1" />
                   </>
                 )}
@@ -279,10 +270,17 @@ export default function GuestRegistrationDialog({
                   <MessageCircle size={28} className="text-blue-600" />
                 )}
               </div>
-              <p className="text-sm text-gray-600">Mã OTP 6 số đã được gửi đến</p>
+              <p className="text-sm text-gray-600">{t('register.otpSentTo')}</p>
               <p className="font-medium text-gray-900">
                 {guestAuthMethod === 'email' ? guestForm.email : guestForm.phone}
               </p>
+              <button
+                type="button"
+                onClick={onBackStep}
+                className="text-sm text-blue-600 hover:underline mt-1"
+              >
+                {t('common.changeAccount')}
+              </button>
             </div>
 
             <div className="flex justify-center gap-2 mb-4">
@@ -296,6 +294,10 @@ export default function GuestRegistrationDialog({
                   value={digit}
                   onChange={(e) => onOtpChange(index, e.target.value.replace(/\D/g, ''))}
                   onKeyDown={(e) => onOtpKeyDown(index, e)}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    onOtpPaste(e.clipboardData.getData('text'));
+                  }}
                   className="w-11 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                 />
               ))}
@@ -316,10 +318,10 @@ export default function GuestRegistrationDialog({
               {isVerifyingOtp || verifyLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Đang xác thực...
+                  {t('common.verifying')}
                 </div>
               ) : (
-                'Xác nhận OTP'
+                t('register.verifyOtp')
               )}
             </Button>
 
@@ -330,90 +332,12 @@ export default function GuestRegistrationDialog({
                 className="text-sm text-blue-600 hover:underline disabled:opacity-50"
               >
                 {isSendingOtp || resendLoading
-                  ? 'Đang gửi lại...'
+                  ? t('common.resending')
                   : resendCooldown > 0
-                    ? `Gửi lại sau ${resendCooldown}s`
-                    : 'Gửi lại mã OTP'}
+                    ? t('common.resendIn', { seconds: resendCooldown })
+                    : t('common.resendOtp')}
               </button>
             </div>
-          </div>
-        )}
-
-        {guestStep === 'newpass' && (
-          <div className="space-y-4 py-2">
-            {otpError && (
-              <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
-                <AlertCircle size={16} />
-                <span className="text-sm">{otpError}</span>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Mật khẩu</Label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <Input
-                  type={showGuestPassword ? 'text' : 'password'}
-                  placeholder="Nhập mật khẩu"
-                  value={guestNewPassword}
-                  onChange={(e) => onSetGuestNewPassword(e.target.value)}
-                  className="pl-10 pr-10 h-11 rounded-xl"
-                />
-                <button
-                  type="button"
-                  onClick={() => onSetShowGuestPassword(!showGuestPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showGuestPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Xác nhận mật khẩu</Label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <Input
-                  type={showGuestPassword ? 'text' : 'password'}
-                  placeholder="Nhập lại mật khẩu"
-                  value={guestConfirmPassword}
-                  onChange={(e) => onSetGuestConfirmPassword(e.target.value)}
-                  className="pl-10 h-11 rounded-xl"
-                />
-              </div>
-              {guestConfirmPassword && guestNewPassword !== guestConfirmPassword && (
-                <p className="text-xs text-red-500 flex items-center gap-1">
-                  <AlertCircle size={12} /> Mật khẩu không khớp
-                </p>
-              )}
-            </div>
-            <PasswordStrengthChecklist password={guestNewPassword} />
-
-            <Button
-              onClick={onSetGuestPassword}
-              disabled={
-                !guestNewPassword ||
-                !guestConfirmPassword ||
-                guestNewPassword.length < 8 ||
-                !/[A-Z]/.test(guestNewPassword) ||
-                !/[a-z]/.test(guestNewPassword) ||
-                !/[0-9]/.test(guestNewPassword) ||
-                !/[!@#$%^&*(),.?":{}|<>]/.test(guestNewPassword) ||
-                guestNewPassword !== guestConfirmPassword ||
-                isSettingGuestPassword
-              }
-              className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl h-11"
-            >
-              {isSettingGuestPassword ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Đang xử lý...
-                </div>
-              ) : (
-                'Hoàn tất đăng ký'
-              )}
-            </Button>
           </div>
         )}
 
@@ -423,22 +347,24 @@ export default function GuestRegistrationDialog({
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle size={32} className="text-green-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Đăng ký thành công!</h3>
-              <p className="text-sm text-gray-500">Tài khoản WiFi tạm thời đã sẵn sàng</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">{t('register.successHeading')}</h3>
+              <p className="text-sm text-gray-500">{t('register.successDescription')}</p>
             </div>
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
-              <p className="text-xs text-gray-500 mb-1">Tên đăng nhập</p>
+              <p className="text-xs text-gray-500 mb-1">{t('register.usernameLabel')}</p>
               <p className="font-medium text-gray-900">
                 {guestAuthMethod === 'email' ? guestForm.email : guestForm.phone}
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                (Sử dụng {guestAuthMethod === 'email' ? 'email' : 'số điện thoại'} để đăng nhập)
+                {t('register.loginWithInfo', {
+                  method: guestAuthMethod === 'email' ? t('register.email') : t('register.phoneZalo'),
+                })}
               </p>
             </div>
 
             <Button onClick={onUseGuestCredentials} className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl h-11">
-              Đăng nhập ngay
+              {t('register.loginNow')}
             </Button>
           </div>
         )}

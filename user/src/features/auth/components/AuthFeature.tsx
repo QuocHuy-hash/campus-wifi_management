@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { currentUser } from '@/data/mockData';
-import { authorizeDevice, getMeProfile, loginWithPassword, startOAuth2Login } from '@/features/auth/api/authApi';
+import { authorizeDevice, loginWithPassword, quickAccess, startOAuth2Login } from '@/features/auth/api/authApi';
 import {
   clearForgotToken,
   getActiveProviders,
@@ -21,27 +22,12 @@ import AuthPageLayout from '@/features/auth/components/AuthPageLayout';
 import AuthTermsDialog from '@/features/auth/components/dialogs/AuthTermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
-import { STORAGE_KEYS, AUTH_COOKIE_KEY } from '@/constants/appKeys';
+import { STORAGE_KEYS } from '@/constants/appKeys';
 import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload, clearRedirectUrl } from '@/lib/captivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
 import { validatePassword } from '@/lib/passwordValidation';
-
-async function setSessionCookie(accessToken: string): Promise<boolean> {
-  try {
-    const res = await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken }),
-    });
-    // Cookie phía client là phương án dự phòng để middleware vẫn nhận diện phiên.
-    document.cookie = `${AUTH_COOKIE_KEY}=${accessToken};path=/;max-age=3600;SameSite=Lax`;
-    return res.ok;
-  } catch {
-    // API lỗi vẫn không được làm gián đoạn luồng chuyển hướng sau đăng nhập.
-    document.cookie = `${AUTH_COOKIE_KEY}=${accessToken};path=/;max-age=3600;SameSite=Lax`;
-    return true;
-  }
-}
+import { logger } from '@/lib/logger';
+import { clearStoredAuthSession, establishSessionCookie } from '@/lib/session';
 
 const LEGACY_SAVED_GUEST_LOGIN_CREDENTIALS_KEY = 'savedGuestLoginCredentials';
 
@@ -85,6 +71,7 @@ function saveGuestLoginUsername(username: string): void {
 export default function Login() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<AuthTab>('guest');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -98,15 +85,11 @@ export default function Login() {
     confirmPassword: ''
   });
   const [guestAuthMethod, setGuestAuthMethod] = useState<'email' | 'phone'>('email');
-  const [guestStep, setGuestStep] = useState<'form' | 'otp' | 'newpass' | 'success'>('form');
+  const [guestStep, setGuestStep] = useState<'form' | 'otp' | 'success'>('form');
   const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
   const [otpError, setOtpError] = useState('');
   const [isSendingOtp] = useState(false);
   const [isVerifyingOtp] = useState(false);
-  const [guestNewPassword, setGuestNewPassword] = useState('');
-  const [guestConfirmPassword, setGuestConfirmPassword] = useState('');
-  const [showGuestPassword, setShowGuestPassword] = useState(false);
-  const [isSettingGuestPassword, setIsSettingGuestPassword] = useState(false);
 
   // Thông tin đăng nhập của khách đã từng tạo tài khoản.
   const [loginUsername, setLoginUsername] = useState('');
@@ -115,7 +98,6 @@ export default function Login() {
 
   // Trạng thái riêng cho luồng quên mật khẩu.
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
-  const [forgotMethod, setForgotMethod] = useState<'email' | 'phone'>('email');
   const [forgotContact, setForgotContact] = useState('');
   const [forgotStep, setForgotStep] = useState<'form' | 'otp' | 'newpass' | 'success'>('form');
   const [forgotOtp, setForgotOtp] = useState(['', '', '', '', '', '']);
@@ -156,7 +138,7 @@ export default function Login() {
     dispatch(getActiveProviders());
   }, [dispatch]);
 
-  // Khởi tạo interceptor một lần trước khi thực hiện các request xác thực.
+  // Khởi tạo interceptor một lần trước khi thực hiện các yêu cầu xác thực.
   useEffect(() => {
     initializeAxios();
   }, []);
@@ -215,64 +197,40 @@ export default function Login() {
     const handleRedirectWithSession = async () => {
       if (typeof window === 'undefined') return;
 
-      // Chỉ tin token localStorage khi cookie phiên vẫn tồn tại để tránh vòng lặp redirect.
-      const hasAuthCookie = document.cookie.split(';').some(cookie => {
-        const [name] = cookie.trim().split('=');
-        return name === AUTH_COOKIE_KEY;
-      });
-
-      const isLoggedIn = localStorage.getItem(STORAGE_KEYS.portalLoggedIn) === 'true';
-      const hasToken = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || !!localStorage.getItem(STORAGE_KEYS.accessToken);
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       const captiveContext = getCaptivePortalContext('');
 
       console.log('🔄 Checking redirect with session...');
-      console.log('🔄 Has auth cookie:', hasAuthCookie);
-      console.log('🔄 Is logged in:', isLoggedIn);
-      console.log('🔄 Has token:', hasToken);
+      console.log('🔄 Has token:', Boolean(token));
       console.log('🔄 Captive context:', captiveContext);
 
-      // Token không còn cookie đi kèm được xem là phiên cũ và phải dọn sạch.
-      if (hasToken && !hasAuthCookie) {
-        console.warn('⚠️ Token exists in localStorage but no cookie found - clearing stale session');
-        localStorage.removeItem(STORAGE_KEYS.accessToken);
-        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-        localStorage.removeItem(STORAGE_KEYS.refreshToken);
-        localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-        localStorage.removeItem(STORAGE_KEYS.portalLoggedIn);
-        localStorage.removeItem(STORAGE_KEYS.portalUser);
+      if (!token) {
         return;
       }
 
-      // Đồng bộ lại cookie qua API trước khi chuyển sang trang được bảo vệ.
-      if (hasToken && hasAuthCookie) {
-        const token = localStorage.getItem(STORAGE_KEYS.accessToken) || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-        if (token) {
-          const cookieOk = await setSessionCookie(token);
-          if (!cookieOk) {
-            console.warn('⚠️ Failed to set session cookie, clearing stale token');
-            localStorage.removeItem(STORAGE_KEYS.accessToken);
-            localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-            localStorage.removeItem(STORAGE_KEYS.portalLoggedIn);
-            return;
-          }
-        }
+      // Cookie phiên là HttpOnly nên client không thể kiểm tra bằng document.cookie.
+      // Đồng bộ qua API route và tin vào kết quả HTTP của route đó.
+      try {
+        await establishSessionCookie(token);
+      } catch {
+        console.warn('⚠️ Failed to restore session cookie, clearing stale token');
+        clearStoredAuthSession();
+        setAxiosAuthToken(null);
+        return;
       }
 
-      // Không còn captive context thì middleware tiếp quản việc điều hướng phiên.
-      if (hasToken && hasAuthCookie && !captiveContext) {
-        console.log('🚀 User has valid session - letting middleware handle redirect...');
+      // Huy- Cập nhật ngày 2026-09-08: phiên thường không có Captive Portal vào Home như đăng nhập bình thường.
+      if (!captiveContext) {
+        console.log('🚀 User has valid session without captive context - going to Session...');
         router.push('/session');
         return;
       }
 
       // Phiên cũ quay lại từ captive portal cần được cấp quyền thiết bị tự động.
-      if (isLoggedIn && hasToken && hasAuthCookie && captiveContext) {
+      if (captiveContext) {
         console.log('🚀 User already logged in with captive context - auto authorizing device...');
-        
-        const token = localStorage.getItem(STORAGE_KEYS.accessToken) || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-        if (token) {
-          setAxiosAuthToken(token);
-        }
+
+        setAxiosAuthToken(token);
 
         try {
           const payload = buildAuthorizeDevicePayload(captiveContext);
@@ -285,7 +243,7 @@ export default function Login() {
           console.error('❌ Failed to authorize device via redirect:', error);
           clearRedirectUrl();
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-          setError('Xác thực thiết bị thất bại. Vui lòng thử lại.');
+          setError(t('common.deviceAuthFailedRetry'));
         }
       }
     };
@@ -304,38 +262,38 @@ export default function Login() {
 
       const status = maybeAxios.response?.status;
 
-      if (status === 401) {
-        return 'Tài khoản hoặc mật khẩu không đúng';
-      }
-
-      if (status === 404) {
-        return 'Không tìm thấy servidor. Vui lòng thử lại sau.';
-      }
-
-      if (status === 500) {
-        return 'Lỗi servidor nội bộ. Vui lòng thử lại sau.';
-      }
-
-      if (status === 502 || status === 503) {
-        return 'Servidor đang bảo trì. Vui lòng thử lại sau.';
-      }
-
       if (maybeAxios.response?.data?.message) {
         return maybeAxios.response.data.message;
       }
 
+      if (status === 401) {
+        return t('common.invalidCredentials');
+      }
+
+      if (status === 404) {
+        return t('common.serverNotFound');
+      }
+
+      if (status === 500) {
+        return t('common.serverInternalError');
+      }
+
+      if (status === 502 || status === 503) {
+        return t('common.serverMaintenance');
+      }
+
       if (maybeAxios.message) {
         if (maybeAxios.message.includes('Network Error') || maybeAxios.message.includes('ECONNREFUSED')) {
-          return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.';
+          return t('common.networkUnreachable');
         }
         if (maybeAxios.message.includes('timeout')) {
-          return 'Hết thời gian kết nối. Vui lòng thử lại.';
+          return t('common.connectionTimeout');
         }
-        return 'Đăng nhập thất bại. Vui lòng thử lại.';
+        return t('common.loginFailed');
       }
     }
 
-    return 'Đăng nhập thất bại. Vui lòng thử lại.';
+    return t('common.loginFailed');
   };
 
   const getGuestIdentifier = () =>
@@ -368,107 +326,102 @@ export default function Login() {
     }
   };
 
-  const persistSession = async (identifier: string, fallbackRole?: string) => {
-    try {
-      console.log('🔍 Calling getMeProfile...');
-      const profile = await getMeProfile();
-      console.log('✅ getMeProfile success:', profile);
-
-      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
-      localStorage.setItem(
-        STORAGE_KEYS.portalUser,
-        JSON.stringify({
-          id: profile.id,
-          username: profile.username || identifier,
-          fullname: profile.fullName || identifier,
-          email: profile.email || identifier,
-          role: fallbackRole || 'CLIENT',
-          status: profile.status,
-          avatarUrl: profile.avatarUrl,
-          loginTime: profile.lastLoginAt || new Date().toISOString(),
-        }),
-      );
-    } catch (error) {
-      console.error('❌ getMeProfile failed:', error);
-      // Vẫn lưu phiên tối thiểu để giao diện hoạt động khi API hồ sơ tạm lỗi.
-      localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
-      localStorage.setItem(
-        STORAGE_KEYS.portalUser,
-        JSON.stringify({
-          id: 'unknown',
-          username: identifier,
-          fullname: identifier,
-          email: identifier,
-          role: fallbackRole || 'CLIENT',
-          status: 'ACTIVE',
-          avatarUrl: null,
-          loginTime: new Date().toISOString(),
-        }),
-      );
-    }
+  // Lưu phiên tối thiểu sau khi login thành công.
+  // Trang /session và /account sẽ tự gọi /auth/me để lấy hồ sơ thật (fullName, avatar, roles...) khi khởi tạo,
+  // tránh gọi API xác thực ngay trên trang login gây lỗi 401 -> interceptor xóa cookie -> bị đá về login.
+  const persistSession = (identifier: string, fallbackRole?: string) => {
+    localStorage.setItem(STORAGE_KEYS.portalLoggedIn, 'true');
+    localStorage.setItem(
+      STORAGE_KEYS.portalUser,
+      JSON.stringify({
+        id: 'unknown',
+        username: identifier,
+        fullname: identifier,
+        email: identifier,
+        role: fallbackRole || 'CLIENT',
+        status: 'ACTIVE',
+        avatarUrl: null,
+        loginTime: new Date().toISOString(),
+      }),
+    );
   };
 
   const establishPasswordSession = async (
     result: LoginResult,
     identifier: string,
+    rememberUsername = true,
   ): Promise<boolean> => {
     localStorage.setItem(STORAGE_KEYS.accessToken, result.accessToken);
-    if (result.refreshToken) {
-      localStorage.setItem(STORAGE_KEYS.refreshToken, result.refreshToken);
-    }
 
     setAxiosAuthToken(result.accessToken);
-    const cookieOk = await setSessionCookie(result.accessToken);
-    if (!cookieOk) {
-      localStorage.removeItem(STORAGE_KEYS.accessToken);
-      localStorage.removeItem(STORAGE_KEYS.refreshToken);
-      setError('Không thể thiết lập phiên đăng nhập. Vui lòng thử lại.');
+    try {
+      await establishSessionCookie(result.accessToken);
+    } catch {
+      clearStoredAuthSession();
+      setAxiosAuthToken(null);
+      setError(t('common.sessionSetupFailed'));
       setIsLoading(false);
       return false;
     }
 
-    await persistSession(identifier, result.roles?.[0]);
-    saveGuestLoginUsername(identifier);
+    persistSession(identifier, result.roles?.[0]);
+    if (rememberUsername) {
+      saveGuestLoginUsername(identifier);
+    }
     return true;
   };
 
-  const redirectAfterDeviceAuthorization = async (): Promise<void> => {
-    // Captive context phải được đọc trước vì quá trình cấp quyền sẽ xóa dữ liệu này.
-    const hasCaptiveContext = Boolean(getCaptivePortalContext(''));
+  const redirectAfterDeviceAuthorization = async (isAnonymousLogin = false): Promise<void> => {
+    const captiveContext = getCaptivePortalContext('');
 
-    if (hasCaptiveContext) {
+    if (captiveContext) {
       const authorized = await authorizeDeviceInBackground();
       if (!authorized) {
-        setError('Xác thực thiết bị thất bại. Vui lòng thử lại.');
+        setError(t('common.deviceAuthFailedRetry'));
         setIsLoading(false);
         return;
       }
-    } else {
-      await authorizeDeviceInBackground();
     }
 
-    // Tải lại toàn trang để cookie phiên được gửi ngay ở request kế tiếp.
-    window.location.href = hasCaptiveContext
-      ? '/network-connecting'
-      : '/session';
+    // Huy- Cập nhật ngày 2026-09-08: Anonymous chỉ hợp lệ trong Captive Portal và dừng tại màn hình kiểm tra mạng.
+    if (isAnonymousLogin) {
+      if (!captiveContext) {
+        setError('Không có quyền truy cập nhanh. Vui lòng kết nối vào WiFi có Captive Portal UniFi.');
+        setIsLoading(false);
+        return;
+      }
+      window.location.href = '/network-connecting?flow=anonymous';
+      return;
+    }
+
+    // Huy- Cập nhật ngày 2026-09-08: login thường chỉ kiểm tra mạng khi đã authorize từ Captive Portal thành công.
+    window.location.href = captiveContext ? '/network-connecting' : '/session';
   };
 
   const handleSSOLogin = async (provider: string) => {
     if (!agreeTerms) {
-      setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
+      setError(t('common.agreeTermsRequired'));
       return;
     }
     setError('');
 
     if (provider === 'google' || provider === 'azure') {
       if (activeProviderCodes.length > 0 && !activeProviderCodes.includes(provider)) {
-        setError('Provider này hiện chưa được kích hoạt trên hệ thống');
+        setError(t('common.providerNotActive', { provider }));
         return;
       }
 
       sessionStorage.setItem(STORAGE_KEYS.oauthProvider, provider);
       sessionStorage.setItem('oauth2_redirect_back', '/session');
-      startOAuth2Login(provider);
+
+      setIsLoading(true);
+      try {
+        await startOAuth2Login(provider);
+      } catch (oauthError) {
+        logger.error('Khởi tạo OAuth2 thất bại:', oauthError);
+        setError(t('common.loginFailed'));
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -486,7 +439,7 @@ export default function Login() {
         ...currentUser,
         id: Date.now(),
         username: linkedAccount.email,
-        fullname: `Người dùng ${provider}`,
+        fullname: t('common.renamedUser', { provider }),
         loginTime: new Date().toISOString(),
         linkedAccounts: [linkedAccount]
       }));
@@ -494,6 +447,31 @@ export default function Login() {
       await redirectAfterDeviceAuthorization();
       setIsLoading(false);
     }, 1200);
+  };
+
+  /** Huy- Cập nhật ngày 2026-09-08: user ANONYMOUS dùng token thật rồi authorize UniFi như user thường. */
+  const handleQuickAccess = async () => {
+    // Huy- Cập nhật ngày 2026-09-08: không tạo user ANONYMOUS ngoài Captive Portal UniFi.
+    if (!getCaptivePortalContext('')) {
+      setError('Không có quyền truy cập nhanh. Vui lòng kết nối vào WiFi có Captive Portal UniFi.');
+      return;
+    }
+
+    if (!agreeTerms) {
+      setError(t('common.agreeTermsRequired'));
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    try {
+      const result = await quickAccess();
+      const sessionReady = await establishPasswordSession(result, 'Khách truy cập nhanh', false);
+      if (!sessionReady) return;
+      await redirectAfterDeviceAuthorization(true);
+    } catch (apiError) {
+      setError(getLoginErrorMessage(apiError));
+      setIsLoading(false);
+    }
   };
 
   const handleSendOtp = async () => {
@@ -506,7 +484,7 @@ export default function Login() {
       return;
     }
     if (guestForm.password !== guestForm.confirmPassword) {
-      setOtpError('Xác nhận mật khẩu không khớp');
+      setOtpError(t('common.confirmPasswordNotMatch'));
       return;
     }
 
@@ -546,10 +524,27 @@ export default function Login() {
     }
   };
 
+  const handleOtpPaste = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 6);
+    if (!digits) return;
+
+    const newOtp = [...otpCode];
+    for (let i = 0; i < 6; i++) {
+      newOtp[i] = digits[i] ?? '';
+    }
+    setOtpCode(newOtp);
+
+    // Focus ô tiếp theo sau chữ số cuối đã dán, hoặc ô cuối cùng nếu đã đủ 6 số.
+    const nextIndex = Math.min(digits.length, 5);
+    setTimeout(() => {
+      document.getElementById(`otp-${nextIndex}`)?.focus();
+    }, 0);
+  };
+
   const handleVerifyOtp = async () => {
     const otp = otpCode.join('');
     if (otp.length !== 6) {
-      setOtpError('Vui lòng nhập đủ 6 số');
+      setOtpError(t('common.enterFullOtp'));
       return;
     }
 
@@ -568,33 +563,13 @@ export default function Login() {
     }
   };
 
-  const handleSetGuestPassword = () => {
-    const error = validatePassword(guestNewPassword);
-    if (error) {
-      setOtpError(error);
-      return;
-    }
-    if (guestNewPassword !== guestConfirmPassword) {
-      setOtpError('Xác nhận mật khẩu không khớp');
-      return;
-    }
-
-    setIsSettingGuestPassword(true);
-    setOtpError('');
-    
-    setTimeout(() => {
-      setIsSettingGuestPassword(false);
-      setGuestStep('success');
-    }, 1500);
-  };
-
   const handleResendOtp = async () => {
     setOtpCode(['', '', '', '', '', '']);
     setOtpError('');
 
     try {
       await dispatch(resendEmailOtp({ identifier: getGuestIdentifier() })).unwrap();
-      setGuestResendCooldown(60); // Reset đếm ngược sau khi gửi lại thành công
+      setGuestResendCooldown(60); // Đặt lại thời gian đếm ngược sau khi gửi lại thành công
     } catch (apiError) {
       setOtpError(String(apiError));
     }
@@ -606,12 +581,12 @@ export default function Login() {
     setGuestStep('form');
     setOtpCode(['', '', '', '', '', '']);
     setOtpError('');
-    setGuestResendCooldown(0); // Reset đếm ngược khi đóng dialog
+    setGuestResendCooldown(0); // Đặt lại thời gian đếm ngược khi đóng hộp thoại
   };
 
   const handleUseGuestCredentials = async () => {
     if (!agreeTerms) {
-      setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
+      setError(t('common.agreeTermsRequired'));
       setIsLoading(false);
       return;
     }
@@ -643,7 +618,7 @@ export default function Login() {
 
   const handleStandardLogin = async () => {
     if (!agreeTerms) {
-      setError('Vui lòng đồng ý với Điều khoản sử dụng WiFi');
+      setError(t('common.agreeTermsRequired'));
       setIsLoading(false);
       return;
     }
@@ -653,7 +628,7 @@ export default function Login() {
 
     if (!loginUsername || !loginPassword) {
       setIsLoading(false);
-      setError('Vui lòng nhập tài khoản và mật khẩu');
+      setError(t('common.enterCredentials'));
       return;
     }
 
@@ -662,7 +637,7 @@ export default function Login() {
         identifier: loginUsername,
         password: loginPassword,
       });
-
+console.log("result::::", result);
       const sessionReady = await establishPasswordSession(
         result,
         loginUsername,
@@ -708,10 +683,26 @@ export default function Login() {
     }
   };
 
+  const handleForgotOtpPaste = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 6);
+    if (!digits) return;
+
+    const newOtp = [...forgotOtp];
+    for (let i = 0; i < 6; i++) {
+      newOtp[i] = digits[i] ?? '';
+    }
+    setForgotOtp(newOtp);
+
+    const nextIndex = Math.min(digits.length, 5);
+    setTimeout(() => {
+      document.getElementById(`forgot-otp-${nextIndex}`)?.focus();
+    }, 0);
+  };
+
   const handleVerifyForgotOtp = async () => {
     const otp = forgotOtp.join('');
     if (otp.length !== 6) {
-      setForgotOtpError('Vui lòng nhập đủ 6 số');
+      setForgotOtpError(t('common.enterFullOtp'));
       return;
     }
     setIsVerifyingForgotOtp(true);
@@ -733,7 +724,7 @@ export default function Login() {
     setIsSendingForgotOtp(true);
     try {
       await dispatch(sendForgotOtp({ identifier: forgotContact })).unwrap();
-      setForgotResendCooldown(120); // Reset đếm ngược sau khi gửi lại thành công
+      setForgotResendCooldown(120); // Đặt lại thời gian đếm ngược sau khi gửi lại thành công
     } catch (apiError) {
       setForgotOtpError(String(apiError));
     } finally {
@@ -748,11 +739,11 @@ export default function Login() {
       return;
     }
     if (newPassword !== confirmNewPassword) {
-      setForgotOtpError('Xác nhận mật khẩu không khớp');
+      setForgotOtpError(t('common.confirmPasswordNotMatch'));
       return;
     }
     if (!forgotToken) {
-      setForgotOtpError('Phiên đặt lại mật khẩu đã hết hạn. Vui lòng thử lại.');
+      setForgotOtpError(t('common.forgotSessionExpired'));
       return;
     }
     setIsResettingPassword(true);
@@ -769,10 +760,9 @@ export default function Login() {
     }
   };
 
-  // Reset toàn bộ form quên mật khẩu về trạng thái ban đầu
+  // Đặt lại toàn bộ biểu mẫu quên mật khẩu về trạng thái ban đầu
   const resetForgotForm = () => {
     setForgotContact('');
-    setForgotMethod('email');
     setForgotStep('form');
     setForgotOtp(['', '', '', '', '', '']);
     setForgotOtpError('');
@@ -808,6 +798,7 @@ export default function Login() {
           onTogglePassword={() => setShowLoginPassword((visible) => !visible)}
           onLogin={handleStandardLogin}
           onOpenForgotModal={() => setForgotModalOpen(true)}
+          onQuickAccess={handleQuickAccess}
           onOpenTermsModal={() => setTermsModalOpen(true)}
         />
       </AuthPageLayout>
@@ -828,12 +819,8 @@ export default function Login() {
         guestForm={guestForm}
         otpCode={otpCode}
         otpError={otpError}
-        guestNewPassword={guestNewPassword}
-        guestConfirmPassword={guestConfirmPassword}
-        showGuestPassword={showGuestPassword}
         isSendingOtp={isSendingOtp}
         isVerifyingOtp={isVerifyingOtp}
-        isSettingGuestPassword={isSettingGuestPassword}
         registerLoading={registerLoading}
         verifyLoading={verifyLoading}
         resendLoading={resendLoading}
@@ -842,24 +829,20 @@ export default function Login() {
           setGuestModalOpen(open);
           if (!open) resetGuestForm();
         }}
-        onBackStep={() => setGuestStep(guestStep === 'newpass' ? 'otp' : 'form')}
+        onBackStep={() => setGuestStep('form')}
         onSetGuestAuthMethod={setGuestAuthMethod}
         onSetGuestForm={setGuestForm}
-        onSetShowGuestPassword={setShowGuestPassword}
         onSendOtp={handleSendOtp}
         onOtpChange={handleOtpChange}
         onOtpKeyDown={handleOtpKeyDown}
+        onOtpPaste={handleOtpPaste}
         onVerifyOtp={handleVerifyOtp}
         onResendOtp={handleResendOtp}
-        onSetGuestNewPassword={setGuestNewPassword}
-        onSetGuestConfirmPassword={setGuestConfirmPassword}
-        onSetGuestPassword={handleSetGuestPassword}
         onUseGuestCredentials={handleUseGuestCredentials}
       />
 
       <ForgotPasswordDialog
         open={forgotModalOpen}
-        method={forgotMethod}
         contact={forgotContact}
         step={forgotStep}
         otp={forgotOtp}
@@ -876,11 +859,11 @@ export default function Login() {
           if (!open) resetForgotForm();
         }}
         onBackStep={() => setForgotStep(forgotStep === 'newpass' ? 'otp' : 'form')}
-        onSetMethod={setForgotMethod}
         onSetContact={setForgotContact}
         onSendOtp={handleSendForgotOtp}
         onOtpChange={handleForgotOtpChange}
         onOtpKeyDown={handleForgotOtpKeyDown}
+        onOtpPaste={handleForgotOtpPaste}
         onVerifyOtp={handleVerifyForgotOtp}
         onResendOtp={handleResendForgotOtp}
         onSetNewPassword={setNewPassword}

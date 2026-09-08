@@ -1,33 +1,21 @@
 /**
- * Auth helper functions
+ * Các hàm hỗ trợ xác thực.
  */
 
 import { AUTH_COOKIE_KEY } from "@/constants/appKeys";
+import { setAxiosAuthToken } from "@/config/axios";
+import { logoutUser } from "@/features/auth/api/authApi";
+import { getCurrentDeviceMac } from "@/lib/deviceId";
+import {
+  clearSessionCookie,
+  clearStoredAuthSession,
+} from "@/lib/session";
 import { logger } from "./logger";
-/**
- * Xóa cookie access_token từ client-side
- * Sử dụng khi cần force logout hoặc clear session
- */
-export function clearAuthCookie(): void {
+// Dọn cookie do các bản cũ tạo ra trước khi access_token được chuyển sang HttpOnly.
+function clearLegacyAuthCookie(): void {
   if (typeof document === 'undefined') return;
-  
-  // CRITICAL: Must match the cookie key used throughout the app
-  // Xóa cookie bằng cách set expired
-  document.cookie = `${AUTH_COOKIE_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
-  console.log('🗑️ Auth cookie cleared');
-}
 
-/**
- * Kiểm tra xem có cookie access_token hay không
- */
-export function hasAuthCookie(): boolean {
-  if (typeof document === 'undefined') return false;
-  
-  const cookies = document.cookie.split(';');
-  return cookies.some(cookie => {
-    const [name] = cookie.trim().split('=');
-    return name === AUTH_COOKIE_KEY;
-  });
+  document.cookie = `${AUTH_COOKIE_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
 }
 
 /**
@@ -35,24 +23,23 @@ export function hasAuthCookie(): boolean {
  */
 export async function performLogout(redirectTo: string = '/login'): Promise<void> {
   try {
-    // Gọi API logout để xóa httpOnly cookie
-    await fetch('/api/auth/logout', { method: 'POST' });
+    // Thu hồi, đưa dynamic token vào blacklist và hủy cấp quyền thiết bị ở backend trước.
+    await logoutUser(getCurrentDeviceMac());
   } catch (error) {
-    logger.error('Logout API failed:', error);
+    // Vẫn phải hoàn tất đăng xuất cục bộ nếu backend tạm thời không phản hồi.
+    logger.error('Backend logout failed:', error);
   }
-  
-  // Xóa localStorage
-  localStorage.removeItem('portalLoggedIn');
-  localStorage.removeItem('portalUser');
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('AUTH_TOKEN');
-  localStorage.removeItem('refreshToken');
-  
-  // Xóa cookie từ client-side (backup)
-  clearAuthCookie();
-  
-  console.log('✅ Logout complete');
-  
-  // Redirect
+
+  try {
+    await clearSessionCookie();
+  } catch (error) {
+    logger.error('Session cookie cleanup failed:', error);
+    // Chỉ có tác dụng với cookie legacy không phải HttpOnly.
+    clearLegacyAuthCookie();
+  }
+
+  clearStoredAuthSession();
+  setAxiosAuthToken(null);
+
   window.location.href = redirectTo;
 }

@@ -1,6 +1,27 @@
 import { STORAGE_KEYS } from "@/constants/appKeys";
 import type { CaptivePortalContext, AuthorizeDevicePayload } from "@/features/auth/types";
 
+/**
+ * Tạo/tái sử dụng ID client ổn định cho thiết bị.
+ * Dùng cho trường device_client_id khi authorize thiết bị trên UniFi.
+ */
+function getOrCreateDeviceClientId(): string {
+  if (typeof window === "undefined") {
+    return "server-rendered-client-id";
+  }
+
+  const stored = localStorage.getItem(STORAGE_KEYS.deviceClientId);
+  if (stored) {
+    return stored;
+  }
+
+  const id = globalThis.crypto?.randomUUID
+    ? globalThis.crypto.randomUUID()
+    : `web-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  localStorage.setItem(STORAGE_KEYS.deviceClientId, id);
+  return id;
+}
+
 export function extractCaptivePortalContext(search: string): CaptivePortalContext | null {
   const params = new URLSearchParams(search);
   const id = params.get("id")?.trim() || "";
@@ -33,6 +54,7 @@ export function extractCaptivePortalContext(search: string): CaptivePortalContex
 
 export function saveCaptivePortalContext(context: CaptivePortalContext): void {
   localStorage.setItem(STORAGE_KEYS.portalCaptiveContext, JSON.stringify(context));
+  localStorage.setItem(STORAGE_KEYS.currentDeviceMac, context.id);
   sessionStorage.setItem(STORAGE_KEYS.portalRedirectUrl, context.url);
 }
 
@@ -117,18 +139,16 @@ export function buildAuthorizeDevicePayload(
   options?: {
     deviceType?: string;
     deviceName?: string;
-    duration?: number;
   }
 ): AuthorizeDevicePayload {
   return {
     deviceMac: context.id,
     apMac: context.ap,
+    deviceClientId: getOrCreateDeviceClientId(),
     ssid: context.ssid,
     deviceType: options?.deviceType || detectDeviceCategory(),
     deviceName: options?.deviceName || detectDeviceName(),
-    userIpAddress: extractClientIp(),
     userAgent: navigator.userAgent,
-    duration: options?.duration ?? 480,
     manufacturer: detectManufacturer(),
     operatingSystem: detectOS(),
   };
@@ -212,8 +232,4 @@ function detectDeviceName(): string {
   if (/iPad/i.test(ua)) return "iPad";
   if (/Macintosh/i.test(ua)) return "Mac";
   return "Unknown Device";
-}
-
-function extractClientIp(): string {
-  return "0.0.0.0";
 }

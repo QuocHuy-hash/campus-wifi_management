@@ -2,6 +2,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import GuestLoginTab from '@/components/GuestLoginTab';
 import InternalLoginTab from '@/components/InternalLoginTab';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from 'react-i18next';
 
 export type AuthTab = 'internal' | 'guest';
 
@@ -22,6 +23,7 @@ interface AuthLoginCardProps {
   onTogglePassword: () => void;
   onLogin: () => void;
   onOpenForgotModal: () => void;
+  onQuickAccess: () => void;
   onOpenTermsModal: () => void;
 }
 
@@ -42,8 +44,11 @@ export default function AuthLoginCard({
   onTogglePassword,
   onLogin,
   onOpenForgotModal,
+  onQuickAccess,
   onOpenTermsModal,
 }: AuthLoginCardProps) {
+  const { t } = useTranslation();
+
   return (
     <section className="bg-white rounded-2xl shadow-2xl overflow-hidden">
       <div className="p-6">
@@ -52,13 +57,13 @@ export default function AuthLoginCard({
             active={activeTab === 'internal'}
             onClick={() => onTabChange('internal')}
           >
-            Cán bộ / Sinh viên
+            {t('auth.tabStaff')}
           </AuthTabButton>
           <AuthTabButton
             active={activeTab === 'guest'}
             onClick={() => onTabChange('guest')}
           >
-            Khách
+            {t('auth.tabGuest')}
           </AuthTabButton>
         </div>
 
@@ -77,6 +82,7 @@ export default function AuthLoginCard({
             onTogglePassword={onTogglePassword}
             onLogin={onLogin}
             onOpenForgotModal={onOpenForgotModal}
+            onQuickAccess={onQuickAccess}
             loginError={loginError}
           />
         )}
@@ -92,13 +98,13 @@ export default function AuthLoginCard({
             htmlFor="terms"
             className="text-sm text-gray-600 cursor-pointer leading-relaxed"
           >
-            Tôi đồng ý với{' '}
+            {t('auth.agreePrefix')}{' '}
             <button
               type="button"
               onClick={onOpenTermsModal}
               className="text-blue-600 hover:underline font-medium"
             >
-              Điều khoản sử dụng WiFi
+              {t('auth.termsOfService')}
             </button>
           </Label>
         </div>

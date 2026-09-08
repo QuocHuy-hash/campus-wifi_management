@@ -6,6 +6,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Construction } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ComingSoonDialogProps {
   open: boolean;
@@ -13,6 +14,8 @@ interface ComingSoonDialogProps {
 }
 
 export default function ComingSoonDialog({ open, onOpenChange }: ComingSoonDialogProps) {
+  const { t } = useTranslation();
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -21,14 +24,14 @@ export default function ComingSoonDialog({ open, onOpenChange }: ComingSoonDialo
             <div className="w-9 h-9 rounded-lg  text-amber-500 flex items-center justify-center">
               <Construction size={18} />
             </div>
-            <AlertDialogTitle>Tính năng đang phát triển</AlertDialogTitle>
+            <AlertDialogTitle>{t('comingSoon.title')}</AlertDialogTitle>
           </div>
           <AlertDialogDescription className="text-sm">
-            Tính năng này hiện đang được phát triển và sẽ sớm ra mắt. Vui lòng quay lại sau.
+            {t('comingSoon.description')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Đóng</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.close')}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

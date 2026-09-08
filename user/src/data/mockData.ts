@@ -1,4 +1,5 @@
 // RADIUS Accounting Mock Data Types
+import i18n from "@/i18n";
 export interface RadiusSession {
   // Basic session info
   session_id: string;
@@ -327,7 +328,7 @@ export function formatDurationShort(seconds: number | null): string {
   if (hours > 0) {
     return `${hours}h ${minutes}m`;
   }
-  return `${minutes} phút`;
+  return i18n.t('duration.minutes', { count: minutes });
 }
 
 export function formatDateTime(dateStr: string): string {
@@ -360,18 +361,18 @@ export function formatDate(dateStr: string): string {
   });
 }
 
-export function getTerminateCauseLabel(cause: RadiusSession['acctterminatecause']): string {
+export function getTerminateCauseLabel(cause: string | null): string {
   switch (cause) {
     case 'User-Request':
-      return 'Người dùng đăng xuất';
+      return i18n.t('history.terminate.userRequest');
     case 'Session-Timeout':
-      return 'Hết thời gian phiên';
+      return i18n.t('history.terminate.sessionTimeout');
     case 'Idle-Timeout':
-      return 'Không hoạt động';
+      return i18n.t('history.terminate.idleTimeout');
     case 'Admin-Reset':
-      return 'Admin ngắt kết nối';
+      return i18n.t('history.terminate.adminReset');
     case 'Lost-Carrier':
-      return 'Mất kết nối';
+      return i18n.t('history.terminate.lostCarrier');
     default:
       return '--';
   }

@@ -2,16 +2,18 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { Menu, X, Wifi, Activity, History, User, HelpCircle, LogOut } from "lucide-react";
 import { performLogout } from "@/lib/auth";
 import ThemeToggle from "@/components/ThemeToggle";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 type ActivePage = "session" | "history" | "account";
 
-const navItems: { href: string; label: string; icon: typeof Activity; page: ActivePage }[] = [
-  { href: "/session", label: "Phiên hiện tại", icon: Activity, page: "session" },
-  { href: "/history", label: "Lịch sử đăng nhập", icon: History, page: "history" },
-  { href: "/account", label: "Thông tin tài khoản", icon: User, page: "account" },
+const navItems: { href: string; labelKey: "app.navSession" | "app.navHistory" | "app.navAccount"; icon: typeof Activity; page: ActivePage }[] = [
+  { href: "/session", labelKey: "app.navSession", icon: Activity, page: "session" },
+  { href: "/history", labelKey: "app.navHistory", icon: History, page: "history" },
+  { href: "/account", labelKey: "app.navAccount", icon: User, page: "account" },
 ];
 
 export default function AppLayout({
@@ -23,6 +25,7 @@ export default function AppLayout({
   headerRight?: ReactNode;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -38,11 +41,12 @@ export default function AppLayout({
             </button>
             <div className="flex items-center gap-2">
               <Wifi size={20} className="text-foreground" />
-              <span className="font-semibold text-foreground hidden sm:inline">Campus WiFi</span>
+              <span className="font-semibold text-foreground hidden sm:inline">{t("app.campusWifi")}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <LanguageSwitcher />
             {/* {headerRight} */}
           </div>
         </div>
@@ -69,7 +73,7 @@ export default function AppLayout({
                   }`}
                 >
                   <Icon size={18} />
-                  {item.label}
+                  {t(item.labelKey)}
                 </Link>
               );
             })}
@@ -78,7 +82,7 @@ export default function AppLayout({
               className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-accent"
             >
               <HelpCircle size={18} />
-              Trợ giúp
+              {t("app.help")}
             </a>
           </nav>
           <div className="px-4 pb-4">
@@ -87,7 +91,7 @@ export default function AppLayout({
               className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
             >
               <LogOut size={18} />
-              Đăng xuất
+              {t("app.logout")}
             </button>
           </div>
         </aside>

@@ -1,4 +1,5 @@
 import { X, Wifi, Monitor, Globe, Clock, Hash } from 'lucide-react';
+import i18n from '@/i18n';
 
 interface CaptiveInfoPopupProps {
   id: string;
@@ -17,7 +18,7 @@ export default function CaptiveInfoPopup({ id, ap, ssid, url, t, onClose }: Capt
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <Wifi size={20} />
-            <h2 className="text-lg font-semibold">Captive Portal Info</h2>
+            <h2 className="text-lg font-semibold">{i18n.t('common.captiveTitle')}</h2>
           </div>
           {onClose && (
             <button
@@ -37,7 +38,7 @@ export default function CaptiveInfoPopup({ id, ap, ssid, url, t, onClose }: Capt
               <Hash size={16} className="text-blue-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-500 font-medium">Device ID</p>
+              <p className="text-xs text-gray-500 font-medium">{i18n.t('common.captiveDeviceId')}</p>
               <p className="text-sm text-gray-800 font-mono break-all mt-0.5">{id || '—'}</p>
             </div>
           </div>
@@ -48,7 +49,7 @@ export default function CaptiveInfoPopup({ id, ap, ssid, url, t, onClose }: Capt
               <Wifi size={16} className="text-green-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-500 font-medium">AP MAC Address</p>
+              <p className="text-xs text-gray-500 font-medium">{i18n.t('common.captiveApMac')}</p>
               <p className="text-sm text-gray-800 font-mono break-all mt-0.5">{ap || '—'}</p>
             </div>
           </div>
@@ -59,7 +60,7 @@ export default function CaptiveInfoPopup({ id, ap, ssid, url, t, onClose }: Capt
               <Globe size={16} className="text-purple-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-500 font-medium">SSID</p>
+              <p className="text-xs text-gray-500 font-medium">{i18n.t('common.captiveSsid')}</p>
               <p className="text-sm text-gray-800 font-semibold mt-0.5">{ssid || '—'}</p>
             </div>
           </div>
@@ -70,7 +71,7 @@ export default function CaptiveInfoPopup({ id, ap, ssid, url, t, onClose }: Capt
               <Monitor size={16} className="text-orange-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-500 font-medium">Redirect URL</p>
+              <p className="text-xs text-gray-500 font-medium">{i18n.t('common.captiveRedirectUrl')}</p>
               <p className="text-sm text-gray-800 font-mono break-all mt-0.5">{url || '—'}</p>
             </div>
           </div>
@@ -81,7 +82,7 @@ export default function CaptiveInfoPopup({ id, ap, ssid, url, t, onClose }: Capt
               <Clock size={16} className="text-gray-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-500 font-medium">Timestamp (t)</p>
+              <p className="text-xs text-gray-500 font-medium">{i18n.t('common.captiveTimestamp')}</p>
               <p className="text-sm text-gray-800 font-mono mt-0.5">{t || '—'}</p>
             </div>
           </div>
@@ -90,7 +91,7 @@ export default function CaptiveInfoPopup({ id, ap, ssid, url, t, onClose }: Capt
         {/* Footer */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
           <p className="text-xs text-gray-400 text-center">
-            These parameters are used to authorize your device on the network
+            {i18n.t('common.captiveFooter')}
           </p>
         </div>
       </div>

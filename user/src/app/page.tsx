@@ -2,9 +2,11 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 export default function Home() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Fallback: if middleware didn't redirect (shouldn't happen), redirect client-side
@@ -13,7 +15,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="text-center text-sm text-gray-600">Đang chuyển hướng...</div>
+      <div className="text-center text-sm text-gray-600">{t("redirect.redirecting")}</div>
     </div>
   );
 }

@@ -2,15 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { authorizeDevice, getMeProfile } from "@/features/auth/api/authApi";
+import { useTranslation } from "react-i18next";
+import { authorizeDevice, exchangeOAuth2Code, getMeProfile } from "@/features/auth/api/authApi";
 import { STORAGE_KEYS } from "@/constants/appKeys";
 import { getCaptivePortalContext, buildAuthorizeDevicePayload } from "@/lib/captivePortal";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
-import { getRedirectUrl, clearRedirectUrl, navigateOrFallback } from "@/lib/captivePortal";
+import { clearStoredAuthSession, establishSessionCookie } from "@/lib/session";
+import { initializeAxios, setAxiosAuthToken } from "@/config/axios";
+import { logger } from "@/lib/logger";
 
 export default function OAuthSuccess() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
   const [error, setError] = useState("");
   const [isProcessing, setIsProcessing] = useState(true);
   const [showNetworkConnecting, setShowNetworkConnecting] = useState(false);
@@ -19,17 +23,37 @@ export default function OAuthSuccess() {
     setIsProcessing(true);
     setError("");
 
-    const accessToken = searchParams?.get("access_token");
+    // Khởi tạo axios trước khi gọi các API được bảo vệ.
+    // Điều này rất quan trọng vì trang này được load lại sau redirect từ OAuth2 provider.
+    initializeAxios();
+
+    // Sửa ngày 2026-09-08: callback mới nhận oauth_code một lần, không còn JWT trong URL.
+    const oauthCode = searchParams?.get("oauth_code");
+    const accessToken = searchParams?.get("access_token"); // Tương thích callback wifi-user cũ khi rollout.
+    const oauthError = searchParams?.get("oauth_error");
+    if (oauthError) {
+      setIsProcessing(false);
+      setError(t("common.sessionConfirmFailed"));
+      return;
+    }
     let hasAuthenticatedSession = Boolean(accessToken || localStorage.getItem(STORAGE_KEYS.accessToken));
 
-    if (accessToken) {
-      localStorage.setItem(STORAGE_KEYS.accessToken, accessToken);
-      // Set httpOnly cookie via API route
-      await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken }),
-      });
+    if (oauthCode || accessToken) {
+      try {
+        const loginResult = oauthCode
+          ? await exchangeOAuth2Code(oauthCode)
+          : { accessToken: accessToken as string };
+        localStorage.setItem(STORAGE_KEYS.accessToken, loginResult.accessToken);
+        setAxiosAuthToken(loginResult.accessToken);
+        hasAuthenticatedSession = true;
+        await establishSessionCookie(loginResult.accessToken);
+      } catch {
+        clearStoredAuthSession();
+        setAxiosAuthToken(null);
+        setIsProcessing(false);
+        setError(t("common.sessionSetupFailed"));
+        return;
+      }
     }
 
     try {
@@ -49,10 +73,11 @@ export default function OAuthSuccess() {
           loginTime: profile.lastLoginAt || new Date().toISOString(),
         }),
       );
-    } catch {
+    } catch (profileError) {
+      logger.error("Lấy thông tin user sau OAuth2 thất bại:", profileError);
       if (!hasAuthenticatedSession) {
         setIsProcessing(false);
-        setError("Không thể xác nhận phiên đăng nhập từ backend.");
+        setError(t("common.sessionConfirmFailed"));
         window.location.href = "/login";
         return;
       }
@@ -71,8 +96,9 @@ export default function OAuthSuccess() {
 
         setShowNetworkConnecting(true);
         return;
-      } catch {
-        setError("Xác thực thiết bị thất bại. Vui lòng thử lại.");
+      } catch (authError) {
+        logger.error("Cấp quyền thiết bị sau OAuth2 thất bại:", authError);
+        setError(t("common.deviceAuthFailedRetry"));
         setIsProcessing(false);
         return;
       }
@@ -81,8 +107,9 @@ export default function OAuthSuccess() {
     const redirectPath = sessionStorage.getItem("oauth2_redirect_back") || "/session";
     sessionStorage.removeItem("oauth2_redirect_back");
     sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
+    // Huy- Cập nhật ngày 2026-09-08: OAuth không có Captive Portal vào Home như đăng nhập thông thường.
     window.location.href = redirectPath;
-  }, [router, searchParams]);
+  }, [router, searchParams, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -94,15 +121,11 @@ export default function OAuthSuccess() {
   return (
     <>
       {showNetworkConnecting ? (
-        <NetworkConnectingScreen onComplete={() => {
-          const redirectUrl = getRedirectUrl();
-          clearRedirectUrl();
-          navigateOrFallback(redirectUrl);
-        }} />
+        <NetworkConnectingScreen onComplete={() => { window.location.href = "/network-success"; }} />
       ) : (
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="max-w-sm text-center text-sm text-gray-600 space-y-4">
-            {isProcessing ? <p>Đang hoàn tất đăng nhập...</p> : null}
+            {isProcessing ? <p>{t("redirect.completingLogin")}</p> : null}
             {!isProcessing && error ? (
               <>
                 <p className="text-red-600">{error}</p>
@@ -111,7 +134,7 @@ export default function OAuthSuccess() {
                   className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
                   onClick={() => void completeOAuthFlow()}
                 >
-                  Thử lại xác thực thiết bị
+                  {t("common.retry")}
                 </button>
               </>
             ) : null}
