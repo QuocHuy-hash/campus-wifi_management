@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { currentUser } from '@/data/mockData';
-import { authorizeDevice, loginWithPassword, quickAccess, startOAuth2Login } from '@/features/auth/api/authApi';
+import { authorizeDevice, authorizeRegisterTemporaryAccess, loginWithPassword, quickAccess, startOAuth2Login } from '@/features/auth/api/authApi';
 import {
   clearForgotToken,
   getActiveProviders,
@@ -503,6 +503,12 @@ export default function Login() {
     setOtpError('');
 
     try {
+      const captiveContext = getCaptivePortalContext('');
+      if (captiveContext) {
+        // Huy- Cập nhật ngày 2026-09-09: áp REGISTER_TEMP ngay trước khi backend gửi OTP.
+        // Không xóa captive context; sau login nó còn được dùng để authorize bằng policy thật.
+        await authorizeRegisterTemporaryAccess(buildAuthorizeDevicePayload(captiveContext));
+      }
       await dispatch(
         registerWithOtp({
           identifier: contact,
@@ -580,6 +586,11 @@ export default function Login() {
     setOtpError('');
 
     try {
+      const captiveContext = getCaptivePortalContext('');
+      if (captiveContext) {
+        // Huy- OTP có thể được gửi lại sau khi quyền 5 phút hết hạn nên gia hạn REGISTER_TEMP trước khi gửi.
+        await authorizeRegisterTemporaryAccess(buildAuthorizeDevicePayload(captiveContext));
+      }
       await dispatch(resendEmailOtp({ identifier: getGuestIdentifier() })).unwrap();
       setGuestResendCooldown(60); // Đặt lại thời gian đếm ngược sau khi gửi lại thành công
     } catch (apiError) {

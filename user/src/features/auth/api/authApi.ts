@@ -33,6 +33,7 @@ const AUTH_ENDPOINT = `/auth`;
 const OAUTH2_INIT_ENDPOINT = `/oauth2/initialize`;
 const OAUTH2_EXCHANGE_ENDPOINT = `${AUTH_ENDPOINT}/oauth2/exchange`;
 const AUTHORIZE_DEVICE_ENDPOINT = `/users/authorize-device`;
+const REGISTER_TEMP_ACCESS_ENDPOINT = `${AUTH_ENDPOINT}/register-temp-access`;
 
 // init-session và login sử dụng login token ngắn hạn, không dùng dynamic token
 // hiện tại của ứng dụng. Tách riêng hai yêu cầu này khỏi interceptor xác thực chung.
@@ -249,6 +250,27 @@ export async function authorizeDevice(payload: AuthorizeDevicePayload): Promise<
   };
 
   await apiClient.put(`${AUTHORIZE_DEVICE_ENDPOINT}`, apiPayload);
+}
+
+/**
+ * Huy- Cập nhật ngày 2026-09-09: mở mạng tạm để nhận OTP trước khi user đăng nhập.
+ * Hàm này không xóa captive portal context vì FE còn dùng lại sau login để áp policy thật.
+ */
+export async function authorizeRegisterTemporaryAccess(payload: AuthorizeDevicePayload): Promise<void> {
+  const apiPayload: AuthorizeDeviceApiPayload = {
+    device_mac: payload.deviceMac,
+    ap_mac: payload.apMac,
+    device_client_id: payload.deviceClientId,
+    ssid: payload.ssid,
+    device_type: payload.deviceType,
+    device_name: payload.deviceName,
+    operating_system: payload.operatingSystem,
+    manufacturer: payload.manufacturer,
+    user_agent: payload.userAgent,
+  };
+
+  // Huy- endpoint public trước đăng nhập: không dùng Dynamic Token và không thay đổi localStorage.
+  await preAuthClient.post(REGISTER_TEMP_ACCESS_ENDPOINT, apiPayload);
 }
 
 async function initializeOAuth2(
