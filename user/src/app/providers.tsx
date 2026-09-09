@@ -9,7 +9,6 @@ import LanguageProvider from "@/components/LanguageProvider";
 import { initializeAxios, setAxiosAuthToken } from "@/config/axios";
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
 import { STORAGE_KEYS } from "@/constants/appKeys";
 import {
   buildAuthorizeDevicePayload,
@@ -101,10 +100,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       } catch (error) {
         logger.error("Failed to authorize device from captive redirect:", error);
         clearRedirectUrl();
+        localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
         if (!cancelled) {
-          toast.error("Xác thực thiết bị thất bại", {
-            description: "Vui lòng thử lại bằng cách truy cập lại trang WiFi.",
-          });
+          // Authorize device là best-effort; không hiển thị toast lỗi hoặc giữ
+          // người dùng ở trang hiện tại khi backend/Core đã ghi nhận lỗi.
+          router.replace("/session");
         }
       }
     };

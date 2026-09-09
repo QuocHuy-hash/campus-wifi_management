@@ -85,6 +85,7 @@ export default function OAuthSuccess() {
     }
 
     const captiveContext = getCaptivePortalContext(window.location.search);
+    const redirectPath = sessionStorage.getItem("oauth2_redirect_back") || "/session";
 
     if (captiveContext) {
       try {
@@ -98,13 +99,16 @@ export default function OAuthSuccess() {
         return;
       } catch (authError) {
         logger.error("Cấp quyền thiết bị sau OAuth2 thất bại:", authError);
-        setError(t("common.deviceAuthFailedRetry"));
-        setIsProcessing(false);
+        // Backend/Core giữ log lỗi authorize. FE vẫn hoàn tất đăng nhập và
+        // đi tiếp thay vì hiển thị lỗi/retry làm chặn người dùng.
+        localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+        sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
+        sessionStorage.removeItem("oauth2_redirect_back");
+        window.location.href = redirectPath;
         return;
       }
     }
 
-    const redirectPath = sessionStorage.getItem("oauth2_redirect_back") || "/session";
     sessionStorage.removeItem("oauth2_redirect_back");
     sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
     // Huy- Cập nhật ngày 2026-09-08: OAuth không có Captive Portal vào Home như đăng nhập thông thường.

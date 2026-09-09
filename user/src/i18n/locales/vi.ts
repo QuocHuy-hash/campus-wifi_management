@@ -219,6 +219,12 @@ export default {
     connected:
       "Bạn có thể sử dụng internet bình thường. Tự động chuyển hướng sau 1 giây...",
     waited: "Đã chờ {{seconds}}s...",
+    authFailedTitle: "Không thể mở kết nối mạng",
+    authFailedMessage:
+      "Hệ thống không thể cấp quyền cho thiết bị này. Vui lòng thực hiện theo các bước bên dưới để kết nối lại.",
+    authFailedStep1: "Mở Cài đặt (Settings) trên thiết bị.",
+    authFailedStep2: "Vào phần Wi-Fi, tìm và chọn mạng WiFi hiện tại.",
+    authFailedStep3: "Chọn Quên mạng (Forget network), sau đó kết nối lại WiFi.",
   },
   app: {
     campusWifi: "Campus WiFi",

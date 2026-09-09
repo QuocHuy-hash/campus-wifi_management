@@ -5,7 +5,7 @@ import { getCaptivePortalContext, buildAuthorizeDevicePayload } from '@/lib/capt
 import { authorizeDevice } from '@/features/auth/api/authApi';
 import { STORAGE_KEYS } from '@/constants/appKeys';
 import { initializeAxios } from '@/config/axios';
-import i18n from '@/i18n';
+import { logger } from '@/lib/logger';
 
 interface UseCaptiveAuthorizationResult {
   isAuthorizing: boolean;
@@ -38,9 +38,12 @@ export function useCaptiveAuthorization(): UseCaptiveAuthorizationResult {
       setAuthorized(true);
       return true;
     } catch (err) {
-      const message = i18n.t('common.deviceAuthFailed');
-      setError(message);
-      return false;
+      logger.error('[CaptiveAuthorization] Authorize device failed; continuing current flow:', err);
+      // Không retry vô hạn ở các trang session/account/history. Lỗi chi tiết
+      // đã được backend/Core ghi lại và không được chặn trải nghiệm trên FE.
+      localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+      setError(null);
+      return true;
     } finally {
       setIsAuthorizing(false);
     }

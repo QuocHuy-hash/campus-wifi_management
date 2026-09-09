@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Loader2, WifiOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { logger } from '@/lib/logger';
 
 interface NetworkConnectingScreenProps {
   onComplete: () => void;
   stayOnSuccess?: boolean;
+  authorizationFailed?: boolean;
 }
 
 // 1. Hàm kiểm tra mạng thực tế (Ping ẩn) / Function to check real internet connectivity (hidden ping)
@@ -26,12 +27,15 @@ const checkActualInternet = (): Promise<boolean> => {
   });
 };
 
-export default function NetworkConnectingScreen({ onComplete, stayOnSuccess = false }: NetworkConnectingScreenProps) {
+export default function NetworkConnectingScreen({ onComplete, stayOnSuccess = false, authorizationFailed = false }: NetworkConnectingScreenProps) {
   const { t } = useTranslation();
-  const [isConnecting, setIsConnecting] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(!authorizationFailed);
   const [elapsedTime, setElapsedTime] = useState(0);
 
   useEffect(() => {
+    // Nếu authorize thiết bị thất bại, không cần kiểm tra mạng nữa;
+    // hiển thị ngay hướng dẫn quên mạng và kết nối lại.
+    if (authorizationFailed) return;
     // Để lưu trữ các ID của interval/timeout phục vụ cho việc cleanup
     // Store interval/timeout IDs for cleanup
     let pollingInterval: ReturnType<typeof setInterval>;
@@ -89,41 +93,69 @@ export default function NetworkConnectingScreen({ onComplete, stayOnSuccess = fa
 
   return (
     <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
-      <div className="text-center space-y-6">
-        {/* Icon */}
-        <div className="flex justify-center transition-all duration-500">
-          {isConnecting ? (
-            <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
-          ) : (
-            <CheckCircle className="w-16 h-16 text-green-500 animate-[pulse_1s_ease-in-out]" />
-          )}
-        </div>
-
-        {/* Main Text */}
-        <div className="space-y-2">
-          <h1 className={`text-2xl font-bold transition-colors duration-500 ${isConnecting ? 'text-blue-600' : 'text-green-600'}`}>
-            {isConnecting ? t('networkConnecting.authSuccess') : t('networkConnecting.networkSuccess')}
-          </h1>
-
-          {/* Sub Text */}
-          <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed px-4">
-            {isConnecting
-              ? t('networkConnecting.connecting')
-              : t('networkConnecting.connected')
-            }
-          </p>
-        </div>
-
-        {/* Trạng thái Loading vô định hình thay vì đếm lùi / Indeterminate loading state instead of a countdown */}
-        {isConnecting && (
-          <div className="w-64 mx-auto mt-6">
-            <div className="h-1 w-full bg-blue-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full w-1/2 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+      <div className="text-center space-y-6 max-w-md px-6">
+        {authorizationFailed ? (
+          <>
+            {/* Icon */}
+            <div className="flex justify-center transition-all duration-500">
+              <WifiOff className="w-16 h-16 text-red-500" />
             </div>
-            <p className="text-sm text-gray-400 mt-3 font-medium">
-              {t('networkConnecting.waited', { seconds: elapsedTime })}
-            </p>
-          </div>
+
+            {/* Main Text */}
+            <div className="space-y-3">
+              <h1 className="text-2xl font-bold text-red-600">
+                {t('networkConnecting.authFailedTitle')}
+              </h1>
+
+              <p className="text-gray-600 text-sm leading-relaxed">
+                {t('networkConnecting.authFailedMessage')}
+              </p>
+
+              <ol className="text-left text-sm text-gray-600 space-y-2 bg-red-50 rounded-xl p-4 list-decimal list-inside">
+                <li>{t('networkConnecting.authFailedStep1')}</li>
+                <li>{t('networkConnecting.authFailedStep2')}</li>
+                <li>{t('networkConnecting.authFailedStep3')}</li>
+              </ol>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Icon */}
+            <div className="flex justify-center transition-all duration-500">
+              {isConnecting ? (
+                <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+              ) : (
+                <CheckCircle className="w-16 h-16 text-green-500 animate-[pulse_1s_ease-in-out]" />
+              )}
+            </div>
+
+            {/* Main Text */}
+            <div className="space-y-2">
+              <h1 className={`text-2xl font-bold transition-colors duration-500 ${isConnecting ? 'text-blue-600' : 'text-green-600'}`}>
+                {isConnecting ? t('networkConnecting.authSuccess') : t('networkConnecting.networkSuccess')}
+              </h1>
+
+              {/* Sub Text */}
+              <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed px-4">
+                {isConnecting
+                  ? t('networkConnecting.connecting')
+                  : t('networkConnecting.connected')
+                }
+              </p>
+            </div>
+
+            {/* Trạng thái Loading vô định hình thay vì đếm lùi / Indeterminate loading state instead of a countdown */}
+            {isConnecting && (
+              <div className="w-64 mx-auto mt-6">
+                <div className="h-1 w-full bg-blue-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full w-1/2 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+                </div>
+                <p className="text-sm text-gray-400 mt-3 font-medium">
+                  {t('networkConnecting.waited', { seconds: elapsedTime })}
+                </p>
+              </div>
+            )}
+          </>
         )}
 
       </div>

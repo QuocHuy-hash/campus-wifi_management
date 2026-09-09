@@ -219,6 +219,12 @@ export default {
     connected:
       "You can now use the internet normally. Redirecting automatically in 1 second...",
     waited: "Waited {{seconds}}s...",
+    authFailedTitle: "Unable to open network connection",
+    authFailedMessage:
+      "The system could not authorize this device. Please follow the steps below to reconnect.",
+    authFailedStep1: "Open Settings on your device.",
+    authFailedStep2: "Go to Wi-Fi, find and select the current WiFi network.",
+    authFailedStep3: "Choose Forget network, then reconnect to the WiFi.",
   },
   app: {
     campusWifi: "Campus WiFi",
