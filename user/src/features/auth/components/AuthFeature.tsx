@@ -243,7 +243,9 @@ export default function Login() {
           console.error('❌ Failed to authorize device via redirect:', error);
           clearRedirectUrl();
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-          setError(t('common.deviceAuthFailedRetry'));
+          // Authorize UniFi là best-effort. Backend/Core đã ghi log chi tiết;
+          // không giữ người dùng ở màn hình login khi bước mở mạng gặp lỗi.
+          router.push('/session');
         }
       }
     };
@@ -322,6 +324,7 @@ export default function Login() {
     } catch (error) {
       console.error('❌ Failed to authorize device:', error);
       clearRedirectUrl();
+      localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
       return false;
     }
   };
@@ -377,8 +380,17 @@ export default function Login() {
     if (captiveContext) {
       const authorized = await authorizeDeviceInBackground();
       if (!authorized) {
-        setError(t('common.deviceAuthFailedRetry'));
-        setIsLoading(false);
+        // Huy- Cập nhật ngày 2026-09-09: với luồng anonymous, nếu authorize thiết bị
+        // thất bại thì vẫn đưa vào màn hình check mạng và hiển thị hướng dẫn quên mạng
+        // để ngưởi dùng kết nối lại; luồng thường vẫn vào ứng dụng như cũ.
+        if (isAnonymousLogin) {
+          window.location.href = '/network-connecting?flow=anonymous&authorized=false';
+          return;
+        }
+
+        // Không chuyển sang màn hình chờ mạng vì request authorize đã thất bại;
+        // vẫn cho phép phiên đăng nhập tiếp tục vào ứng dụng.
+        window.location.href = '/session';
         return;
       }
     }

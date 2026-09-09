@@ -18,6 +18,7 @@ import { snakeToCamelCase } from "@/lib/caseConverter";
 
 const REFRESH_TOKEN_ENDPOINT = "/auth/refresh-token";
 const LOGIN_PATH = "/login";
+const BEST_EFFORT_ENDPOINTS = ["/users/authorize-device"] as const;
 
 let hasInitialized = false;
 let refreshTokenPromise: Promise<string> | null = null;
@@ -78,6 +79,14 @@ const isPublicRequest = (url?: string): boolean => {
   }
 
   return PUBLIC_ENDPOINTS.some((endpoint) => url.includes(endpoint));
+};
+
+const isBestEffortRequest = (url?: string): boolean => {
+  if (!url) {
+    return false;
+  }
+
+  return BEST_EFFORT_ENDPOINTS.some((endpoint) => url.includes(endpoint));
 };
 
 const persistRefreshedSession = async (accessToken: string): Promise<void> => {
@@ -205,7 +214,9 @@ export const initializeAxios = (): void => {
 
       // Access token mới vẫn bị từ chối thì phiên không thể phục hồi thêm.
       if (originalRequest._retry) {
-        await clearAuthStateAndRedirect();
+        if (!isBestEffortRequest(originalRequest.url)) {
+          await clearAuthStateAndRedirect();
+        }
         return Promise.reject(error);
       }
 
@@ -219,7 +230,11 @@ export const initializeAxios = (): void => {
         return axios(originalRequest);
       } catch (refreshError) {
         logger.error("Refresh token thất bại:", refreshError);
-        await clearAuthStateAndRedirect();
+        // authorize-device là tác vụ best-effort sau đăng nhập. Nếu refresh thất
+        // bại, caller sẽ ghi log và tiếp tục luồng thay vì bị interceptor đá về login.
+        if (!isBestEffortRequest(originalRequest.url)) {
+          await clearAuthStateAndRedirect();
+        }
         return Promise.reject(refreshError);
       }
     },
