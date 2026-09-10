@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertCircle, ArrowRight, LogIn, Ticket, Zap } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import CnaBrowserHandoff from "@/features/auth/components/CnaBrowserHandoff";
 import AuthPageLayout from "@/features/auth/components/AuthPageLayout";
 import type { CaptivePortalContext, LoginResult } from "@/features/auth/types";
@@ -304,6 +304,8 @@ export default function CnaPortalFeature() {
       {/* Popup B: Mở trình duyệt để đăng nhập */}
       <Dialog open={handoffOpen} onOpenChange={setHandoffOpen}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
+          <DialogTitle className="sr-only">Đăng nhập qua trình duyệt</DialogTitle>
+          <DialogDescription className="sr-only">Mở trình duyệt đầy đủ để đăng nhập tài khoản và được cấp quyền truy cập WiFi.</DialogDescription>
           {context ? (
             <CnaBrowserHandoff context={context} />
           ) : (

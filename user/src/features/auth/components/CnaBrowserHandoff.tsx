@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
   Copy,
@@ -46,9 +46,19 @@ export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Gọi API ngay khi popup mount
+  const calledRef = useRef(false);
+
+  // Gọi API ngay khi popup mount — useRef guard tránh gọi 2 lần trong React StrictMode
   useEffect(() => {
-    let cancelled = false;
+    // Guard: context phải có đủ thông tin captive portal mới gọi API
+    if (!context.id || !context.ap || !context.ssid) {
+      setError("Thiếu thông tin kết nối. Vui lòng truy cập lại từ WiFi HCMUS.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (calledRef.current) return;
+    calledRef.current = true;
 
     const init = async () => {
       setIsLoading(true);
@@ -56,20 +66,17 @@ export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
       try {
         const payload = buildAuthorizeDevicePayload(context);
         const created = await createPortalSession({ ...payload, siteId: context.siteId });
-        if (cancelled) return;
         setSession(created);
         savePortalSessionCode(created.sessionCode);
       } catch (err) {
-        if (cancelled) return;
         setError("Không thể tạo phiên đăng nhập. Vui lòng kiểm tra kết nối và thử lại.");
         console.error("[PortalSession] create failed", err);
       } finally {
-        if (!cancelled) setIsLoading(false);
+        setIsLoading(false);
       }
     };
 
     void init();
-    return () => { cancelled = true; };
   }, [context]);
 
   // Polling trạng thái phiên sau khi đã có session

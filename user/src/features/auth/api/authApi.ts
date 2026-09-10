@@ -267,19 +267,34 @@ export async function authorizeDevice(payload: AuthorizeDevicePayload): Promise<
 
 /** Huy- Tạo/lấy lại portal session; API này không authorize thiết bị. */
 export async function createPortalSession(payload: AuthorizeDevicePayload & { siteId?: string }): Promise<PortalSessionCreated> {
-  const response = await preAuthClient.post<ApiEnvelope<PortalSessionCreated>>(PORTAL_SESSIONS_ENDPOINT, {
-    device_mac: payload.deviceMac,
-    ap_id: payload.apMac,
-    ssid: payload.ssid,
-    site_id: payload.siteId,
-    device_client_id: payload.deviceClientId,
-    device_type: payload.deviceType,
-    device_name: payload.deviceName,
-    operating_system: payload.operatingSystem,
-    manufacturer: payload.manufacturer,
-    user_agent: payload.userAgent,
-  });
-  return response.data.data;
+  try {
+    const response = await preAuthClient.post<ApiEnvelope<PortalSessionCreated>>(PORTAL_SESSIONS_ENDPOINT, {
+      device_mac: payload.deviceMac,
+      ap_id: payload.apMac,
+      ssid: payload.ssid,
+      site_id: payload.siteId,
+      device_client_id: payload.deviceClientId,
+      device_type: payload.deviceType,
+      device_name: payload.deviceName,
+      operating_system: payload.operatingSystem,
+      manufacturer: payload.manufacturer,
+      user_agent: payload.userAgent,
+    });
+    return response.data.data;
+  } catch (error: unknown) {
+    // 409 Conflict — session đã tồn tại, backend thường trả về session hiện tại trong response body
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "response" in error
+    ) {
+      const axiosError = error as { response?: { status?: number; data?: { data?: PortalSessionCreated } } };
+      if (axiosError.response?.status === 409 && axiosError.response.data?.data) {
+        return axiosError.response.data.data;
+      }
+    }
+    throw error;
+  }
 }
 
 export async function getPortalSessionContext(sessionCode: string): Promise<PortalSessionContext> {
