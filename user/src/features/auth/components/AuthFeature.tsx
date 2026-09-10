@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
@@ -110,6 +110,7 @@ export default function Login() {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [forgotResendCooldown, setForgotResendCooldown] = useState(0); // Đếm ngược gửi lại OTP (giây)
   const [guestResendCooldown, setGuestResendCooldown] = useState(0); // Đếm ngược gửi lại OTP đăng ký (giây)
+  const temporaryAccessPromiseRef = useRef<Promise<boolean> | null>(null);
 
   const authState = useSelector((state: RootState) => state.auth) as {
     providers: ProviderConfig[];
@@ -126,6 +127,43 @@ export default function Login() {
     () => providers.filter((provider) => provider.isActive).map((provider) => provider.provider),
     [providers],
   );
+
+  // Huy- Full browser mở từ /s/{sessionCode} chưa có mạng. Cấp REGISTER_TEMP tại
+  // /login để Google/Microsoft tải được, nhưng không tạo user Anonymous hay chuyển khỏi màn hình login.
+  const ensureTemporaryAccessForFullBrowser = async (): Promise<boolean> => {
+    const currentParams = new URLSearchParams(window.location.search);
+    const isPortalFullBrowser = currentParams.get('full_browser') === '1'
+      && Boolean(getStoredPortalSessionCode());
+
+    if (!isPortalFullBrowser || localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)) {
+      return true;
+    }
+
+    if (temporaryAccessPromiseRef.current) {
+      return temporaryAccessPromiseRef.current;
+    }
+
+    const captiveContext = getCaptivePortalContext('');
+    if (!captiveContext) {
+      setError('Không tìm thấy thông tin thiết bị để cấp kết nối tạm. Vui lòng mở lại liên kết từ WiFi.');
+      return false;
+    }
+
+    const request = authorizeRegisterTemporaryAccess(buildAuthorizeDevicePayload(captiveContext))
+      .then(() => {
+        console.info('[REGISTER-TEMP] Đã cấp mạng tạm cho full browser; chờ người dùng đăng nhập.');
+        return true;
+      })
+      .catch((temporaryAccessError) => {
+        console.error('[REGISTER-TEMP] Không thể cấp mạng tạm cho full browser:', temporaryAccessError);
+        setError('Không thể cấp kết nối tạm để đăng nhập. Vui lòng thử lại từ WiFi.');
+        temporaryAccessPromiseRef.current = null;
+        return false;
+      });
+
+    temporaryAccessPromiseRef.current = request;
+    return request;
+  };
 
   useEffect(() => {
     const savedUsername = getSavedGuestLoginUsername();
@@ -198,6 +236,12 @@ export default function Login() {
       }
     }
     setPortalEntryChecked(true);
+  }, []);
+
+  // Huy- Chỉ gọi sau khi /s/{sessionCode} đã khôi phục context vào storage của full browser.
+  // Không authorize ở CNA popup để browser ngoài là nơi nhận kết nối tạm và tiếp tục OAuth.
+  useEffect(() => {
+    void ensureTemporaryAccessForFullBrowser();
   }, []);
 
   // Huy- Khôi phục phiên đã có token. Riêng full browser được mở từ portal session
@@ -439,6 +483,12 @@ export default function Login() {
     if (provider === 'google' || provider === 'azure') {
       if (activeProviderCodes.length > 0 && !activeProviderCodes.includes(provider)) {
         setError(t('common.providerNotActive', { provider }));
+        return;
+      }
+
+      // Huy- Người dùng có thể bấm SSO ngay khi vừa vào /login. Chờ REGISTER_TEMP
+      // hoàn tất để Google/Microsoft không báo thiết bị chưa có Internet.
+      if (!await ensureTemporaryAccessForFullBrowser()) {
         return;
       }
 
