@@ -19,7 +19,6 @@ import { useAppDispatch } from '@/stores/hooks';
 import type { RootState } from '@/stores/store';
 import AuthLoginCard, { type AuthTab } from '@/features/auth/components/AuthLoginCard';
 import AuthPageLayout from '@/features/auth/components/AuthPageLayout';
-import CnaBrowserHandoff from '@/features/auth/components/CnaBrowserHandoff';
 import AuthTermsDialog from '@/features/auth/components/dialogs/AuthTermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
@@ -78,7 +77,6 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [portalEntryChecked, setPortalEntryChecked] = useState(false);
-  const [cnaEntryContext, setCnaEntryContext] = useState<CaptivePortalContext | null>(null);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [guestModalOpen, setGuestModalOpen] = useState(false);  const [guestForm, setGuestForm] = useState({
     email: '',
@@ -181,8 +179,13 @@ export default function Login() {
 
       if (captiveContext) {
         saveCaptivePortalContext(captiveContext);
-        if (!fullBrowser) setCnaEntryContext(captiveContext);
-        console.log('✅ Captive context saved to localStorage');
+        if (!fullBrowser) {
+          // Huy- Cập nhật 2026-09-10: CNA entry luôn vào /cna-portal thay vì hiện inline
+          console.log('🔀 CNA entry detected, redirecting to /cna-portal');
+          router.replace(`/cna-portal${currentSearch}`);
+          return;
+        }
+        console.log('✅ Captive context saved to localStorage (full browser mode)');
       } else {
         console.warn('⚠️ Failed to extract captive context from URL');
       }
@@ -837,10 +840,6 @@ console.log("result::::", result);
 
   if (!portalEntryChecked) {
     return <AuthPageLayout><div className="h-48 animate-pulse rounded-2xl bg-white shadow-sm" /></AuthPageLayout>;
-  }
-
-  if (cnaEntryContext) {
-    return <AuthPageLayout><CnaBrowserHandoff context={cnaEntryContext} /></AuthPageLayout>;
   }
 
   return (
