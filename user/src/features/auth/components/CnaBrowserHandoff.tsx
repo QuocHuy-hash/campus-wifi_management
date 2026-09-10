@@ -10,11 +10,54 @@ import {
   Wifi,
 } from "lucide-react";
 import type { CaptivePortalContext, PortalSessionCreated } from "@/features/auth/types";
-import { createPortalSession, getPortalSessionStatus } from "@/features/auth/api/authApi";
+import {
+  createPortalSession,
+  getPortalSessionStatus,
+} from "@/features/auth/api/authApi";
 import { buildAuthorizeDevicePayload, savePortalSessionCode } from "@/lib/captivePortal";
 
 interface CnaBrowserHandoffProps {
   context: CaptivePortalContext;
+}
+
+type BrowserPlatform = "android" | "ios" | "windows" | "other";
+
+// Huy- CNA không cho JavaScript ép mở ứng dụng bên ngoài. Chỉ Android hỗ trợ
+// Intent URI để ưu tiên Chrome; các nền tảng còn lại dùng HTTPS chuẩn để hệ điều hành tự quyết định browser.
+function getBrowserPlatform(): BrowserPlatform {
+  if (typeof navigator === "undefined") return "other";
+
+  const userAgent = navigator.userAgent;
+  if (/android/i.test(userAgent)) return "android";
+  if (/iPad|iPhone|iPod/i.test(userAgent)) return "ios";
+  if (/Windows/i.test(userAgent)) return "windows";
+  return "other";
+}
+
+// Huy- Chrome Android đọc Intent URI và dùng browser_fallback_url khi Chrome không thể được mở.
+function buildAndroidChromeIntent(loginUrl: string): string {
+  const url = new URL(loginUrl);
+  const pathWithQuery = `${url.host}${url.pathname}${url.search}${url.hash}`;
+  return `intent://${pathWithQuery}#Intent;scheme=${url.protocol.replace(":", "")};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(loginUrl)};end`;
+}
+
+function getBrowserButtonLabel(platform: BrowserPlatform): string {
+  if (platform === "android") return "Mở bằng Chrome";
+  if (platform === "windows") return "Mở bằng trình duyệt mặc định";
+  return "Mở trình duyệt";
+}
+
+function getBrowserHint(platform: BrowserPlatform): string {
+  if (platform === "android") {
+    return "Nếu Chrome không mở, hãy sao chép liên kết và dán vào trình duyệt.";
+  }
+  if (platform === "ios") {
+    return "Nếu không tự chuyển, hãy mở Safari rồi dán liên kết đăng nhập.";
+  }
+  if (platform === "windows") {
+    return "Nếu không tự chuyển, hãy sao chép liên kết và mở bằng trình duyệt bạn đang dùng.";
+  }
+  return "Nếu không tự chuyển, hãy sao chép liên kết và mở bằng trình duyệt đầy đủ.";
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -45,8 +88,14 @@ export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
   const [session, setSession] = useState<PortalSessionCreated | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [platform, setPlatform] = useState<BrowserPlatform>("other");
 
   const calledRef = useRef(false);
+
+  // Huy- Chỉ đọc user-agent sau khi component mount để không lệch HTML giữa server và thiết bị thật.
+  useEffect(() => {
+    setPlatform(getBrowserPlatform());
+  }, []);
 
   // Gọi API ngay khi popup mount — useRef guard tránh gọi 2 lần trong React StrictMode
   useEffect(() => {
@@ -99,10 +148,9 @@ export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
     return () => window.clearInterval(timer);
   }, [session]);
 
-  const openBrowser = () => {
-    if (!session?.loginUrl) return;
-    window.open(session.loginUrl, "_blank");
-  };
+  const browserHref = session?.loginUrl
+    ? (platform === "android" ? buildAndroidChromeIntent(session.loginUrl) : session.loginUrl)
+    : "#";
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
@@ -154,15 +202,19 @@ export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
               </div>
             </div>
 
-            {/* Nút mở trình duyệt */}
-            <button
-              type="button"
-              onClick={openBrowser}
+            {/* Huy- Dùng thẻ a thay vì window.open để CNA/OS có thể xử lý handoff ra browser mặc định. */}
+            <a
+              href={browserHref}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:scale-[0.99]"
             >
               <ExternalLink size={19} />
-              Mở trình duyệt
-            </button>
+              {getBrowserButtonLabel(platform)}
+            </a>
+            <p className="text-center text-xs leading-5 text-slate-500">
+              {getBrowserHint(platform)}
+            </p>
           </div>
         )}
       </div>
