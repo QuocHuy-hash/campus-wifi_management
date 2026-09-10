@@ -36,6 +36,7 @@ const PUBLIC_ENDPOINTS = [
   REFRESH_TOKEN_ENDPOINT,
   "/providers-config",
   "/oauth2/",
+  "/portal-sessions",
 ] as const;
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {

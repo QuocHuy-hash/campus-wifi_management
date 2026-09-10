@@ -50,7 +50,7 @@ export default function GuestLoginTab({
   loginError,
 }: GuestLoginTabProps) {
   const { t } = useTranslation();
-  const [screen, setScreen] = useState<GuestScreen>('menu');
+  const [screen, setScreen] = useState<GuestScreen>('account');
   const [conferenceCode, setConferenceCode] = useState<string[]>(Array(8).fill(''));
   const [conferenceMessage, setConferenceMessage] = useState('');
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -97,7 +97,6 @@ export default function GuestLoginTab({
   if (screen === 'account') {
     return (
       <div className="animate-in fade-in slide-in-from-right-2 duration-200">
-        <BackButton onClick={goToMenu} />
         <p className="mb-4 text-sm leading-5 text-slate-500"></p>
 
         <form onSubmit={(event) => { event.preventDefault(); onLogin(); }} className="space-y-4">

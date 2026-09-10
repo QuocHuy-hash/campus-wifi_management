@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { authorizeDevice, exchangeOAuth2Code, getMeProfile } from "@/features/auth/api/authApi";
 import { STORAGE_KEYS } from "@/constants/appKeys";
-import { getCaptivePortalContext, buildAuthorizeDevicePayload } from "@/lib/captivePortal";
+import { getCaptivePortalContext, buildAuthorizeDevicePayload, clearPortalSessionCode, getStoredPortalSessionCode } from "@/lib/captivePortal";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
 import { clearStoredAuthSession, establishSessionCookie } from "@/lib/session";
 import { initializeAxios, setAxiosAuthToken } from "@/config/axios";
@@ -28,7 +28,7 @@ export default function OAuthSuccess() {
     initializeAxios();
 
     // Sửa ngày 2026-09-08: callback mới nhận oauth_code một lần, không còn JWT trong URL.
-    const oauthCode = searchParams?.get("oauth_code");
+    let oauthCode = searchParams?.get("oauth_code");
     const accessToken = searchParams?.get("access_token"); // Tương thích callback wifi-user cũ khi rollout.
     const oauthError = searchParams?.get("oauth_error");
     if (oauthError) {
@@ -36,7 +36,11 @@ export default function OAuthSuccess() {
       setError(t("common.sessionConfirmFailed"));
       return;
     }
-    let hasAuthenticatedSession = Boolean(accessToken || localStorage.getItem(STORAGE_KEYS.accessToken));
+    const storedAccessToken = localStorage.getItem(STORAGE_KEYS.accessToken);
+    let hasAuthenticatedSession = Boolean(accessToken || storedAccessToken);
+    // Huy- Khi authorize UniFi lỗi và user bấm Thử lại, oauth_code đã được consume.
+    // Dùng phiên vừa tạo thay vì exchange lại one-time code.
+    if (oauthCode && storedAccessToken) oauthCode = null;
 
     if (oauthCode || accessToken) {
       try {
@@ -93,14 +97,20 @@ export default function OAuthSuccess() {
         await authorizeDevice(payload);
 
         localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+        clearPortalSessionCode();
         sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
 
         setShowNetworkConnecting(true);
         return;
       } catch (authError) {
         logger.error("Cấp quyền thiết bị sau OAuth2 thất bại:", authError);
-        // Backend/Core giữ log lỗi authorize. FE vẫn hoàn tất đăng nhập và
-        // đi tiếp thay vì hiển thị lỗi/retry làm chặn người dùng.
+        if (getStoredPortalSessionCode()) {
+          // Huy- OAuth đã thành công nhưng authorize chưa xong: giữ portal context
+          // và token để nút Thử lại chỉ lặp bước authorize, không bắt login Google lại.
+          setIsProcessing(false);
+          setError("Đăng nhập thành công nhưng chưa thể cấp mạng. Vui lòng thử lại trước khi phiên hết hạn.");
+          return;
+        }
         localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
         sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
         sessionStorage.removeItem("oauth2_redirect_back");

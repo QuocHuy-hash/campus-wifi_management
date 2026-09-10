@@ -76,6 +76,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
     saveCaptivePortalContext(captiveContext);
 
+    // Huy- Cập nhật ngày 2026-09-10: raw captive entry tại /login chỉ hiển thị
+    // màn hình mở full browser; không tự authorize dù trình duyệt còn token cũ.
+    if (pathname === "/login" && searchParams.get("full_browser") !== "1") return;
+
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 
     // Cookie access_token là HttpOnly nên phía client dùng token trong localStorage

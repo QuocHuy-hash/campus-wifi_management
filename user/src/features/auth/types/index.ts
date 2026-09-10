@@ -71,6 +71,7 @@ export interface CaptivePortalContext {
   ssid: string;
   url: string;
   t?: string; // Tham số thời gian tùy chọn từ controller
+  siteId?: string;
 }
 
 export interface AuthorizeDevicePayload {
@@ -83,6 +84,7 @@ export interface AuthorizeDevicePayload {
   userAgent: string;
   manufacturer: string;   // Hãng sản xuất (VD: Dell, Apple, Samsung)
   operatingSystem: string; // Hệ điều hành (VD: Windows 11, macOS 14, Android 14)
+  portalSessionCode?: string;
 }
 
 /**
@@ -90,15 +92,47 @@ export interface AuthorizeDevicePayload {
  * Backend dùng @SnakeCaseModel nên các trường phải là snake_case.
  */
 export interface AuthorizeDeviceApiPayload {
-  device_mac: string;
-  ap_mac: string;
+  device_mac?: string;
+  ap_mac?: string;
   device_client_id?: string;
+  ssid?: string;
+  device_type?: string;
+  device_name?: string;
+  operating_system?: string;
+  manufacturer?: string;
+  user_agent?: string;
+  portal_session_code?: string;
+}
+
+export type PortalSessionStatus = 'PENDING' | 'OAUTH_PENDING' | 'AUTHORIZED';
+
+export interface PortalSessionCreated {
+  sessionCode: string;
+  loginUrl: string;
+  status: PortalSessionStatus;
+  expiresAt: string;
+}
+
+export interface PortalSessionContext {
+  sessionCode: string;
+  deviceMac: string;
+  apId: string;
   ssid: string;
-  device_type: string;
-  device_name: string;
-  operating_system: string;
-  manufacturer: string;
-  user_agent: string;
+  siteId?: string;
+  deviceClientId?: string;
+  deviceType?: string;
+  deviceName?: string;
+  operatingSystem?: string;
+  manufacturer?: string;
+  userAgent?: string;
+  status: PortalSessionStatus;
+  expiresAt: string;
+}
+
+export interface PortalSessionStatusResult {
+  status: PortalSessionStatus;
+  expiresAt: string;
+  remainingSeconds: number;
 }
 
 

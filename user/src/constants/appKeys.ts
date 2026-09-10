@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   authDeviceId: "authDeviceId",
   savedGuestLoginUsername: "savedGuestLoginUsername",
   deviceClientId: "deviceClientId",
+  portalSessionCode: "portalSessionCode",
 } as const;
 
 export const AUTH_COOKIE_KEY = "access_token";
