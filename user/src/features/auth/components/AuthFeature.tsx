@@ -200,7 +200,9 @@ export default function Login() {
     setPortalEntryChecked(true);
   }, []);
 
-  // Khôi phục phiên hợp lệ và tiếp tục luồng cấp quyền cho thiết bị nếu cần.
+  // Huy- Khôi phục phiên đã có token. Riêng full browser được mở từ portal session
+  // phải authorize đúng thiết bị trước khi vào /session; nếu không CNA sẽ không nhận
+  // được trạng thái AUTHORIZED để tự đóng luồng captive portal.
   useEffect(() => {
     const handleRedirectWithSession = async () => {
       if (typeof window === 'undefined') return;
@@ -208,16 +210,15 @@ export default function Login() {
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       const captiveContext = getCaptivePortalContext('');
       const currentParams = new URLSearchParams(window.location.search);
+      const portalSessionCode = getStoredPortalSessionCode();
+      const isFullBrowserPortalSession = currentParams.get('full_browser') === '1'
+        && Boolean(portalSessionCode);
 
       // Huy- Raw captive entry luôn dừng ở màn hình hướng dẫn. Chỉ full browser
       // hoặc luồng cũ không có raw params mới được tự khôi phục phiên đăng nhập.
       if (extractCaptivePortalContext(window.location.search) && currentParams.get('full_browser') !== '1') {
         return;
       }
-
-      console.log('🔄 Checking redirect with session...');
-      console.log('🔄 Has token:', Boolean(token));
-      console.log('🔄 Captive context:', captiveContext);
 
       if (!token) {
         return;
@@ -236,40 +237,31 @@ export default function Login() {
 
       // Huy- Cập nhật ngày 2026-09-08: phiên thường không có Captive Portal vào Home như đăng nhập bình thường.
       if (!captiveContext) {
-        console.log('🚀 User has valid session without captive context - going to Session...');
         router.push('/session');
         return;
       }
 
-      // Phiên cũ quay lại từ captive portal cần được cấp quyền thiết bị tự động.
-      if (captiveContext) {
-        console.log('🚀 User already logged in with captive context - auto authorizing device...');
-
+      if (isFullBrowserPortalSession) {
         setAxiosAuthToken(token);
-
         try {
-          const payload = buildAuthorizeDevicePayload(captiveContext);
-          await authorizeDevice(payload);
-          console.log('✅ Device authorized successfully via redirect');
-
+          // Huy- Context và portal_session_code được khôi phục từ /s/{sessionCode}.
+          // Backend dùng session code để lấy lại MAC/AP/SSID/IP gốc, kể cả full browser đang dùng 4G.
+          await authorizeDevice(buildAuthorizeDevicePayload(captiveContext));
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
           clearPortalSessionCode();
-          router.push('/network-connecting');
-        } catch (error) {
-          console.error('❌ Failed to authorize device via redirect:', error);
-          if (!getStoredPortalSessionCode()) {
-            clearRedirectUrl();
-            localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-          }
-          // Authorize UniFi là best-effort. Backend/Core đã ghi log chi tiết;
-          // không giữ người dùng ở màn hình login khi bước mở mạng gặp lỗi.
-          if (getStoredPortalSessionCode()) {
-            setError('Phiên đăng nhập đã khôi phục nhưng chưa thể cấp mạng. Vui lòng thử lại.');
-          } else {
-            router.push('/session');
-          }
+          router.push('/session');
+        } catch (authorizationError) {
+          console.error('❌ Failed to authorize restored full-browser portal session:', authorizationError);
+          // Huy- Xác thực tài khoản đã thành công nên không được chặn user ở trang login.
+          // Giữ code/context để có thể retry authorize sau, nhưng vẫn cho phép vào trang session.
+          router.push('/session');
         }
+        return;
       }
+
+      // Phiên thường có captive context nhưng không được khôi phục từ portal session
+      // vẫn đi vào ứng dụng như luồng cũ.
+      router.push('/session');
     };
 
     // Chờ axios và localStorage khởi tạo xong trước khi kiểm tra phiên.
@@ -407,11 +399,6 @@ export default function Login() {
     if (captiveContext) {
       const authorized = await authorizeDeviceInBackground();
       if (!authorized) {
-        if (getStoredPortalSessionCode()) {
-          setError('Đăng nhập thành công nhưng chưa thể cấp mạng. Vui lòng thử lại trước khi phiên hết hạn.');
-          setIsLoading(false);
-          return;
-        }
         // Huy- Cập nhật ngày 2026-09-09: với luồng anonymous, nếu authorize thiết bị
         // thất bại thì vẫn đưa vào màn hình check mạng và hiển thị hướng dẫn quên mạng
         // để ngưởi dùng kết nối lại; luồng thường vẫn vào ứng dụng như cũ.
@@ -420,8 +407,8 @@ export default function Login() {
           return;
         }
 
-        // Không chuyển sang màn hình chờ mạng vì request authorize đã thất bại;
-        // vẫn cho phép phiên đăng nhập tiếp tục vào ứng dụng.
+        // Huy- Đăng nhập bằng tài khoản đã hoàn tất. Authorize UniFi thất bại không
+        // được chặn user; giữ captive context/session code để những màn hình sau có thể retry.
         window.location.href = '/session';
         return;
       }

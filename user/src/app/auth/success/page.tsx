@@ -1,18 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { authorizeDevice, exchangeOAuth2Code, getMeProfile } from "@/features/auth/api/authApi";
 import { STORAGE_KEYS } from "@/constants/appKeys";
-import { getCaptivePortalContext, buildAuthorizeDevicePayload, clearPortalSessionCode, getStoredPortalSessionCode } from "@/lib/captivePortal";
+import { getCaptivePortalContext, buildAuthorizeDevicePayload, clearPortalSessionCode } from "@/lib/captivePortal";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
 import { clearStoredAuthSession, establishSessionCookie } from "@/lib/session";
 import { initializeAxios, setAxiosAuthToken } from "@/config/axios";
 import { logger } from "@/lib/logger";
 
 export default function OAuthSuccess() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useTranslation();
   const [error, setError] = useState("");
@@ -38,8 +37,8 @@ export default function OAuthSuccess() {
     }
     const storedAccessToken = localStorage.getItem(STORAGE_KEYS.accessToken);
     let hasAuthenticatedSession = Boolean(accessToken || storedAccessToken);
-    // Huy- Khi authorize UniFi lỗi và user bấm Thử lại, oauth_code đã được consume.
-    // Dùng phiên vừa tạo thay vì exchange lại one-time code.
+    // Huy- Nếu trang callback bị tải lại, oauth_code dùng một lần không được exchange lại.
+    // Dùng phiên vừa tạo trong localStorage thay vì gửi lại mã đã consume.
     if (oauthCode && storedAccessToken) oauthCode = null;
 
     if (oauthCode || accessToken) {
@@ -104,17 +103,11 @@ export default function OAuthSuccess() {
         return;
       } catch (authError) {
         logger.error("Cấp quyền thiết bị sau OAuth2 thất bại:", authError);
-        if (getStoredPortalSessionCode()) {
-          // Huy- OAuth đã thành công nhưng authorize chưa xong: giữ portal context
-          // và token để nút Thử lại chỉ lặp bước authorize, không bắt login Google lại.
-          setIsProcessing(false);
-          setError("Đăng nhập thành công nhưng chưa thể cấp mạng. Vui lòng thử lại trước khi phiên hết hạn.");
-          return;
-        }
-        localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+        // Huy- OAuth đã thành công thì luôn cho user vào /session, dù UniFi authorize lỗi.
+        // Không xóa portal context/session code để có thể dùng lại cho lần retry authorize sau.
         sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
         sessionStorage.removeItem("oauth2_redirect_back");
-        window.location.href = redirectPath;
+        window.location.href = "/session";
         return;
       }
     }
@@ -123,7 +116,7 @@ export default function OAuthSuccess() {
     sessionStorage.removeItem(STORAGE_KEYS.oauthProvider);
     // Huy- Cập nhật ngày 2026-09-08: OAuth không có Captive Portal vào Home như đăng nhập thông thường.
     window.location.href = redirectPath;
-  }, [router, searchParams, t]);
+  }, [searchParams, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

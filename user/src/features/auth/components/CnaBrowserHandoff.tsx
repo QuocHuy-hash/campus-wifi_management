@@ -106,17 +106,6 @@ export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
-      {/* Header */}
-      <div className="bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 px-6 py-8 text-white">
-        <div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/25">
-          <ExternalLink size={28} />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight">Tiếp tục trong trình duyệt</h1>
-        <p className="mt-2 text-sm leading-6 text-blue-50">
-          Google và Microsoft cần Safari hoặc Chrome đầy đủ để đăng nhập an toàn.
-        </p>
-      </div>
-
       <div className="space-y-5 p-6">
         {/* Các bước hướng dẫn */}
         <div className="space-y-3 text-sm text-slate-600">
