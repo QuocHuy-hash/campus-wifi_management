@@ -3,6 +3,7 @@ import apiClient from "@/config/axios";
 import { API_BASE_URL } from "@/config/api";
 import { API_HEADERS, HTTP_CONFIG } from "@/constants/appKeys";
 import { getOrCreateAuthDeviceId } from "@/lib/deviceId";
+import { snakeToCamelCase } from "@/lib/caseConverter";
 import {
   type AuthorizeDevicePayload,
   type AuthorizeDeviceApiPayload,
@@ -17,6 +18,9 @@ import {
   type OAuth2InitializePayload,
   type OAuth2InitializeResponse,
   type ProviderConfig,
+  type PortalSessionContext,
+  type PortalSessionCreated,
+  type PortalSessionStatusResult,
   type RegisterPayload,
   type RegisterResult,
   type ResetPasswordPayload,
@@ -34,6 +38,7 @@ const OAUTH2_INIT_ENDPOINT = `/oauth2/initialize`;
 const OAUTH2_EXCHANGE_ENDPOINT = `${AUTH_ENDPOINT}/oauth2/exchange`;
 const AUTHORIZE_DEVICE_ENDPOINT = `/users/authorize-device`;
 const REGISTER_TEMP_ACCESS_ENDPOINT = `${AUTH_ENDPOINT}/register-temp-access`;
+const PORTAL_SESSIONS_ENDPOINT = `/portal-sessions`;
 
 // init-session và login sử dụng login token ngắn hạn, không dùng dynamic token
 // hiện tại của ứng dụng. Tách riêng hai yêu cầu này khỏi interceptor xác thực chung.
@@ -50,6 +55,13 @@ preAuthClient.interceptors.request.use((config) => {
     delete config.headers[API_HEADERS.AUTHORIZATION];
   }
   return config;
+});
+
+preAuthClient.interceptors.response.use((response) => {
+  if (response.data && typeof response.data === "object") {
+    response.data = snakeToCamelCase(response.data);
+  }
+  return response;
 });
 
 export async function fetchActiveProviders(): Promise<ProviderConfig[]> {
@@ -245,11 +257,50 @@ export async function authorizeDevice(payload: AuthorizeDevicePayload): Promise<
     operating_system: payload.operatingSystem,
     manufacturer: payload.manufacturer,
     user_agent: payload.userAgent,
+    portal_session_code: payload.portalSessionCode,
     // Sửa ngày 2026-09-07: không gửi user_ip_address và duration. IP do UniFi
     // xác định; thời lượng do policy backend quyết định khi authorize-device.
   };
 
   await apiClient.put(`${AUTHORIZE_DEVICE_ENDPOINT}`, apiPayload);
+}
+
+/** Huy- Tạo/lấy lại portal session; API này không authorize thiết bị. */
+export async function createPortalSession(payload: AuthorizeDevicePayload & { siteId?: string }): Promise<PortalSessionCreated> {
+  const response = await preAuthClient.post<ApiEnvelope<PortalSessionCreated>>(PORTAL_SESSIONS_ENDPOINT, {
+    device_mac: payload.deviceMac,
+    ap_id: payload.apMac,
+    ssid: payload.ssid,
+    site_id: payload.siteId,
+    device_client_id: payload.deviceClientId,
+    device_type: payload.deviceType,
+    device_name: payload.deviceName,
+    operating_system: payload.operatingSystem,
+    manufacturer: payload.manufacturer,
+    user_agent: payload.userAgent,
+  });
+  return response.data.data;
+}
+
+export async function getPortalSessionContext(sessionCode: string): Promise<PortalSessionContext> {
+  const response = await preAuthClient.get<ApiEnvelope<PortalSessionContext>>(
+    `${PORTAL_SESSIONS_ENDPOINT}/${encodeURIComponent(sessionCode)}`,
+  );
+  return response.data.data;
+}
+
+export async function getPortalSessionStatus(sessionCode: string): Promise<PortalSessionStatusResult> {
+  const response = await preAuthClient.get<ApiEnvelope<PortalSessionStatusResult>>(
+    `${PORTAL_SESSIONS_ENDPOINT}/${encodeURIComponent(sessionCode)}/status`,
+  );
+  return response.data.data;
+}
+
+export async function markPortalOAuthStarted(sessionCode: string, provider: string): Promise<void> {
+  await preAuthClient.post(
+    `${PORTAL_SESSIONS_ENDPOINT}/${encodeURIComponent(sessionCode)}/oauth-start`,
+    { provider },
+  );
 }
 
 /**

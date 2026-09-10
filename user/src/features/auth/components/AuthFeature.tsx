@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { currentUser } from '@/data/mockData';
-import { authorizeDevice, authorizeRegisterTemporaryAccess, loginWithPassword, quickAccess, startOAuth2Login } from '@/features/auth/api/authApi';
+import { authorizeDevice, authorizeRegisterTemporaryAccess, loginWithPassword, markPortalOAuthStarted, quickAccess, startOAuth2Login } from '@/features/auth/api/authApi';
 import {
   clearForgotToken,
   getActiveProviders,
@@ -14,16 +14,17 @@ import {
   verifyForgotOtp,
   submitResetPassword,
 } from '@/features/auth/slices/authSlice';
-import type { LoginResult, ProviderConfig } from '@/features/auth/types';
+import type { CaptivePortalContext, LoginResult, ProviderConfig } from '@/features/auth/types';
 import { useAppDispatch } from '@/stores/hooks';
 import type { RootState } from '@/stores/store';
 import AuthLoginCard, { type AuthTab } from '@/features/auth/components/AuthLoginCard';
 import AuthPageLayout from '@/features/auth/components/AuthPageLayout';
+import CnaBrowserHandoff from '@/features/auth/components/CnaBrowserHandoff';
 import AuthTermsDialog from '@/features/auth/components/dialogs/AuthTermsDialog';
 import GuestRegistrationDialog from '@/features/auth/components/dialogs/GuestRegistrationDialog';
 import ForgotPasswordDialog from '@/features/auth/components/dialogs/ForgotPasswordDialog';
 import { STORAGE_KEYS } from '@/constants/appKeys';
-import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload, clearRedirectUrl } from '@/lib/captivePortal';
+import { extractCaptivePortalContext, getCaptivePortalContext, saveCaptivePortalContext, buildAuthorizeDevicePayload, clearRedirectUrl, clearPortalSessionCode, getStoredPortalSessionCode } from '@/lib/captivePortal';
 import { setAxiosAuthToken, initializeAxios } from '@/config/axios';
 import { validatePassword } from '@/lib/passwordValidation';
 import { logger } from '@/lib/logger';
@@ -76,9 +77,10 @@ export default function Login() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [portalEntryChecked, setPortalEntryChecked] = useState(false);
+  const [cnaEntryContext, setCnaEntryContext] = useState<CaptivePortalContext | null>(null);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
-  const [guestModalOpen, setGuestModalOpen] = useState(false);
-  const [guestForm, setGuestForm] = useState({
+  const [guestModalOpen, setGuestModalOpen] = useState(false);  const [guestForm, setGuestForm] = useState({
     email: '',
     phone: '',
     password: '',
@@ -168,6 +170,7 @@ export default function Login() {
   // Giữ lại thông tin captive portal trước khi URL bị thay đổi bởi luồng đăng nhập.
   useEffect(() => {
     const currentSearch = window.location.search;
+    const fullBrowser = new URLSearchParams(currentSearch).get('full_browser') === '1';
 
     console.log('🔍 Current URL:', window.location.href);
     console.log('🔍 Search params:', currentSearch);
@@ -178,6 +181,7 @@ export default function Login() {
 
       if (captiveContext) {
         saveCaptivePortalContext(captiveContext);
+        if (!fullBrowser) setCnaEntryContext(captiveContext);
         console.log('✅ Captive context saved to localStorage');
       } else {
         console.warn('⚠️ Failed to extract captive context from URL');
@@ -190,6 +194,7 @@ export default function Login() {
         console.warn('⚠️ No captive context in URL or localStorage');
       }
     }
+    setPortalEntryChecked(true);
   }, []);
 
   // Khôi phục phiên hợp lệ và tiếp tục luồng cấp quyền cho thiết bị nếu cần.
@@ -199,6 +204,13 @@ export default function Login() {
 
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       const captiveContext = getCaptivePortalContext('');
+      const currentParams = new URLSearchParams(window.location.search);
+
+      // Huy- Raw captive entry luôn dừng ở màn hình hướng dẫn. Chỉ full browser
+      // hoặc luồng cũ không có raw params mới được tự khôi phục phiên đăng nhập.
+      if (extractCaptivePortalContext(window.location.search) && currentParams.get('full_browser') !== '1') {
+        return;
+      }
 
       console.log('🔄 Checking redirect with session...');
       console.log('🔄 Has token:', Boolean(token));
@@ -238,14 +250,21 @@ export default function Login() {
           console.log('✅ Device authorized successfully via redirect');
 
           localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+          clearPortalSessionCode();
           router.push('/network-connecting');
         } catch (error) {
           console.error('❌ Failed to authorize device via redirect:', error);
-          clearRedirectUrl();
-          localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+          if (!getStoredPortalSessionCode()) {
+            clearRedirectUrl();
+            localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+          }
           // Authorize UniFi là best-effort. Backend/Core đã ghi log chi tiết;
           // không giữ người dùng ở màn hình login khi bước mở mạng gặp lỗi.
-          router.push('/session');
+          if (getStoredPortalSessionCode()) {
+            setError('Phiên đăng nhập đã khôi phục nhưng chưa thể cấp mạng. Vui lòng thử lại.');
+          } else {
+            router.push('/session');
+          }
         }
       }
     };
@@ -320,11 +339,16 @@ export default function Login() {
       console.log('✅ Device authorized successfully');
 
       localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+      clearPortalSessionCode();
       return true;
     } catch (error) {
       console.error('❌ Failed to authorize device:', error);
-      clearRedirectUrl();
-      localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+      // Huy- Giữ context/code của full browser để user có thể retry trong TTL;
+      // luồng captive cũ không có session_code vẫn dọn như trước.
+      if (!getStoredPortalSessionCode()) {
+        clearRedirectUrl();
+        localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
+      }
       return false;
     }
   };
@@ -380,6 +404,11 @@ export default function Login() {
     if (captiveContext) {
       const authorized = await authorizeDeviceInBackground();
       if (!authorized) {
+        if (getStoredPortalSessionCode()) {
+          setError('Đăng nhập thành công nhưng chưa thể cấp mạng. Vui lòng thử lại trước khi phiên hết hạn.');
+          setIsLoading(false);
+          return;
+        }
         // Huy- Cập nhật ngày 2026-09-09: với luồng anonymous, nếu authorize thiết bị
         // thất bại thì vẫn đưa vào màn hình check mạng và hiển thị hướng dẫn quên mạng
         // để ngưởi dùng kết nối lại; luồng thường vẫn vào ứng dụng như cũ.
@@ -428,6 +457,11 @@ export default function Login() {
 
       setIsLoading(true);
       try {
+        const portalSessionCode = getStoredPortalSessionCode();
+        if (portalSessionCode) {
+          // Huy- Chuyển state sang OAUTH_PENDING trước khi rời portal; TTL chỉ được gia hạn một lần.
+          await markPortalOAuthStarted(portalSessionCode, provider);
+        }
         await startOAuth2Login(provider);
       } catch (oauthError) {
         logger.error('Khởi tạo OAuth2 thất bại:', oauthError);
@@ -800,6 +834,14 @@ console.log("result::::", result);
     setForgotModalOpen(false);
     resetForgotForm();
   };
+
+  if (!portalEntryChecked) {
+    return <AuthPageLayout><div className="h-48 animate-pulse rounded-2xl bg-white shadow-sm" /></AuthPageLayout>;
+  }
+
+  if (cnaEntryContext) {
+    return <AuthPageLayout><CnaBrowserHandoff context={cnaEntryContext} /></AuthPageLayout>;
+  }
 
   return (
     <>

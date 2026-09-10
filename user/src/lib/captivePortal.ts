@@ -29,6 +29,7 @@ export function extractCaptivePortalContext(search: string): CaptivePortalContex
   const ssid = params.get("ssid")?.trim() || "";
   const url = params.get("url")?.trim() || "";
   const t = params.get("t")?.trim() || "";
+  const siteId = params.get("site_id")?.trim() || params.get("siteId")?.trim() || params.get("site")?.trim() || "";
 
   if (!id || !ap || !ssid || !url) {
     console.log(
@@ -49,6 +50,7 @@ export function extractCaptivePortalContext(search: string): CaptivePortalContex
     ssid,
     url,
     t: t || undefined,
+    siteId: siteId || undefined,
   };
 }
 
@@ -124,6 +126,7 @@ export function getStoredCaptivePortalContext(): CaptivePortalContext | null {
       ssid: parsed.ssid, //Tên WiFi
       url: parsed.url, //URL gốc người dùng muốn truy cập
       t: parsed.t, //Timestamp (optional)
+      siteId: parsed.siteId,
     };
   } catch {
     return null;
@@ -151,7 +154,23 @@ export function buildAuthorizeDevicePayload(
     userAgent: navigator.userAgent,
     manufacturer: detectManufacturer(),
     operatingSystem: detectOS(),
+    portalSessionCode: getStoredPortalSessionCode() || undefined,
   };
+}
+
+/** Huy- Session code là cầu nối giữa storage tách biệt của CNA và full browser. */
+export function savePortalSessionCode(sessionCode: string): void {
+  localStorage.setItem(STORAGE_KEYS.portalSessionCode, sessionCode);
+}
+
+export function getStoredPortalSessionCode(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(STORAGE_KEYS.portalSessionCode);
+}
+
+export function clearPortalSessionCode(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(STORAGE_KEYS.portalSessionCode);
 }
 
 function detectDeviceCategory(): string {
