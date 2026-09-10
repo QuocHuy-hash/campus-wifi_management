@@ -302,27 +302,20 @@ export default function CnaPortalFeature() {
       </AuthPageLayout>
 
       {/* Popup B: Mở trình duyệt để đăng nhập */}
-      {context && (
-        <Dialog open={handoffOpen} onOpenChange={setHandoffOpen}>
-          <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
+      <Dialog open={handoffOpen} onOpenChange={setHandoffOpen}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
+          {context ? (
             <CnaBrowserHandoff context={context} />
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Fallback khi không có captive context (dev/testing) */}
-      {!context && handoffOpen && (
-        <Dialog open={handoffOpen} onOpenChange={setHandoffOpen}>
-          <DialogContent className="sm:max-w-sm">
+          ) : (
             <div className="p-6 text-center">
               <p className="text-sm font-medium text-slate-700">Không tìm thấy thông tin Captive Portal.</p>
               <p className="mt-2 text-xs text-slate-400">
                 Truy cập trang này từ WiFi HCMUS để nhận đầy đủ thông số kết nối.
               </p>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

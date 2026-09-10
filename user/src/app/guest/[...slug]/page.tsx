@@ -10,7 +10,7 @@ export default function CaptivePortalHandler() {
 
   useEffect(() => {
     const search = window.location.search;
-    router.replace(`/login${search}`);
+    router.replace(`/cna-portal${search}`);
   }, [router]);
 
   return (

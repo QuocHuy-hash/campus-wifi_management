@@ -33,11 +33,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Handle /guest/* catch-all: forward captive params to /login
+  // Handle /guest/* catch-all: forward captive params to /cna-portal
   if (pathname.startsWith("/guest/")) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.search = search;
-    return NextResponse.redirect(loginUrl);
+    const cnaUrl = new URL("/cna-portal", request.url);
+    cnaUrl.search = search;
+    return NextResponse.redirect(cnaUrl);
   }
 
   // Protected paths: require auth
