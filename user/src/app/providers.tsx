@@ -6,15 +6,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import LanguageProvider from "@/components/LanguageProvider";
-import { initializeAxios, setAxiosAuthToken } from "@/config/axios";
-import { useEffect, useRef } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { STORAGE_KEYS } from "@/constants/appKeys";
+import { initializeAxios } from "@/config/axios";
+import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
-  buildAuthorizeDevicePayload,
   extractCaptivePortalContext,
   saveCaptivePortalContext,
-  clearRedirectUrl,
 } from "@/lib/captivePortal";
 import { authorizeDevice } from "@/features/auth/api/authApi";
 import { logger } from "@/lib/logger";
@@ -58,9 +55,7 @@ import { logger } from "@/lib/logger";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const processedCaptiveRedirectRef = useRef<string | null>(null);
 
   useEffect(() => {
     initializeAxios();
@@ -68,57 +63,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const search = searchParams.toString();
-
     const captiveContext = extractCaptivePortalContext(search);
 
-    // Chỉ cấp quyền khi yêu cầu có đầy đủ tham số captive portal bắt buộc.
     if (!captiveContext) return;
-
     saveCaptivePortalContext(captiveContext);
-
-    // Huy- Cập nhật ngày 2026-09-10: raw captive entry tại /login chỉ hiển thị
-    // màn hình mở full browser; không tự authorize dù trình duyệt còn token cũ.
-    if (pathname === "/login" && searchParams.get("full_browser") !== "1") return;
-
-    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-
-    // Cookie access_token là HttpOnly nên phía client dùng token trong localStorage
-    // làm tín hiệu; middleware sẽ kiểm tra cookie độc lập khi chuyển trang.
-    if (!token) return;
-
-    const redirectKey = JSON.stringify(captiveContext);
-    if (processedCaptiveRedirectRef.current === redirectKey) return;
-    processedCaptiveRedirectRef.current = redirectKey;
-
-    let cancelled = false;
-
-    const authorizeCaptiveDevice = async () => {
-      setAxiosAuthToken(token);
-
-      try {
-        await authorizeDevice(buildAuthorizeDevicePayload(captiveContext));
-        localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-        if (!cancelled) {
-          router.replace("/network-connecting");
-        }
-      } catch (error) {
-        logger.error("Failed to authorize device from captive redirect:", error);
-        clearRedirectUrl();
-        localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
-        if (!cancelled) {
-          // Authorize device là best-effort; không hiển thị toast lỗi hoặc giữ
-          // người dùng ở trang hiện tại khi backend/Core đã ghi nhận lỗi.
-          router.replace("/session");
-        }
-      }
-    };
-
-    void authorizeCaptiveDevice();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname, router, searchParams]);
+  }, [pathname, searchParams]);
 
   return (
     <Provider store={store}>
