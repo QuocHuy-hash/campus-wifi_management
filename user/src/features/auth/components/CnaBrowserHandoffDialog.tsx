@@ -8,6 +8,8 @@ interface CnaBrowserHandoffDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   context: CaptivePortalContext;
+  temporaryAccessStatus: "checking" | "ready" | "failed";
+  temporaryAccessError: string;
 }
 
 /**
@@ -18,11 +20,17 @@ export default function CnaBrowserHandoffDialog({
   open,
   onOpenChange,
   context,
+  temporaryAccessStatus,
+  temporaryAccessError,
 }: CnaBrowserHandoffDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
-        <CnaBrowserHandoff context={context} />
+        <CnaBrowserHandoff
+          context={context}
+          temporaryAccessStatus={temporaryAccessStatus}
+          temporaryAccessError={temporaryAccessError}
+        />
       </DialogContent>
     </Dialog>
   );
