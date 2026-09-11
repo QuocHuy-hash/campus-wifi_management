@@ -2,9 +2,7 @@
 
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, ArrowRight, LogIn, Ticket, Zap } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import CnaBrowserHandoff from "@/features/auth/components/CnaBrowserHandoff";
+import { AlertCircle, ArrowRight, LoaderCircle, LogIn, Ticket, Zap } from "lucide-react";
 import AuthPageLayout from "@/features/auth/components/AuthPageLayout";
 import type { CaptivePortalContext, LoginResult } from "@/features/auth/types";
 import {
@@ -149,18 +147,14 @@ function MenuEntry({
 // ─── Feature chính ────────────────────────────────────────────────────────────
 
 type Screen = "menu" | "conference";
-type TemporaryAccessStatus = "checking" | "ready" | "failed";
-
 export default function CnaPortalFeature() {
   const { t } = useTranslation();
   const [screen, setScreen] = useState<Screen>("menu");
-  const [handoffOpen, setHandoffOpen] = useState(false);
   const [context, setContext] = useState<CaptivePortalContext | null>(null);
   const [ready, setReady] = useState(false);
   const [quickLoading, setQuickLoading] = useState(false);
+  const [accountTransitionLoading, setAccountTransitionLoading] = useState(false);
   const [error, setError] = useState("");
-  const [temporaryAccessStatus, setTemporaryAccessStatus] = useState<TemporaryAccessStatus>("checking");
-  const [temporaryAccessError, setTemporaryAccessError] = useState("");
   const temporaryAccessRequestRef = useRef<string | null>(null);
 
   // Đọc captive portal context từ URL hoặc localStorage (giống AuthFeature)
@@ -181,8 +175,6 @@ export default function CnaPortalFeature() {
   // cấp Internet giới hạn; chưa tạo user, chưa tạo portal session và không cấp policy thật.
   useEffect(() => {
     if (!context) {
-      setTemporaryAccessStatus("failed");
-      setTemporaryAccessError("Không tìm thấy thông tin Captive Portal để cấp kết nối tạm.");
       return;
     }
 
@@ -191,26 +183,35 @@ export default function CnaPortalFeature() {
     temporaryAccessRequestRef.current = requestKey;
 
     let cancelled = false;
-    setTemporaryAccessStatus("checking");
-    setTemporaryAccessError("");
 
     void authorizeRegisterTemporaryAccess(buildAuthorizeDevicePayload(context))
       .then(() => {
         if (cancelled) return;
         console.info("[REGISTER-TEMP][CNA] Đã áp policy REGISTER_TEMP cho thiết bị.");
-        setTemporaryAccessStatus("ready");
       })
       .catch((requestError) => {
         if (cancelled) return;
         console.warn("[REGISTER-TEMP][CNA] Không thể áp policy REGISTER_TEMP:", requestError);
-        setTemporaryAccessStatus("failed");
-        setTemporaryAccessError("Không thể cấp kết nối tạm. Vui lòng kiểm tra lại WiFi và thử lại.");
       });
 
     return () => {
       cancelled = true;
     };
   }, [context]);
+
+  const handleAccountLogin = () => {
+    if (!context) {
+      setError("Không tìm thấy thông tin Captive Portal. Vui lòng kết nối lại WiFi và thử lại.");
+      return;
+    }
+
+    // Huy- Dùng điều hướng trang thật thay Dialog để CNA có cơ hội đánh giá lại
+    // trạng thái captive sau khi REGISTER_TEMP đã được áp trên UniFi.
+    setAccountTransitionLoading(true);
+    window.setTimeout(() => {
+      window.location.assign("/cna-browser");
+    }, 1_500);
+  };
 
   // Lưu phiên tối thiểu sau khi login thành công
   const persistSession = (identifier: string) => {
@@ -302,13 +303,14 @@ export default function CnaPortalFeature() {
                   {t("guestLogin.chooseConnection", "Chọn một cách để kết nối WiFi khách.")}
                 </p>
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white divide-y divide-slate-200">
-                  {/* Item 1: Đăng nhập bằng tài khoản → mở popup handoff */}
+                  {/* Huy- Điều hướng trang CNA riêng, không dùng popup để không giữ CNA ở state cũ. */}
                   <MenuEntry
                     icon={<LogIn size={19} />}
                     iconClass="bg-blue-50 text-blue-700"
                     title="Đăng nhập bằng tài khoản"
                     description="Dùng email hoặc Zalo đã đăng ký"
-                    onClick={() => setHandoffOpen(true)}
+                    onClick={handleAccountLogin}
+                    disabled={accountTransitionLoading}
                   />
                   {/* Item 2: Truy cập nhanh — gọi API ngay trong CNA */}
                   <MenuEntry
@@ -334,33 +336,18 @@ export default function CnaPortalFeature() {
                     {error}
                   </div>
                 )}
+                {accountTransitionLoading && (
+                  <div className="mt-3 flex items-center justify-center gap-2 text-sm text-slate-500">
+                    <LoaderCircle className="animate-spin" size={16} />
+                    Đang chuẩn bị trang đăng nhập...
+                  </div>
+                )}
               </div>
             )}
           </div>
         </section>
       </AuthPageLayout>
 
-      {/* Popup B: Mở trình duyệt để đăng nhập */}
-      <Dialog open={handoffOpen} onOpenChange={setHandoffOpen}>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
-          <DialogTitle className="sr-only">Đăng nhập qua trình duyệt</DialogTitle>
-          <DialogDescription className="sr-only">Mở trình duyệt đầy đủ để đăng nhập tài khoản và được cấp quyền truy cập WiFi.</DialogDescription>
-          {context ? (
-            <CnaBrowserHandoff
-              context={context}
-              temporaryAccessStatus={temporaryAccessStatus}
-              temporaryAccessError={temporaryAccessError}
-            />
-          ) : (
-            <div className="p-6 text-center">
-              <p className="text-sm font-medium text-slate-700">Không tìm thấy thông tin Captive Portal.</p>
-              <p className="mt-2 text-xs text-slate-400">
-                Truy cập trang này từ WiFi HCMUS để nhận đầy đủ thông số kết nối.
-              </p>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

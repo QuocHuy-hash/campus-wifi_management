@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_KEY } from "@/constants/appKeys";
 
-const PUBLIC_PATHS = ["/login", "/cna-portal", "/auth/success", "/network-success", "/s", "/api", "/.well-known"];
+const PUBLIC_PATHS = ["/login", "/cna-portal", "/cna-browser", "/auth/success", "/network-success", "/s", "/api", "/.well-known"];
 
 function isAuthenticated(request: NextRequest): boolean {
   const token = request.cookies.get(AUTH_COOKIE_KEY)?.value;
