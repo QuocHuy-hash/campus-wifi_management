@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { currentUser } from '@/data/mockData';
 import { authorizeDevice, authorizeRegisterTemporaryAccess, loginWithPassword, markPortalOAuthStarted, quickAccess, startOAuth2Login } from '@/features/auth/api/authApi';
@@ -70,6 +70,7 @@ function saveGuestLoginUsername(username: string): void {
 
 export default function Login() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<AuthTab>('guest');
@@ -145,7 +146,8 @@ export default function Login() {
 
     const captiveContext = getCaptivePortalContext('');
     if (!captiveContext) {
-      setError('Không tìm thấy thông tin thiết bị để cấp kết nối tạm. Vui lòng mở lại liên kết từ WiFi.');
+      // Huy- Thiếu context chỉ làm không thể cấp REGISTER_TEMP, không được chặn OAuth.
+      logger.warn('[REGISTER-TEMP] Bỏ qua vì không có captive context; OAuth vẫn tiếp tục.');
       return false;
     }
 
@@ -155,8 +157,8 @@ export default function Login() {
         return true;
       })
       .catch((temporaryAccessError) => {
-        console.error('[REGISTER-TEMP] Không thể cấp mạng tạm cho full browser:', temporaryAccessError);
-        setError('Không thể cấp kết nối tạm để đăng nhập. Vui lòng thử lại từ WiFi.');
+        // Huy- REGISTER_TEMP là best-effort; lỗi Core/UniFi không được chặn Google/Microsoft.
+        logger.warn('[REGISTER-TEMP] Cấp mạng tạm thất bại; OAuth vẫn tiếp tục:', temporaryAccessError);
         temporaryAccessPromiseRef.current = null;
         return false;
       });
@@ -175,6 +177,18 @@ export default function Login() {
   useEffect(() => {
     dispatch(getActiveProviders());
   }, [dispatch]);
+
+  useEffect(() => {
+    // Huy- Callback OAuth luôn trở về màn login; captive context vẫn được giữ nguyên trong storage.
+    const oauthError = searchParams.get('oauth_error');
+    if (oauthError === 'account_registered_with_password') {
+      setError('Tài khoản này đã được đăng ký bằng email và mật khẩu. Vui lòng đăng nhập bằng tài khoản và mật khẩu.');
+      return;
+    }
+    if (oauthError) {
+      setError('Không thể hoàn tất đăng nhập Google hoặc Microsoft. Vui lòng thử lại hoặc đăng nhập bằng tài khoản và mật khẩu.');
+    }
+  }, [searchParams]);
 
   // Khởi tạo interceptor một lần trước khi thực hiện các yêu cầu xác thực.
   useEffect(() => {
@@ -486,11 +500,9 @@ export default function Login() {
         return;
       }
 
-      // Huy- Người dùng có thể bấm SSO ngay khi vừa vào /login. Chờ REGISTER_TEMP
-      // hoàn tất để Google/Microsoft không báo thiết bị chưa có Internet.
-      if (!await ensureTemporaryAccessForFullBrowser()) {
-        return;
-      }
+      // Huy- REGISTER_TEMP chạy nền vì không được phép làm chậm hay chặn OAuth.
+      // Huy- Google/Microsoft luôn chuyển hướng ngay cả khi Core/UniFi cấp mạng tạm thất bại.
+      void ensureTemporaryAccessForFullBrowser();
 
       sessionStorage.setItem(STORAGE_KEYS.oauthProvider, provider);
       sessionStorage.setItem('oauth2_redirect_back', '/session');
@@ -499,8 +511,13 @@ export default function Login() {
       try {
         const portalSessionCode = getStoredPortalSessionCode();
         if (portalSessionCode) {
-          // Huy- Chuyển state sang OAUTH_PENDING trước khi rời portal; TTL chỉ được gia hạn một lần.
-          await markPortalOAuthStarted(portalSessionCode, provider);
+          // Huy- Portal session chỉ theo dõi ngữ cảnh Captive Portal và không phải điều kiện OAuth.
+          // Huy- Nếu Redis hết hạn hoặc không còn session, tài khoản vẫn phải đăng nhập Google/Microsoft bình thường.
+          try {
+            await markPortalOAuthStarted(portalSessionCode, provider);
+          } catch (portalSessionError) {
+            logger.warn('Không thể cập nhật trạng thái portal trước OAuth2; vẫn tiếp tục OAuth2:', portalSessionError);
+          }
         }
         await startOAuth2Login(provider);
       } catch (oauthError) {

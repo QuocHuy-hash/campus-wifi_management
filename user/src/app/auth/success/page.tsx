@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { authorizeDevice, exchangeOAuth2Code, getMeProfile } from "@/features/auth/api/authApi";
 import { STORAGE_KEYS } from "@/constants/appKeys";
-import { getCaptivePortalContext, buildAuthorizeDevicePayload, clearPortalSessionCode } from "@/lib/captivePortal";
+import { getCaptivePortalContext, buildAuthorizeDevicePayload, clearPortalSessionCode, getStoredPortalSessionCode } from "@/lib/captivePortal";
 import NetworkConnectingScreen from "@/components/NetworkConnectingScreen";
 import { clearStoredAuthSession, establishSessionCookie } from "@/lib/session";
 import { initializeAxios, setAxiosAuthToken } from "@/config/axios";
@@ -31,8 +31,15 @@ export default function OAuthSuccess() {
     const accessToken = searchParams?.get("access_token"); // Tương thích callback wifi-user cũ khi rollout.
     const oauthError = searchParams?.get("oauth_error");
     if (oauthError) {
-      setIsProcessing(false);
-      setError(t("common.sessionConfirmFailed"));
+      // Huy- OAuth không thành công phải quay về login, không dừng ở màn callback khó hiểu.
+      // Huy- Không xóa captive context/session code để user thử lại hoặc đăng nhập mật khẩu rồi authorize thiết bị.
+      const hasCaptiveContext = Boolean(getCaptivePortalContext(""));
+      const hasPortalSessionCode = Boolean(getStoredPortalSessionCode());
+      const loginParams = new URLSearchParams({ oauth_error: oauthError });
+      if (hasCaptiveContext || hasPortalSessionCode) {
+        loginParams.set("full_browser", "1");
+      }
+      window.location.replace(`/login?${loginParams.toString()}`);
       return;
     }
     const storedAccessToken = localStorage.getItem(STORAGE_KEYS.accessToken);
