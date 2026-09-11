@@ -209,7 +209,17 @@ export default function CnaPortalFeature() {
     // trạng thái captive sau khi REGISTER_TEMP đã được áp trên UniFi.
     setAccountTransitionLoading(true);
     window.setTimeout(() => {
-      window.location.assign("/cna-browser");
+      // Huy- Đưa context vào URL để route mới không phụ thuộc localStorage của CNA.
+      // Điều này bảo đảm CnaBrowserHandoff vẫn tạo được session code khi CNA đổi trang.
+      const handoffParams = new URLSearchParams({
+        id: context.id,
+        ap: context.ap,
+        ssid: context.ssid,
+        url: context.url,
+      });
+      if (context.siteId) handoffParams.set("site_id", context.siteId);
+      if (context.t) handoffParams.set("t", context.t);
+      window.location.assign(`/cna-browser?${handoffParams.toString()}`);
     }, 1_500);
   };
 

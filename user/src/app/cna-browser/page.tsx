@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { AlertCircle, LoaderCircle } from "lucide-react";
 import AuthPageLayout from "@/features/auth/components/AuthPageLayout";
 import CnaBrowserHandoff from "@/features/auth/components/CnaBrowserHandoff";
-import { getCaptivePortalContext } from "@/lib/captivePortal";
+import {
+  extractCaptivePortalContext,
+  getCaptivePortalContext,
+  saveCaptivePortalContext,
+} from "@/lib/captivePortal";
 import type { CaptivePortalContext } from "@/features/auth/types";
 
 export default function CnaBrowserPage() {
@@ -12,7 +16,11 @@ export default function CnaBrowserPage() {
   const [contextLoaded, setContextLoaded] = useState(false);
 
   useEffect(() => {
-    setContext(getCaptivePortalContext(""));
+    // Huy- Ưu tiên context trong URL vừa được CNA chuyển trang, sau đó mới dùng
+    // localStorage. CNA có thể tách storage theo webview nên không dựa vào storage đơn lẻ.
+    const fromUrl = extractCaptivePortalContext(window.location.search);
+    if (fromUrl) saveCaptivePortalContext(fromUrl);
+    setContext(fromUrl || getCaptivePortalContext(""));
     setContextLoaded(true);
   }, []);
 
