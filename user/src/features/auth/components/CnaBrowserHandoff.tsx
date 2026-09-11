@@ -5,19 +5,22 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
-  LoaderCircle,
   ShieldCheck,
   Wifi,
 } from "lucide-react";
 import type { CaptivePortalContext, PortalSessionCreated } from "@/features/auth/types";
-import {
-  createPortalSession,
-  getPortalSessionStatus,
-} from "@/features/auth/api/authApi";
+import { createPortalSession } from "@/features/auth/api/authApi";
 import { buildAuthorizeDevicePayload, savePortalSessionCode } from "@/lib/captivePortal";
+
+const CNA_RELOAD_INTERVAL_MS = 2_000;
+const CNA_FIRST_RELOAD_DELAY_MS = 2_500;
+const CNA_RELOAD_MAX_ATTEMPTS = 10;
 
 interface CnaBrowserHandoffProps {
   context: CaptivePortalContext;
+  initialSessionCode?: string;
+  initialLoginUrl?: string;
+  initialReloadAttempt?: number;
   temporaryAccessStatus: "checking" | "ready" | "failed";
   temporaryAccessError: string;
 }
@@ -86,18 +89,40 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+// Huy- Dùng đúng một giao diện tĩnh cho cả lúc route vừa mount và trong toàn bộ
+// chu kỳ reload. Nhờ vậy React không đổi qua lại giữa loading, mã phiên và link.
+export function CnaBrowserReloadScreen() {
+  return (
+    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+      <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
+        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-700">
+          <Wifi size={28} />
+        </span>
+        <p className="mt-4 text-sm font-semibold text-slate-800">Đang kiểm tra kết nối WiFi...</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">Vui lòng giữ nguyên màn hình trong giây lát.</p>
+      </div>
+    </section>
+  );
+}
+
 export default function CnaBrowserHandoff({
   context,
-  temporaryAccessStatus,
-  temporaryAccessError,
+  initialSessionCode = "",
+  initialLoginUrl = "",
+  initialReloadAttempt = 0,
 }: CnaBrowserHandoffProps) {
-  const [session, setSession] = useState<PortalSessionCreated | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [session, setSession] = useState<PortalSessionCreated | null>(() => initialSessionCode
+    ? {
+        sessionCode: initialSessionCode,
+        loginUrl: initialLoginUrl || `/s/${encodeURIComponent(initialSessionCode)}`,
+        status: "PENDING",
+        expiresAt: "",
+      }
+    : null);
+  const [isLoading, setIsLoading] = useState(!initialSessionCode);
   const [error, setError] = useState("");
   const [platform, setPlatform] = useState<BrowserPlatform>("other");
-  const [networkStatus, setNetworkStatus] = useState<"checking" | "ready" | "failed">("checking");
-  const [networkError, setNetworkError] = useState("");
-  const [networkCheckAttempt, setNetworkCheckAttempt] = useState(0);
+  const [reloadAttempt, setReloadAttempt] = useState(initialReloadAttempt);
 
   const calledRef = useRef(false);
 
@@ -106,7 +131,8 @@ export default function CnaBrowserHandoff({
     setPlatform(getBrowserPlatform());
   }, []);
 
-  // Gọi API ngay khi popup mount — useRef guard tránh gọi 2 lần trong React StrictMode
+  // Huy- Khi URL đã có sessionCode, CNA chỉ dựng lại phiên và tiếp tục reload.
+  // Không gọi status và không gọi lại API tạo portal session trong chu kỳ này.
   useEffect(() => {
     // Guard: context phải có đủ thông tin captive portal mới gọi API
     if (!context.id || !context.ap || !context.ssid) {
@@ -119,100 +145,75 @@ export default function CnaBrowserHandoff({
     calledRef.current = true;
 
     const init = async () => {
-      setIsLoading(true);
+      if (!initialSessionCode) setIsLoading(true);
       setError("");
       try {
+        const currentUrl = new URL(window.location.href);
+        const sessionCode = currentUrl.searchParams.get("session_code")?.trim();
+        const parsedAttempt = Number.parseInt(currentUrl.searchParams.get("cna_reload") || "0", 10);
+        setReloadAttempt(Number.isFinite(parsedAttempt) && parsedAttempt >= 0 ? parsedAttempt : 0);
+
+        if (sessionCode) {
+          setSession({
+            sessionCode,
+            loginUrl: initialLoginUrl || `${window.location.origin}/s/${encodeURIComponent(sessionCode)}`,
+            status: "PENDING",
+            expiresAt: "",
+          });
+          savePortalSessionCode(sessionCode);
+          return;
+        }
+
         const payload = buildAuthorizeDevicePayload(context);
         const created = await createPortalSession({ ...payload, siteId: context.siteId });
         setSession(created);
         savePortalSessionCode(created.sessionCode);
+
+        // Huy- Gắn mã vào URL mà không reload ngay để các lần tải tiếp theo dùng
+        // lại mã hiện tại, kể cả localStorage của CNA không ổn định.
+        currentUrl.searchParams.set("session_code", created.sessionCode);
+        currentUrl.searchParams.set("cna_reload", "0");
+        window.history.replaceState(null, "", `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
       } catch (err) {
         setError("Không thể tạo phiên đăng nhập. Vui lòng kiểm tra kết nối và thử lại.");
-        console.error("[PortalSession] create failed", err);
+        console.error("[PortalSession] initialize failed", err);
       } finally {
         setIsLoading(false);
       }
     };
 
     void init();
-  }, [context]);
+  }, [context, initialLoginUrl, initialSessionCode]);
 
-  // Huy- Chỉ bật nút mở browser khi policy REGISTER_TEMP đã áp thành công và
-  // thiết bị thật sự tải được HTTPS của Google. Backend chỉ biết UniFi nhận lệnh,
-  // còn phép thử này xác nhận đường mạng từ chính thiết bị CNA.
+  // Huy- Bắt đầu reload ngay tại /cna-browser, không phụ thuộc trạng thái gọi
+  // REGISTER_TEMP. Top-level reload giúp CNA yêu cầu hệ điều hành đánh giá lại mạng.
   useEffect(() => {
-    if (temporaryAccessStatus === "checking") {
-      setNetworkStatus("checking");
-      setNetworkError("");
-      return;
-    }
+    if (!session || isLoading || reloadAttempt >= CNA_RELOAD_MAX_ATTEMPTS) return;
 
-    if (temporaryAccessStatus === "failed") {
-      setNetworkStatus("failed");
-      setNetworkError(temporaryAccessError || "Không thể cấp kết nối tạm để kiểm tra Internet.");
-      return;
-    }
+    // Huy- Sau khi portal-sessions trả thành công, chờ 2 giây mới reload lần đầu.
+    // Từ lần reload thứ hai trở đi giữ khoảng cách 1.5 giây như luồng CNA yêu cầu.
+    const reloadDelay = reloadAttempt === 0
+      ? CNA_FIRST_RELOAD_DELAY_MS
+      : CNA_RELOAD_INTERVAL_MS;
+    const timer = window.setTimeout(() => {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("session_code", session.sessionCode);
+      nextUrl.searchParams.set("cna_reload", String(reloadAttempt + 1));
+      window.location.replace(`${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    }, reloadDelay);
 
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 8_000);
-    let cancelled = false;
-
-    const verifyNetwork = async () => {
-      setNetworkStatus("checking");
-      setNetworkError("");
-      try {
-        await fetch("https://accounts.google.com/gsi/client", {
-          cache: "no-store",
-          mode: "no-cors",
-          signal: controller.signal,
-        });
-        if (cancelled) return;
-        console.info("[REGISTER-TEMP][CNA] Xác nhận thiết bị truy cập được Internet trước khi mở browser.");
-        setNetworkStatus("ready");
-      } catch (networkCheckError) {
-        if (cancelled) return;
-        console.warn("[REGISTER-TEMP][CNA] Không thể xác nhận Internet:", networkCheckError);
-        setNetworkStatus("failed");
-        setNetworkError("Chưa xác nhận được kết nối Internet. Vui lòng thử kiểm tra lại.");
-      } finally {
-        window.clearTimeout(timeout);
-      }
-    };
-
-    void verifyNetwork();
-    return () => {
-      cancelled = true;
-      controller.abort();
-      window.clearTimeout(timeout);
-    };
-  }, [temporaryAccessStatus, temporaryAccessError, networkCheckAttempt]);
-
-  // Polling trạng thái phiên sau khi đã có session
-  useEffect(() => {
-    if (!session || session.status === "AUTHORIZED") return;
-
-    const timer = window.setInterval(async () => {
-      try {
-        const current = await getPortalSessionStatus(session.sessionCode);
-        if (current.status === "AUTHORIZED") {
-          window.clearInterval(timer);
-          window.location.replace("/network-success?source=cna");
-        }
-      } catch {
-        window.clearInterval(timer);
-        setError("Phiên đã hết hạn. Vui lòng đóng popup và thử lại.");
-      }
-    // Huy- Giảm tần suất polling trạng thái portal session xuống 10 giây để tránh
-    // tạo request lặp quá dày từ CNA trong lúc người dùng đăng nhập trên browser.
-    }, 10_000);
-
-    return () => window.clearInterval(timer);
-  }, [session]);
+    return () => window.clearTimeout(timer);
+  }, [isLoading, reloadAttempt, session]);
 
   const browserHref = session?.loginUrl
     ? (platform === "android" ? buildAndroidChromeIntent(session.loginUrl) : session.loginUrl)
     : "#";
-  const canOpenBrowser = Boolean(session) && networkStatus === "ready";
+  // Huy- Có sessionCode/loginUrl là bật nút ngay. Reload chỉ phục vụ CNA đánh giá
+  // lại kết nối, không được dùng làm điều kiện chặn người dùng mở trình duyệt.
+  const canOpenBrowser = Boolean(session);
+  if (isLoading) {
+    return <CnaBrowserReloadScreen />;
+  }
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
@@ -224,14 +225,6 @@ export default function CnaBrowserHandoff({
           <Step icon={<CheckCircle2 size={17} />} text="Đăng nhập xong, thiết bị sẽ tự được cấp mạng" />
         </div>
 
-        {/* Loading */}
-        {isLoading && (
-          <div className="flex items-center justify-center gap-2 rounded-xl bg-slate-50 py-4 text-sm text-slate-500">
-            <LoaderCircle className="animate-spin" size={18} />
-            Đang tạo phiên đăng nhập...
-          </div>
-        )}
-
         {/* Error */}
         {error && (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
@@ -240,7 +233,7 @@ export default function CnaBrowserHandoff({
         )}
 
         {/* Session info */}
-        {session && !isLoading && (
+        {session && (
           <div className="space-y-3">
             {/* Session code */}
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
