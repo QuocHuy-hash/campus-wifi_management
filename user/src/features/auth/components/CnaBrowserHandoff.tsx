@@ -18,6 +18,8 @@ import { buildAuthorizeDevicePayload, savePortalSessionCode } from "@/lib/captiv
 
 interface CnaBrowserHandoffProps {
   context: CaptivePortalContext;
+  temporaryAccessStatus: "checking" | "ready" | "failed";
+  temporaryAccessError: string;
 }
 
 type BrowserPlatform = "android" | "ios" | "windows" | "other";
@@ -84,11 +86,18 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
+export default function CnaBrowserHandoff({
+  context,
+  temporaryAccessStatus,
+  temporaryAccessError,
+}: CnaBrowserHandoffProps) {
   const [session, setSession] = useState<PortalSessionCreated | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [platform, setPlatform] = useState<BrowserPlatform>("other");
+  const [networkStatus, setNetworkStatus] = useState<"checking" | "ready" | "failed">("checking");
+  const [networkError, setNetworkError] = useState("");
+  const [networkCheckAttempt, setNetworkCheckAttempt] = useState(0);
 
   const calledRef = useRef(false);
 
@@ -128,6 +137,56 @@ export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
     void init();
   }, [context]);
 
+  // Huy- Chỉ bật nút mở browser khi policy REGISTER_TEMP đã áp thành công và
+  // thiết bị thật sự tải được HTTPS của Google. Backend chỉ biết UniFi nhận lệnh,
+  // còn phép thử này xác nhận đường mạng từ chính thiết bị CNA.
+  useEffect(() => {
+    if (temporaryAccessStatus === "checking") {
+      setNetworkStatus("checking");
+      setNetworkError("");
+      return;
+    }
+
+    if (temporaryAccessStatus === "failed") {
+      setNetworkStatus("failed");
+      setNetworkError(temporaryAccessError || "Không thể cấp kết nối tạm để kiểm tra Internet.");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8_000);
+    let cancelled = false;
+
+    const verifyNetwork = async () => {
+      setNetworkStatus("checking");
+      setNetworkError("");
+      try {
+        await fetch("https://accounts.google.com/gsi/client", {
+          cache: "no-store",
+          mode: "no-cors",
+          signal: controller.signal,
+        });
+        if (cancelled) return;
+        console.info("[REGISTER-TEMP][CNA] Xác nhận thiết bị truy cập được Internet trước khi mở browser.");
+        setNetworkStatus("ready");
+      } catch (networkCheckError) {
+        if (cancelled) return;
+        console.warn("[REGISTER-TEMP][CNA] Không thể xác nhận Internet:", networkCheckError);
+        setNetworkStatus("failed");
+        setNetworkError("Chưa xác nhận được kết nối Internet. Vui lòng thử kiểm tra lại.");
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    };
+
+    void verifyNetwork();
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [temporaryAccessStatus, temporaryAccessError, networkCheckAttempt]);
+
   // Polling trạng thái phiên sau khi đã có session
   useEffect(() => {
     if (!session || session.status === "AUTHORIZED") return;
@@ -143,7 +202,9 @@ export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
         window.clearInterval(timer);
         setError("Phiên đã hết hạn. Vui lòng đóng popup và thử lại.");
       }
-    }, 2000);
+    // Huy- Giảm tần suất polling trạng thái portal session xuống 10 giây để tránh
+    // tạo request lặp quá dày từ CNA trong lúc người dùng đăng nhập trên browser.
+    }, 10_000);
 
     return () => window.clearInterval(timer);
   }, [session]);
@@ -151,6 +212,7 @@ export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
   const browserHref = session?.loginUrl
     ? (platform === "android" ? buildAndroidChromeIntent(session.loginUrl) : session.loginUrl)
     : "#";
+  const canOpenBrowser = Boolean(session) && networkStatus === "ready";
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
@@ -204,10 +266,18 @@ export default function CnaBrowserHandoff({ context }: CnaBrowserHandoffProps) {
 
             {/* Huy- Dùng thẻ a thay vì window.open để CNA/OS có thể xử lý handoff ra browser mặc định. */}
             <a
-              href={browserHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:scale-[0.99]"
+              href={canOpenBrowser ? browserHref : undefined}
+              target={canOpenBrowser ? "_blank" : undefined}
+              rel={canOpenBrowser ? "noopener noreferrer" : undefined}
+              aria-disabled={!canOpenBrowser}
+              onClick={(event) => {
+                if (!canOpenBrowser) event.preventDefault();
+              }}
+              className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-white shadow-sm transition ${
+                canOpenBrowser
+                  ? "bg-blue-700 hover:bg-blue-800 active:scale-[0.99]"
+                  : "cursor-not-allowed bg-slate-300"
+              }`}
             >
               <ExternalLink size={19} />
               {getBrowserButtonLabel(platform)}

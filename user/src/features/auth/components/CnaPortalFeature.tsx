@@ -16,7 +16,7 @@ import {
   clearRedirectUrl,
   getStoredPortalSessionCode,
 } from "@/lib/captivePortal";
-import { authorizeDevice, quickAccess } from "@/features/auth/api/authApi";
+import { authorizeDevice, authorizeRegisterTemporaryAccess, quickAccess } from "@/features/auth/api/authApi";
 import { setAxiosAuthToken, initializeAxios } from "@/config/axios";
 import { establishSessionCookie, clearStoredAuthSession } from "@/lib/session";
 import { STORAGE_KEYS } from "@/constants/appKeys";
@@ -149,6 +149,7 @@ function MenuEntry({
 // ─── Feature chính ────────────────────────────────────────────────────────────
 
 type Screen = "menu" | "conference";
+type TemporaryAccessStatus = "checking" | "ready" | "failed";
 
 export default function CnaPortalFeature() {
   const { t } = useTranslation();
@@ -158,6 +159,9 @@ export default function CnaPortalFeature() {
   const [ready, setReady] = useState(false);
   const [quickLoading, setQuickLoading] = useState(false);
   const [error, setError] = useState("");
+  const [temporaryAccessStatus, setTemporaryAccessStatus] = useState<TemporaryAccessStatus>("checking");
+  const [temporaryAccessError, setTemporaryAccessError] = useState("");
+  const temporaryAccessRequestRef = useRef<string | null>(null);
 
   // Đọc captive portal context từ URL hoặc localStorage (giống AuthFeature)
   useEffect(() => {
@@ -172,6 +176,41 @@ export default function CnaPortalFeature() {
     setContext(ctx);
     setReady(true);
   }, []);
+
+  // Huy- Vừa vào CNA là áp policy REGISTER_TEMP cho MAC hiện tại. Policy này chỉ
+  // cấp Internet giới hạn; chưa tạo user, chưa tạo portal session và không cấp policy thật.
+  useEffect(() => {
+    if (!context) {
+      setTemporaryAccessStatus("failed");
+      setTemporaryAccessError("Không tìm thấy thông tin Captive Portal để cấp kết nối tạm.");
+      return;
+    }
+
+    const requestKey = `${context.id}|${context.ap}|${context.ssid}`;
+    if (temporaryAccessRequestRef.current === requestKey) return;
+    temporaryAccessRequestRef.current = requestKey;
+
+    let cancelled = false;
+    setTemporaryAccessStatus("checking");
+    setTemporaryAccessError("");
+
+    void authorizeRegisterTemporaryAccess(buildAuthorizeDevicePayload(context))
+      .then(() => {
+        if (cancelled) return;
+        console.info("[REGISTER-TEMP][CNA] Đã áp policy REGISTER_TEMP cho thiết bị.");
+        setTemporaryAccessStatus("ready");
+      })
+      .catch((requestError) => {
+        if (cancelled) return;
+        console.warn("[REGISTER-TEMP][CNA] Không thể áp policy REGISTER_TEMP:", requestError);
+        setTemporaryAccessStatus("failed");
+        setTemporaryAccessError("Không thể cấp kết nối tạm. Vui lòng kiểm tra lại WiFi và thử lại.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [context]);
 
   // Lưu phiên tối thiểu sau khi login thành công
   const persistSession = (identifier: string) => {
@@ -307,7 +346,11 @@ export default function CnaPortalFeature() {
           <DialogTitle className="sr-only">Đăng nhập qua trình duyệt</DialogTitle>
           <DialogDescription className="sr-only">Mở trình duyệt đầy đủ để đăng nhập tài khoản và được cấp quyền truy cập WiFi.</DialogDescription>
           {context ? (
-            <CnaBrowserHandoff context={context} />
+            <CnaBrowserHandoff
+              context={context}
+              temporaryAccessStatus={temporaryAccessStatus}
+              temporaryAccessError={temporaryAccessError}
+            />
           ) : (
             <div className="p-6 text-center">
               <p className="text-sm font-medium text-slate-700">Không tìm thấy thông tin Captive Portal.</p>
