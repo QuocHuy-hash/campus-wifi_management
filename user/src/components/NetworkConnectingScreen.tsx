@@ -7,7 +7,11 @@ interface NetworkConnectingScreenProps {
   onComplete: () => void;
   stayOnSuccess?: boolean;
   authorizationFailed?: boolean;
+  initiallyConnected?: boolean;
+  reloadOnSuccess?: boolean;
 }
+
+const CNA_SUCCESS_RELOAD_INTERVAL_MS = 2_000;
 
 // 1. Hàm kiểm tra mạng thực tế (Ping ẩn) / Function to check real internet connectivity (hidden ping)
 const checkActualInternet = (): Promise<boolean> => {
@@ -27,15 +31,21 @@ const checkActualInternet = (): Promise<boolean> => {
   });
 };
 
-export default function NetworkConnectingScreen({ onComplete, stayOnSuccess = false, authorizationFailed = false }: NetworkConnectingScreenProps) {
+export default function NetworkConnectingScreen({
+  onComplete,
+  stayOnSuccess = false,
+  authorizationFailed = false,
+  initiallyConnected = false,
+  reloadOnSuccess = false,
+}: NetworkConnectingScreenProps) {
   const { t } = useTranslation();
-  const [isConnecting, setIsConnecting] = useState(!authorizationFailed);
+  const [isConnecting, setIsConnecting] = useState(!authorizationFailed && !initiallyConnected);
   const [elapsedTime, setElapsedTime] = useState(0);
 
   useEffect(() => {
     // Nếu authorize thiết bị thất bại, không cần kiểm tra mạng nữa;
     // hiển thị ngay hướng dẫn quên mạng và kết nối lại.
-    if (authorizationFailed) return;
+    if (authorizationFailed || initiallyConnected) return;
     // Để lưu trữ các ID của interval/timeout phục vụ cho việc cleanup
     // Store interval/timeout IDs for cleanup
     let pollingInterval: ReturnType<typeof setInterval>;
@@ -89,7 +99,31 @@ export default function NetworkConnectingScreen({ onComplete, stayOnSuccess = fa
       clearInterval(timeInterval);
       clearTimeout(completeTimeout);
     };
-  }, [onComplete, stayOnSuccess]);
+  }, [authorizationFailed, initiallyConnected, onComplete, stayOnSuccess]);
+
+  useEffect(() => {
+    if (!reloadOnSuccess || authorizationFailed || isConnecting) return;
+
+    // Huy- Cập nhật ngày 2026-09-12: lưu trạng thái mạng thành công trên URL để
+    // mỗi lần CNA reload vẫn dựng ngay màn hình thành công, không nhấp nháy về loading.
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.get("network_ready") !== "1") {
+      currentUrl.searchParams.set("network_ready", "1");
+      window.history.replaceState(
+        null,
+        "",
+        `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+      );
+    }
+
+    // Huy- Reload top-level mỗi 2 giây chỉ sau khi thiết bị có Internet thật để
+    // CNA yêu cầu hệ điều hành đánh giá lại captive state và đổi nút X thành Done.
+    const reloadTimer = window.setTimeout(() => {
+      window.location.reload();
+    }, CNA_SUCCESS_RELOAD_INTERVAL_MS);
+
+    return () => window.clearTimeout(reloadTimer);
+  }, [authorizationFailed, isConnecting, reloadOnSuccess]);
 
   return (
     <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">

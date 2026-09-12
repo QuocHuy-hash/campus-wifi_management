@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import AuthPageLayout from "@/features/auth/components/AuthPageLayout";
 import CnaBrowserHandoff, { CnaBrowserReloadScreen } from "@/features/auth/components/CnaBrowserHandoff";
+import type { BrowserPlatform } from "@/features/auth/components/CnaBrowserHandoff";
 import { getCaptivePortalContext, saveCaptivePortalContext } from "@/lib/captivePortal";
 import type { CaptivePortalContext } from "@/features/auth/types";
 
@@ -12,6 +13,7 @@ interface CnaBrowserPageClientProps {
   initialSessionCode: string;
   initialLoginUrl: string;
   initialReloadAttempt: number;
+  initialPlatform: BrowserPlatform;
 }
 
 export default function CnaBrowserPageClient({
@@ -19,6 +21,7 @@ export default function CnaBrowserPageClient({
   initialSessionCode,
   initialLoginUrl,
   initialReloadAttempt,
+  initialPlatform,
 }: CnaBrowserPageClientProps) {
   const [context, setContext] = useState<CaptivePortalContext | null>(initialContext);
   const [contextLoaded, setContextLoaded] = useState(Boolean(initialContext));
@@ -44,6 +47,7 @@ export default function CnaBrowserPageClient({
           initialSessionCode={initialSessionCode}
           initialLoginUrl={initialLoginUrl}
           initialReloadAttempt={initialReloadAttempt}
+          initialPlatform={initialPlatform}
           temporaryAccessStatus="ready"
           temporaryAccessError=""
         />

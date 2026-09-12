@@ -14,18 +14,20 @@ import { buildAuthorizeDevicePayload, savePortalSessionCode } from "@/lib/captiv
 
 const CNA_RELOAD_INTERVAL_MS = 2_000;
 const CNA_FIRST_RELOAD_DELAY_MS = 2_500;
-const CNA_RELOAD_MAX_ATTEMPTS = 10;
+// Huy- Cập nhật ngày 2026-09-12: reload khoảng 2 phút, đồng bộ với thời gian Core chờ UniFi nhận diện client.
+const CNA_RELOAD_MAX_ATTEMPTS = 60;
 
 interface CnaBrowserHandoffProps {
   context: CaptivePortalContext;
   initialSessionCode?: string;
   initialLoginUrl?: string;
   initialReloadAttempt?: number;
+  initialPlatform?: BrowserPlatform;
   temporaryAccessStatus: "checking" | "ready" | "failed";
   temporaryAccessError: string;
 }
 
-type BrowserPlatform = "android" | "ios" | "windows" | "other";
+export type BrowserPlatform = "android" | "ios" | "windows" | "other";
 
 // Huy- CNA không cho JavaScript ép mở ứng dụng bên ngoài. Chỉ Android hỗ trợ
 // Intent URI để ưu tiên Chrome; các nền tảng còn lại dùng HTTPS chuẩn để hệ điều hành tự quyết định browser.
@@ -110,6 +112,7 @@ export default function CnaBrowserHandoff({
   initialSessionCode = "",
   initialLoginUrl = "",
   initialReloadAttempt = 0,
+  initialPlatform = "other",
 }: CnaBrowserHandoffProps) {
   const [session, setSession] = useState<PortalSessionCreated | null>(() => initialSessionCode
     ? {
@@ -121,15 +124,16 @@ export default function CnaBrowserHandoff({
     : null);
   const [isLoading, setIsLoading] = useState(!initialSessionCode);
   const [error, setError] = useState("");
-  const [platform, setPlatform] = useState<BrowserPlatform>("other");
+  const [platform, setPlatform] = useState<BrowserPlatform>(initialPlatform);
   const [reloadAttempt, setReloadAttempt] = useState(initialReloadAttempt);
 
   const calledRef = useRef(false);
 
-  // Huy- Chỉ đọc user-agent sau khi component mount để không lệch HTML giữa server và thiết bị thật.
+  // Huy- Route /cna-browser đã xác định platform từ request header để HTML đầu
+  // tiên không đổi câu hướng dẫn khi hydrate. Dialog cũ vẫn dùng fallback client.
   useEffect(() => {
-    setPlatform(getBrowserPlatform());
-  }, []);
+    if (initialPlatform === "other") setPlatform(getBrowserPlatform());
+  }, [initialPlatform]);
 
   // Huy- Khi URL đã có sessionCode, CNA chỉ dựng lại phiên và tiếp tục reload.
   // Không gọi status và không gọi lại API tạo portal session trong chu kỳ này.

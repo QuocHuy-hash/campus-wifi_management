@@ -8,6 +8,7 @@ export default function NetworkConnectingPage() {
   const searchParams = useSearchParams();
   const isAnonymousFlow = searchParams.get("flow") === "anonymous";
   const authorizationFailed = searchParams.get("authorized") === "false";
+  const initiallyConnected = isAnonymousFlow && searchParams.get("network_ready") === "1";
 
   const handleComplete = () => {
     // Huy- Cập nhật ngày 2026-09-08: các login thường có Captive Portal chuyển sang trang thành công sau khi mạng sẵn sàng.
@@ -19,6 +20,8 @@ export default function NetworkConnectingPage() {
       onComplete={handleComplete}
       stayOnSuccess={isAnonymousFlow}
       authorizationFailed={authorizationFailed}
+      initiallyConnected={initiallyConnected}
+      reloadOnSuccess={isAnonymousFlow}
     />
   );
 }

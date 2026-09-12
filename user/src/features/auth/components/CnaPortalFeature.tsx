@@ -119,6 +119,8 @@ function MenuEntry({
   description,
   onClick,
   disabled = false,
+  loading = false,
+  loadingDescription,
 }: {
   icon: ReactNode;
   iconClass: string;
@@ -126,20 +128,29 @@ function MenuEntry({
   description: string;
   onClick: () => void;
   disabled?: boolean;
+  loading?: boolean;
+  loadingDescription?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-busy={loading}
       className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition hover:bg-slate-50 active:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-55 focus-visible:relative focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-700"
     >
       <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${iconClass}`}>{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold text-slate-800">{title}</span>
-        <span className="mt-0.5 block text-xs text-slate-500">{description}</span>
+        <span className="mt-0.5 block text-xs text-slate-500">
+          {loading ? loadingDescription || "Đang xử lý..." : description}
+        </span>
       </span>
-      <ArrowRight size={17} className="shrink-0 text-slate-400" />
+      {loading ? (
+        <LoaderCircle size={18} className="shrink-0 animate-spin text-blue-700" />
+      ) : (
+        <ArrowRight size={17} className="shrink-0 text-slate-400" />
+      )}
     </button>
   );
 }
@@ -156,6 +167,7 @@ export default function CnaPortalFeature() {
   const [accountTransitionLoading, setAccountTransitionLoading] = useState(false);
   const [error, setError] = useState("");
   const temporaryAccessRequestRef = useRef<string | null>(null);
+  const isActionLoading = quickLoading || accountTransitionLoading;
 
   // Đọc captive portal context từ URL hoặc localStorage (giống AuthFeature)
   useEffect(() => {
@@ -187,7 +199,8 @@ export default function CnaPortalFeature() {
     void authorizeRegisterTemporaryAccess(buildAuthorizeDevicePayload(context))
       .then(() => {
         if (cancelled) return;
-        console.info("[REGISTER-TEMP][CNA] Đã áp policy REGISTER_TEMP cho thiết bị.");
+        // Huy- Cập nhật ngày 2026-09-12: response có thể là đã authorize hoặc Core đã nhận retry nền.
+        console.info("[REGISTER-TEMP][CNA] Core đã tiếp nhận yêu cầu cấp policy REGISTER_TEMP.");
       })
       .catch((requestError) => {
         if (cancelled) return;
@@ -245,7 +258,11 @@ export default function CnaPortalFeature() {
   const authorizeDeviceInBackground = async (): Promise<boolean> => {
     if (!context) return true;
     try {
-      const payload = buildAuthorizeDevicePayload(context);
+      // Huy- Truy cập nhanh ở ngay trong CNA đã có portalCaptiveContext tin cậy.
+      // Không gửi portal_session_code cũ/hết hạn làm backend trả 410 trước khi authorize.
+      const payload = buildAuthorizeDevicePayload(context, {
+        includePortalSessionCode: false,
+      });
       await authorizeDevice(payload);
       localStorage.removeItem(STORAGE_KEYS.portalCaptiveContext);
       clearPortalSessionCode();
@@ -320,7 +337,11 @@ export default function CnaPortalFeature() {
                     title="Đăng nhập bằng tài khoản"
                     description="Dùng email hoặc Zalo đã đăng ký"
                     onClick={handleAccountLogin}
-                    disabled={accountTransitionLoading}
+                    // Huy- Trong 1,5 giây chờ chuyển trang phải hiển thị spinner và
+                    // khóa toàn bộ lựa chọn để người dùng không khởi chạy hai luồng.
+                    disabled={isActionLoading}
+                    loading={accountTransitionLoading}
+                    loadingDescription="Đang chuẩn bị trang đăng nhập..."
                   />
                   {/* Item 2: Truy cập nhanh — gọi API ngay trong CNA */}
                   <MenuEntry
@@ -329,7 +350,9 @@ export default function CnaPortalFeature() {
                     title="Truy cập nhanh"
                     description="Không cần tài khoản hay mật khẩu"
                     onClick={() => void handleQuickAccess()}
-                    disabled={quickLoading}
+                    disabled={isActionLoading}
+                    loading={quickLoading}
+                    loadingDescription="Đang cấp quyền truy cập..."
                   />
                   {/* Item 3: Khách hội nghị */}
                   <MenuEntry
@@ -338,6 +361,7 @@ export default function CnaPortalFeature() {
                     title="Khách hội nghị"
                     description="Nhập mã sự kiện 8 chữ số"
                     onClick={() => setScreen("conference")}
+                    disabled={isActionLoading}
                   />
                 </div>
                 {error && (
@@ -346,10 +370,16 @@ export default function CnaPortalFeature() {
                     {error}
                   </div>
                 )}
-                {accountTransitionLoading && (
-                  <div className="mt-3 flex items-center justify-center gap-2 text-sm text-slate-500">
+                {isActionLoading && (
+                  <div
+                    className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-sm font-medium text-blue-700"
+                    role="status"
+                    aria-live="polite"
+                  >
                     <LoaderCircle className="animate-spin" size={16} />
-                    Đang chuẩn bị trang đăng nhập...
+                    {accountTransitionLoading
+                      ? "Đang chuẩn bị trang đăng nhập..."
+                      : "Đang tạo phiên và cấp quyền truy cập..."}
                   </div>
                 )}
               </div>

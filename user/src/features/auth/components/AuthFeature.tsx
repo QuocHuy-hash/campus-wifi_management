@@ -153,7 +153,8 @@ export default function Login() {
 
     const request = authorizeRegisterTemporaryAccess(buildAuthorizeDevicePayload(captiveContext))
       .then(() => {
-        console.info('[REGISTER-TEMP] Đã cấp mạng tạm cho full browser; chờ người dùng đăng nhập.');
+        // Huy- Cập nhật ngày 2026-09-12: Core có thể đã cấp ngay hoặc đang retry; không chặn OAuth.
+        console.info('[REGISTER-TEMP] Core đã tiếp nhận yêu cầu cấp mạng tạm cho full browser.');
         return true;
       })
       .catch((temporaryAccessError) => {
@@ -374,7 +375,7 @@ export default function Login() {
     guestAuthMethod === 'email' ? guestForm.email.trim() : guestForm.phone.trim();
 
   // Cấp quyền thiết bị; trả về true nếu thành công, false nếu thất bại.
-  const authorizeDeviceInBackground = async (): Promise<boolean> => {
+  const authorizeDeviceInBackground = async (isAnonymousLogin = false): Promise<boolean> => {
     try {
       const captiveContext = getCaptivePortalContext('');
 
@@ -386,7 +387,11 @@ export default function Login() {
         return true;
       }
 
-      const payload = buildAuthorizeDevicePayload(captiveContext);
+      // Huy- Anonymous/Truy cập nhanh authorize bằng captive params trực tiếp.
+      // Các luồng tài khoản và OAuth full browser vẫn giữ portal_session_code.
+      const payload = buildAuthorizeDevicePayload(captiveContext, {
+        includePortalSessionCode: !isAnonymousLogin,
+      });
       await authorizeDevice(payload);
 
       console.log('✅ Device authorized successfully');
@@ -455,7 +460,7 @@ export default function Login() {
     const captiveContext = getCaptivePortalContext('');
 
     if (captiveContext) {
-      const authorized = await authorizeDeviceInBackground();
+      const authorized = await authorizeDeviceInBackground(isAnonymousLogin);
       if (!authorized) {
         // Huy- Cập nhật ngày 2026-09-09: với luồng anonymous, nếu authorize thiết bị
         // thất bại thì vẫn đưa vào màn hình check mạng và hiển thị hướng dẫn quên mạng

@@ -1,11 +1,19 @@
 import { headers } from "next/headers";
 import CnaBrowserPageClient from "./CnaBrowserPageClient";
 import type { CaptivePortalContext } from "@/features/auth/types";
+import type { BrowserPlatform } from "@/features/auth/components/CnaBrowserHandoff";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
 function firstValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] || "" : value || "";
+}
+
+function detectPlatform(userAgent: string): BrowserPlatform {
+  if (/android/i.test(userAgent)) return "android";
+  if (/iPad|iPhone|iPod/i.test(userAgent)) return "ios";
+  if (/Windows/i.test(userAgent)) return "windows";
+  return "other";
 }
 
 export default async function CnaBrowserPage({
@@ -36,6 +44,7 @@ export default async function CnaBrowserPage({
     : null;
 
   const requestHeaders = await headers();
+  const initialPlatform = detectPlatform(requestHeaders.get("user-agent") || "");
   const protocol = requestHeaders.get("x-forwarded-proto") || "http";
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "localhost:3000";
   const initialLoginUrl = sessionCode
@@ -48,6 +57,7 @@ export default async function CnaBrowserPage({
       initialSessionCode={sessionCode}
       initialLoginUrl={initialLoginUrl}
       initialReloadAttempt={reloadAttempt}
+      initialPlatform={initialPlatform}
     />
   );
 }

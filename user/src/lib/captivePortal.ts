@@ -142,6 +142,11 @@ export function buildAuthorizeDevicePayload(
   options?: {
     deviceType?: string;
     deviceName?: string;
+    /**
+     * Huy- Luồng Truy cập nhanh chạy trực tiếp trong CNA nên dùng MAC/AP/SSID
+     * từ portalCaptiveContext, không phụ thuộc portal session trong Redis.
+     */
+    includePortalSessionCode?: boolean;
   }
 ): AuthorizeDevicePayload {
   return {
@@ -154,7 +159,9 @@ export function buildAuthorizeDevicePayload(
     userAgent: navigator.userAgent,
     manufacturer: detectManufacturer(),
     operatingSystem: detectOS(),
-    portalSessionCode: getStoredPortalSessionCode() || undefined,
+    portalSessionCode: options?.includePortalSessionCode === false
+      ? undefined
+      : getStoredPortalSessionCode() || undefined,
   };
 }
 
